@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" fill="none">
+  <g transform="rotate(45 96 96)">
+    <!-- Blade -->
+    <path stroke="#000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"
+          d="M96 51 L102 66 L102 108 L96 113 L90 108 L90 66 Z"/>
+    <!-- Cross-guard -->
+    <path stroke="#000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" d="M72 114 L120 114"/>
+    <!-- Grip -->
+    <path stroke="#000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" d="M96 114 L96 134"/>
+    <!-- Pommel -->
+    <circle cx="96" cy="141" r="6" stroke="#000" stroke-width="6"/>
+  </g>
+</svg>

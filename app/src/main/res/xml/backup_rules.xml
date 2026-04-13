@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- API key intentionally excluded. -->
+    <exclude domain="sharedpref" path="rpg_prefs.xml"/>
+    <include domain="file" path="saves/"/>
+</full-backup-content>

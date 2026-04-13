@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Android 12+ Material You. Resolves at icon-cache time from the user's
+      wallpaper-derived palette. On One UI 6 / Samsung Color Palette, this
+      picks up the active Galaxy theme. Using accent1_100 (light primary
+      tint) gives a visibly themed background instead of a near-white neutral.
+    -->
+    <color name="ic_launcher_background">@android:color/system_accent1_100</color>
+</resources>
