@@ -1313,62 +1313,21 @@ class GameViewModel(
         playerAction: String, roll: Int, mod: Int, prof: Int,
         suppressCheck: Boolean = false
     ): GameUiState {
-        // Capture stats before mutations for stat-change pill display
-        val hpBefore = ch.hp
-        val goldBefore = ch.gold
+        val result = com.realmsoffate.game.game.reducers.CharacterReducer.apply(ch, parsed, currentTurn = state.turns + 1)
+        val char = result.character
+        val hpBefore = result.hpBefore
+        val goldBefore = result.goldBefore
 
-        // Mutate a working copy of the character
-        val char = ch.copy(
-            abilities = ch.abilities.copy(),
-            inventory = ch.inventory.toMutableList(),
-            knownSpells = ch.knownSpells.toMutableList(),
-            spellSlots = ch.spellSlots.toMutableMap(),
-            maxSpellSlots = ch.maxSpellSlots.toMutableMap()
-        )
-        char.hp = (char.hp - parsed.damage + parsed.heal).coerceAtMost(char.maxHp).coerceAtLeast(0)
-        char.xp += parsed.xp
-        char.gold = (char.gold + parsed.goldGained - parsed.goldLost).coerceAtLeast(0)
-        if (parsed.itemsGained.isNotEmpty()) char.inventory.addAll(parsed.itemsGained)
-        // Consumed / dropped items — match by name (case-insensitive).
-        parsed.itemsRemoved.forEach { name ->
-            val idx = char.inventory.indexOfFirst { it.name.equals(name, true) }
-            if (idx >= 0) {
-                val e = char.inventory[idx]
-                if (e.qty > 1) char.inventory[idx] = e.copy(qty = e.qty - 1)
-                else char.inventory.removeAt(idx)
-            }
+        // Apply level-up side effects
+        result.levelUp?.let { signal ->
+            pendingLevelUp = signal.newLevel
+            if (signal.featPending) _pendingFeat.value = true
+            else _pendingStatPoints.value += signal.statPointsGained
         }
-        // Conditions
-        parsed.conditionsAdded.forEach { c ->
-            if (char.conditions.none { it.equals(c, true) }) char.conditions += c
-        }
-        parsed.conditionsRemoved.forEach { c ->
-            char.conditions.removeAll { it.equals(c, true) }
-        }
+        // Drain timeline entries from the reducer into the VM's timeline
+        result.timelineEntries.forEach { entry -> timeline += entry }
+
         if (parsed.partyJoins.isNotEmpty()) Unit // handled at state level below
-
-        // Level up if xp threshold reached (D&D 5e-ish milestones)
-        val nextXp = levelThreshold(char.level + 1)
-        if (char.xp >= nextXp && char.level < 20) {
-            char.level += 1
-            val clsDef = Classes.find(char.cls)
-            char.maxHp += (clsDef?.hitDie ?: 8) + char.abilities.conMod
-            char.hp = char.maxHp
-            // Refresh slot table to the new level's allotment + surface a full-screen level up overlay.
-            SpellSlots.slotsForLevel(char.cls, char.level).forEachIndexed { idx, n ->
-                if (idx == 0 || n <= 0) return@forEachIndexed
-                char.maxSpellSlots[idx] = n
-                char.spellSlots[idx] = n
-            }
-            pendingLevelUp = char.level
-            // Feat levels: 4, 8, 12, 16, 20 — offer feat choice instead of stat points
-            if (char.level % 4 == 0) {
-                _pendingFeat.value = true
-            } else {
-                _pendingStatPoints.value += 2
-            }
-            logTimeline("levelup", "Reached level ${char.level}.")
-        }
 
         // Display message list — the player bubble is already in state.messages
         // (posted optimistically by confirmPreRoll), so we just append narration.
