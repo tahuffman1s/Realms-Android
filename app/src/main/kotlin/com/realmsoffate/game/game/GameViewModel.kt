@@ -27,7 +27,6 @@ import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
 import com.realmsoffate.game.data.SerializedBuyback
 import com.realmsoffate.game.data.NarrationSegmentData
-import com.realmsoffate.game.data.IdGen
 import com.realmsoffate.game.data.TagParser
 import com.realmsoffate.game.data.TimelineEntry
 import com.realmsoffate.game.data.WorldEvent
@@ -40,6 +39,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.realmsoffate.game.game.reducers.NpcLogReducer
 
 enum class Screen { ApiSetup, Title, CharacterCreation, Game, Death }
 
@@ -1414,208 +1414,17 @@ class GameViewModel(
             }
         }
 
-        // NPC log merge
-        val npcLog = state.npcLog.toMutableList()
-        val currentLocName = worldMap?.locations?.getOrNull(currentLoc)?.name.orEmpty()
-        // Build the current ID set once for collision checks during this merge pass.
-        val existingNpcIds = npcLog.map { it.id }.filter { it.isNotBlank() }.toMutableSet()
-        parsed.npcsMet.forEach { n ->
-            if (n.id.isNotBlank()) {
-                // New ID-first format — look up by stable ID first.
-                val existing = npcLog.indexOfFirst { it.id == n.id }
-                if (existing >= 0) {
-                    val old = npcLog[existing]
-                    npcLog[existing] = old.copy(
-                        name = n.name.ifBlank { old.name },
-                        race = n.race.ifBlank { old.race },
-                        role = n.role.ifBlank { old.role },
-                        age = n.age.ifBlank { old.age },
-                        relationship = n.relationship.ifBlank { old.relationship },
-                        appearance = n.appearance.ifBlank { old.appearance },
-                        personality = n.personality.ifBlank { old.personality },
-                        thoughts = n.thoughts.ifBlank { old.thoughts },
-                        lastSeenTurn = state.turns + 1,
-                        lastLocation = currentLocName.ifBlank { old.lastLocation }
-                    )
-                } else {
-                    // No match by ID — use AI-supplied ID, collision-check then add.
-                    val safeId = if (n.id !in existingNpcIds) {
-                        n.id
-                    } else {
-                        IdGen.forName(n.name, existingNpcIds)
-                    }
-                    existingNpcIds.add(safeId)
-                    npcLog.add(n.copy(id = safeId, lastLocation = currentLocName))
-                }
-            } else {
-                // Legacy format — look up by name (case-insensitive).
-                val existing = npcLog.indexOfFirst { it.name.equals(n.name, true) }
-                if (existing >= 0) {
-                    val old = npcLog[existing]
-                    npcLog[existing] = old.copy(
-                        relationship = n.relationship.ifBlank { old.relationship },
-                        lastSeenTurn = state.turns + 1,
-                        lastLocation = currentLocName.ifBlank { old.lastLocation }
-                    )
-                } else {
-                    // Generate a fresh stable ID for this legacy-format NPC.
-                    val newId = IdGen.forName(n.name, existingNpcIds)
-                    existingNpcIds.add(newId)
-                    npcLog.add(n.copy(id = newId, lastLocation = currentLocName))
-                }
-            }
-        }
-        // Auto-register any NPC who appears in a dialog or action tag but was not
-        // formally introduced via [NPC_MET]. The narrator often skips the tag for
-        // minor or recurring NPCs, and the user expects every named speaker/actor
-        // to show up in the log. Later [NPC_MET] updates will enrich these stubs.
-        val autoRefs = buildList {
-            parsed.npcDialogs.forEach { (ref, _) -> if (ref.isNotBlank()) add(ref) }
-            parsed.npcActions.forEach { (ref, _) -> if (ref.isNotBlank()) add(ref) }
-        }.distinctBy { it.lowercase() }
-        autoRefs.forEach { ref ->
-            val idx = resolveNpcIdx(ref, npcLog)
-            if (idx >= 0) {
-                // Already logged — refresh lastSeen and location.
-                val old = npcLog[idx]
-                npcLog[idx] = old.copy(
-                    lastSeenTurn = state.turns + 1,
-                    lastLocation = currentLocName.ifBlank { old.lastLocation }
-                )
-            } else {
-                // Stub entry — if ref is a slug ID, use it verbatim (collision-checked);
-                // otherwise generate a fresh ID from the display name.
-                val isSlug = ref.isNotBlank() && ref.matches(Regex("^[a-z0-9]+(?:-[a-z0-9]+)*$"))
-                val stubId = if (isSlug) {
-                    if (ref !in existingNpcIds) ref else IdGen.forName(ref, existingNpcIds)
-                } else {
-                    IdGen.forName(ref, existingNpcIds)
-                }
-                existingNpcIds.add(stubId)
-                npcLog.add(LogNpc(
-                    id = stubId,
-                    name = ref,
-                    lastLocation = currentLocName,
-                    metTurn = state.turns + 1,
-                    lastSeenTurn = state.turns + 1
-                ))
-            }
-        }
-        // Attach extracted dialogue to any NPC currently in the log so the journal
-        // can show quotes with turn numbers. "T12: \"dialogue…\"" is the stored format.
-        // Legacy regex path — keyed by display name; fall back to name match.
-        parsed.dialogues.forEach { (name, quotes) ->
-            val idx = resolveNpcIdx(name, npcLog)
-            if (idx >= 0) {
-                val old = npcLog[idx]
-                val merged = (old.dialogueHistory + quotes.map { (turn, q) -> "T$turn: \"$q\"" })
-                    .takeLast(20) // cap per NPC to keep save size small
-                    .toMutableList()
-                npcLog[idx] = old.copy(
-                    dialogueHistory = merged,
-                    lastSeenTurn = state.turns + 1
-                )
-            }
-        }
-        // Also attach dialogue captured via the structured [NPC_DIALOG:ref] tag.
-        // ref may be a stable ID or a legacy display name — resolved via resolveNpcIdx.
-        parsed.npcDialogs.forEach { (ref, quote) ->
-            val idx = resolveNpcIdx(ref, npcLog)
-            if (idx >= 0 && quote.isNotBlank()) {
-                val old = npcLog[idx]
-                val entry = "T${state.turns + 1}: \"$quote\""
-                if (entry !in old.dialogueHistory) {
-                    val merged = (old.dialogueHistory + entry).takeLast(20).toMutableList()
-                    npcLog[idx] = old.copy(dialogueHistory = merged, lastSeenTurn = state.turns + 1)
-                }
-            }
-        }
-        // Narrator-curated memorable quotes via [NPC_QUOTE:ref|quote] — store in
-        // a separate list (capped at 12) so they persist beyond the rolling
-        // dialogueHistory buffer. Deduplicated by exact entry text.
-        parsed.npcQuotes.forEach { (ref, quote) ->
-            val idx = resolveNpcIdx(ref, npcLog)
-            if (idx >= 0 && quote.isNotBlank()) {
-                val old = npcLog[idx]
-                val entry = "T${state.turns + 1}: \"$quote\""
-                if (entry !in old.memorableQuotes) {
-                    val merged = (old.memorableQuotes + entry).takeLast(12).toMutableList()
-                    npcLog[idx] = old.copy(memorableQuotes = merged, lastSeenTurn = state.turns + 1)
-                }
-            }
-        }
-
-        // NPC deaths — ref may be a stable ID or a legacy display name.
-        parsed.npcDeaths.forEach { deadRef ->
-            val idx = resolveNpcIdx(deadRef, npcLog)
-            val displayName = if (idx >= 0) npcLog[idx].name else deadRef
-            if (idx >= 0) {
-                npcLog[idx] = npcLog[idx].copy(
-                    status = "dead",
-                    relationship = "dead",
-                    relationshipNote = "Killed turn ${state.turns + 1}"
-                )
-            }
-            newMsgs.add(DisplayMessage.System("☠️ $displayName has died."))
-            logTimeline("event", "$displayName died")
-        }
-
-        // Remove dead NPCs from combat order — resolve refs to display names first.
-        val deadDisplayNames = parsed.npcDeaths.map { ref ->
-            val i = resolveNpcIdx(ref, npcLog)
-            if (i >= 0) npcLog[i].name.lowercase() else ref.lowercase()
-        }.toSet()
-        var combatState = state.combat
-        if (combatState != null && deadDisplayNames.isNotEmpty()) {
-            combatState = combatState.copy(
-                order = combatState.order.filter { c ->
-                    c.name.lowercase() !in deadDisplayNames
-                }
-            )
-        }
-
-        // NPC updates — ref may be a stable ID or a legacy display name.
-        // With stable IDs, the "name" field simply updates the display label in place;
-        // no complex merge is needed because the id is the stable key.
-        parsed.npcUpdates.forEach { (ref, field, value) ->
-            val idx = resolveNpcIdx(ref, npcLog)
-            if (idx >= 0) {
-                val old = npcLog[idx]
-                npcLog[idx] = when (field.lowercase()) {
-                    "relationship" -> old.copy(relationship = value)
-                    "role" -> old.copy(role = value)
-                    "faction" -> old.copy(faction = value)
-                    "location" -> old.copy(lastLocation = value)
-                    "status" -> old.copy(status = value)
-                    "name" -> {
-                        // Update the display name directly. The stable id remains unchanged.
-                        val newName = value.trim()
-                        if (newName.isBlank() || newName.equals(old.name, true)) {
-                            old
-                        } else if (old.id.isNotBlank()) {
-                            // ID-keyed entry — just update the display name in place.
-                            old.copy(name = newName)
-                        } else {
-                            // Legacy (no stable ID) — check for a duplicate stub under
-                            // the new name and merge if found.
-                            val existingNewIdx = npcLog.indexOfFirst {
-                                it.name.equals(newName, true) && !it.name.equals(old.name, true)
-                            }
-                            if (existingNewIdx >= 0) {
-                                val other = npcLog[existingNewIdx]
-                                val merged = mergeNpcEntries(primary = other, secondary = old).copy(name = newName)
-                                npcLog.removeAt(existingNewIdx)
-                                val targetIdx = if (existingNewIdx < idx) idx - 1 else idx
-                                npcLog[targetIdx] = merged
-                                return@forEach
-                            }
-                            old.copy(name = newName)
-                        }
-                    }
-                    else -> old
-                }
-            }
-        }
+        val npcLogResult = NpcLogReducer.apply(
+            npcLog = state.npcLog,
+            combat = state.combat,
+            parsed = parsed,
+            currentTurn = state.turns + 1,
+            currentLocName = worldMap?.locations?.getOrNull(currentLoc)?.name.orEmpty()
+        )
+        val npcLog = npcLogResult.npcLog
+        var combatState = npcLogResult.combat
+        newMsgs.addAll(npcLogResult.systemMessages)
+        npcLogResult.timelineEntries.forEach { entry -> timeline += entry }
 
         // Faction updates — ref may be a stable faction id (slug) or display name.
         var worldLoreUpdated = state.worldLore
@@ -1650,7 +1459,7 @@ class GameViewModel(
 
         // Mark faction leaders as deceased when they die — use resolved display names.
         parsed.npcDeaths.forEach { deadRef ->
-            val deadNpcIdx = resolveNpcIdx(deadRef, npcLog)
+            val deadNpcIdx = NpcLogReducer.resolveNpcIdx(deadRef, npcLog)
             val deadName = if (deadNpcIdx >= 0) npcLog[deadNpcIdx].name else deadRef
             val factions = worldLoreUpdated?.factions.orEmpty()
             factions.forEachIndexed { fIdx, faction ->
@@ -1779,56 +1588,6 @@ class GameViewModel(
             lastDice = roll,
             combat = combatState,
             travelState = travelState
-        )
-    }
-
-    /**
-     * Merges two NPC log entries when the player learns a placeholder NPC's real
-     * name and both records exist. Prefers non-blank fields from [primary] (the
-     * entry under the real name), falling back to [secondary] (the placeholder).
-     * Unions dialogueHistory and memorableQuotes, preserving chronological order
-     * and deduplicating, then caps each at its usual size. Uses the earlier
-     * metTurn and later lastSeenTurn.
-     */
-    /**
-     * Resolves a ref string (which may be a stable ID or a legacy display name) to
-     * the index of the matching entry in npcLog. Prefers ID match; falls back to
-     * case-insensitive name match for legacy tags. Returns -1 if no match.
-     */
-    private fun resolveNpcIdx(ref: String, npcLog: List<LogNpc>): Int {
-        if (ref.isBlank()) return -1
-        val byId = npcLog.indexOfFirst { it.id == ref }
-        if (byId >= 0) return byId
-        return npcLog.indexOfFirst { it.name.equals(ref, ignoreCase = true) }
-    }
-
-    private fun mergeNpcEntries(primary: LogNpc, secondary: LogNpc): LogNpc {
-        fun pickStr(a: String, b: String): String = if (a.isNotBlank()) a else b
-        fun pickStrN(a: String?, b: String?): String? = a?.takeIf { it.isNotBlank() } ?: b
-        val dialog = (secondary.dialogueHistory + primary.dialogueHistory)
-            .distinct()
-            .takeLast(20)
-            .toMutableList()
-        val memorable = (secondary.memorableQuotes + primary.memorableQuotes)
-            .distinct()
-            .takeLast(12)
-            .toMutableList()
-        return primary.copy(
-            race = pickStr(primary.race, secondary.race),
-            role = pickStr(primary.role, secondary.role),
-            age = pickStr(primary.age, secondary.age),
-            relationship = pickStr(primary.relationship, secondary.relationship),
-            appearance = pickStr(primary.appearance, secondary.appearance),
-            personality = pickStr(primary.personality, secondary.personality),
-            thoughts = pickStr(primary.thoughts, secondary.thoughts),
-            faction = pickStrN(primary.faction, secondary.faction),
-            lastLocation = pickStr(primary.lastLocation, secondary.lastLocation),
-            metTurn = minOf(primary.metTurn, secondary.metTurn),
-            lastSeenTurn = maxOf(primary.lastSeenTurn, secondary.lastSeenTurn),
-            dialogueHistory = dialog,
-            memorableQuotes = memorable,
-            relationshipNote = pickStr(primary.relationshipNote, secondary.relationshipNote),
-            status = if (primary.status == "alive" && secondary.status != "alive") secondary.status else primary.status
         )
     }
 
