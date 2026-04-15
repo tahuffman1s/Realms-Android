@@ -21,6 +21,7 @@ import com.realmsoffate.game.data.PreferencesStore
 import com.realmsoffate.game.data.Prompts
 import com.realmsoffate.game.data.Quest
 import com.realmsoffate.game.data.GraveyardEntry
+import com.realmsoffate.game.data.DebugTurn
 import com.realmsoffate.game.data.SaveData
 import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
@@ -243,18 +244,8 @@ class GameViewModel(
     }
 
     // ---- Debug log — records every AI exchange for diagnostics ----
-    data class DebugTurn(
-        val turn: Int,
-        val playerAction: String,
-        val classifiedSkill: String?,
-        val diceRoll: Int,
-        val userPromptSent: String,
-        val rawAiResponse: String,
-        val parsedScene: String,
-        val parsedNarration: String,
-        val parsedTags: String,
-        val timestamp: Long = System.currentTimeMillis()
-    )
+    // DebugTurn is defined in Models.kt (com.realmsoffate.game.data) and is
+    // @Serializable so it can be persisted in SaveData.debugLog.
     private val _debugLog = mutableListOf<DebugTurn>()
 
     private fun logDebugTurn(
@@ -2036,7 +2027,8 @@ class GameViewModel(
             timeline = timeline.toList(),
             displayMessages = s.messages,
             deathSave = s.deathSave,
-            travelState = s.travelState
+            travelState = s.travelState,
+            debugLog = _debugLog.takeLast(50)
         )
     }
 
@@ -2050,6 +2042,9 @@ class GameViewModel(
             _buybackStocks.value = d.buybackStocks.mapValues { e ->
                 e.value.map { com.realmsoffate.game.ui.overlays.BuybackEntry(item = it.item, price = it.price) }
             }
+            // Restore the debug log so reload → dump still shows historical cache/source data.
+            _debugLog.clear()
+            _debugLog.addAll(d.debugLog)
             _ui.value = GameUiState(
                 character = d.character,
                 worldMap = d.worldMap,

@@ -160,7 +160,7 @@ object TagParser {
      * [NPC_DIALOG:Name] tags despite being told not to.
      */
     private fun cleanDialogContent(raw: String): String {
-        var t = raw.trim()
+        var t = stripTagFragments(raw).trim()
         // Strip leading *body language* italic prefix (e.g. "*She leans forward.*")
         t = t.replace(Regex("""^\*[^*]+\*\s*"""), "")
         // Strip emoji + **Name:** prefix (e.g. "🍺 **Vesper:**")
@@ -171,6 +171,28 @@ object TagParser {
         t = t.removeSurrounding("\"").removeSurrounding("\u201C", "\u201D")
             .removeSurrounding("'").removeSurrounding("\u2018", "\u2019")
         return t.trim()
+    }
+
+    /**
+     * Removes stray narrative-tag fragments (`[TAG]` or `[/TAG]`) that leak into
+     * captured body text on tag mismatches. When the AI opens one tag and closes
+     * with another — e.g. `[PLAYER_ACTION]...[/NARRATOR_PROSE]` — the outer lazy
+     * regex match scoops up the mismatched close as literal body content, which
+     * then renders as visible tag syntax in the UI. This post-pass nukes those
+     * fragments so text reads cleanly even when the AI crosses its wires.
+     *
+     * This is a Phase-A hotfix. Phase B replaces the lazy-regex narrative parser
+     * with a tokenizer that refuses to capture mismatched content in the first
+     * place; at that point this function becomes a no-op and can be deleted.
+     */
+    private fun stripTagFragments(s: String): String {
+        return s.replace(
+            Regex(
+                """\[/?(?:NARRATOR_PROSE|NARRATOR_ASIDE|PLAYER_ACTION|PLAYER_DIALOG|NPC_ACTION[^\]]*|NPC_DIALOG[^\]]*|SCENE[^\]]*|CHOICES|METADATA)]""",
+                RegexOption.IGNORE_CASE
+            ),
+            ""
+        )
     }
 
     /**
@@ -207,7 +229,7 @@ object TagParser {
      * wrapped the action in asterisks.
      */
     private fun cleanPlayerActionContent(raw: String): String {
-        val t = raw.trim()
+        val t = stripTagFragments(raw).trim()
         val italicMatch = Regex("""^\s*\*+([^*]+)\*+""").find(t)
         return if (italicMatch != null) italicMatch.groupValues[1].trim()
         else stripWrappingEmphasis(t)
@@ -233,8 +255,9 @@ object TagParser {
      *         string if there is nothing meaningful to render.
      */
     private fun formatNpcActionContent(raw: String, speakerName: String): String {
-        if (speakerName.isBlank()) return stripWrappingEmphasis(raw)
-        var t = raw.trim()
+        val sanitized = stripTagFragments(raw)
+        if (speakerName.isBlank()) return stripWrappingEmphasis(sanitized)
+        var t = sanitized.trim()
 
         // If the content has a leading *italicized body* block, use ONLY that.
         // The LLM often wraps the actual body-language in asterisks then dumps
@@ -278,8 +301,242 @@ object TagParser {
         return "$speakerName $t"
     }
 
-    /** Cleans aside / prose content — strips wrapping markdown emphasis. */
-    private fun cleanAsideContent(raw: String): String = stripWrappingEmphasis(raw)
+    /** Cleans aside / prose content — strips tag fragments and wrapping markdown emphasis. */
+    private fun cleanAsideContent(raw: String): String = stripWrappingEmphasis(stripTagFragments(raw))
+
+    // =========================================================================
+    // Phase B — Tokenizer + Stack-Based Segment Parser
+    // =========================================================================
+
+    /**
+     * Walks the raw response once, emitting a flat list of narrative tokens.
+     *
+     * Skips SCENE / CHOICES / METADATA blocks cleanly (they're handled by
+     * dedicated regex passes in parse()). Emits OpaqueBlock for each so the
+     * parser knows something was there but doesn't try to parse the interior.
+     *
+     * On stray `[` that doesn't start a recognised tag, treats it as text. On
+     * an unknown tag name inside `[...]`, treats the whole bracketed sequence
+     * as text. No exceptions are thrown — the tokenizer is infallible.
+     */
+    internal fun tokenizeNarrative(raw: String): List<NarrativeToken> {
+        val tokens = mutableListOf<NarrativeToken>()
+        val textBuf = StringBuilder()
+        var i = 0
+
+        fun flushText() {
+            if (textBuf.isNotEmpty()) {
+                tokens += NarrativeToken.Text(textBuf.toString())
+                textBuf.clear()
+            }
+        }
+
+        while (i < raw.length) {
+            if (raw[i] != '[') {
+                textBuf.append(raw[i])
+                i++
+                continue
+            }
+
+            // raw[i] == '['
+            val rest = raw.substring(i + 1) // everything after '['
+
+            // ---- Check for opaque blocks first ----
+
+            // SCENE: self-closing [SCENE:type|desc]
+            if (rest.startsWith("SCENE:", ignoreCase = true)) {
+                val closeIdx = raw.indexOf(']', i + 1)
+                if (closeIdx >= 0) {
+                    flushText()
+                    tokens += NarrativeToken.OpaqueBlock
+                    i = closeIdx + 1
+                    continue
+                }
+            }
+
+            // CHOICES: [CHOICES]...[/CHOICES]
+            if (rest.startsWith("CHOICES]", ignoreCase = true)) {
+                val closeTag = "[/CHOICES]"
+                val closeIdx = raw.indexOf(closeTag, i + 1, ignoreCase = true)
+                flushText()
+                tokens += NarrativeToken.OpaqueBlock
+                i = if (closeIdx >= 0) closeIdx + closeTag.length else raw.indexOf(']', i + 1) + 1
+                continue
+            }
+
+            // METADATA: [METADATA]...[/METADATA]
+            if (rest.startsWith("METADATA]", ignoreCase = true)) {
+                val closeTag = "[/METADATA]"
+                val closeIdx = raw.indexOf(closeTag, i + 1, ignoreCase = true)
+                flushText()
+                tokens += NarrativeToken.OpaqueBlock
+                i = if (closeIdx >= 0) closeIdx + closeTag.length else raw.indexOf(']', i + 1) + 1
+                continue
+            }
+
+            // ---- Close tag: [/TAGNAME] ----
+            if (rest.startsWith("/")) {
+                val closeIdx = raw.indexOf(']', i + 1)
+                if (closeIdx >= 0) {
+                    val tagName = raw.substring(i + 2, closeIdx).trim()
+                    val tagType = NarrativeTagType.fromRaw(tagName)
+                    if (tagType != null) {
+                        flushText()
+                        tokens += NarrativeToken.CloseTag(tagType)
+                        i = closeIdx + 1
+                        continue
+                    }
+                }
+                // Unknown close tag or no ']' — treat '[' as literal text
+                textBuf.append('[')
+                i++
+                continue
+            }
+
+            // ---- Open tag: [TAGNAME] or [TAGNAME:arg] ----
+            val closeIdx = raw.indexOf(']', i + 1)
+            if (closeIdx >= 0) {
+                val inner = raw.substring(i + 1, closeIdx)
+                val colonPos = inner.indexOf(':')
+                val tagName = if (colonPos >= 0) inner.substring(0, colonPos) else inner
+                val tagType = NarrativeTagType.fromRaw(tagName.trim())
+                if (tagType != null) {
+                    val arg = if (colonPos >= 0) {
+                        inner.substring(colonPos + 1).trim().ifBlank { null }
+                    } else null
+                    flushText()
+                    tokens += NarrativeToken.OpenTag(tagType, arg)
+                    i = closeIdx + 1
+                    continue
+                }
+            }
+
+            // Not a recognised tag — treat '[' as literal text
+            textBuf.append('[')
+            i++
+        }
+
+        flushText()
+        return tokens
+    }
+
+    /** Internal pending block on the parser stack. */
+    private data class PendingBlock(
+        val type: NarrativeTagType,
+        val arg: String?,
+        val body: StringBuilder
+    )
+
+    /** Maps a completed PendingBlock to a NarrationSegmentData, or null if it should be dropped. */
+    private fun makeSegment(block: PendingBlock): NarrationSegmentData? {
+        val bodyRaw = block.body.toString()
+        return when (block.type) {
+            NarrativeTagType.NARRATOR_PROSE -> {
+                val t = cleanAsideContent(bodyRaw)
+                if (t.isBlank()) null else NarrationSegmentData.Prose(t)
+            }
+            NarrativeTagType.NARRATOR_ASIDE, NarrativeTagType.SNARK -> {
+                val t = cleanAsideContent(bodyRaw)
+                if (t.isBlank()) null else NarrationSegmentData.Aside(t)
+            }
+            NarrativeTagType.PLAYER_ACTION -> {
+                val t = cleanPlayerActionContent(bodyRaw)
+                if (t.isBlank()) null else NarrationSegmentData.PlayerAction(t)
+            }
+            NarrativeTagType.PLAYER_DIALOG -> {
+                val t = cleanDialogContent(bodyRaw)
+                if (t.isBlank()) null else NarrationSegmentData.PlayerDialog(t)
+            }
+            NarrativeTagType.NPC_ACTION -> {
+                val name = block.arg?.trim() ?: ""
+                if (name.isBlank()) return null
+                val t = formatNpcActionContent(bodyRaw, speakerName = name)
+                if (t.isBlank()) null else NarrationSegmentData.NpcAction(name, t)
+            }
+            NarrativeTagType.NPC_DIALOG -> {
+                val name = block.arg?.trim() ?: ""
+                if (name.isBlank()) return null
+                val t = cleanDialogContent(bodyRaw)
+                if (t.isBlank()) null else NarrationSegmentData.NpcDialog(name, t)
+            }
+        }
+    }
+
+    /**
+     * Builds a NarrationSegmentData list from a token stream with permissive recovery.
+     *
+     * Recovery policy:
+     *   - Mismatched close tag: force-close the top-of-stack block regardless of
+     *     type (the close acts as "end this block here, whatever it said").
+     *   - Stray close tag (empty stack): drop silently.
+     *   - Unclosed tag at EOF: auto-close with whatever body was captured so far.
+     *   - Gap text (outside any open tag): becomes a Prose segment if non-blank.
+     */
+    internal fun buildSegments(tokens: List<NarrativeToken>): List<NarrationSegmentData> {
+        val segments = mutableListOf<NarrationSegmentData>()
+        val stack = ArrayDeque<PendingBlock>()
+        val gapBuffer = StringBuilder()
+
+        fun flushGap() {
+            val text = cleanAsideContent(gapBuffer.toString())
+            gapBuffer.clear()
+            if (text.isNotBlank()) segments += NarrationSegmentData.Prose(text)
+        }
+
+        for (token in tokens) {
+            when (token) {
+                is NarrativeToken.OpenTag -> {
+                    flushGap()
+                    stack.addLast(PendingBlock(token.type, token.arg, StringBuilder()))
+                }
+                is NarrativeToken.CloseTag -> {
+                    if (stack.isNotEmpty()) {
+                        // Force-close the top of stack regardless of whether types match.
+                        val block = stack.removeLast()
+                        makeSegment(block)?.let { segments += it }
+                    }
+                    // else: stray close tag with empty stack — drop silently
+                }
+                is NarrativeToken.Text -> {
+                    if (stack.isNotEmpty()) stack.last().body.append(token.content)
+                    else gapBuffer.append(token.content)
+                }
+                is NarrativeToken.OpaqueBlock -> { /* skip entirely */ }
+            }
+        }
+
+        // Auto-close any unclosed blocks at EOF (innermost first)
+        while (stack.isNotEmpty()) {
+            val block = stack.removeLast()
+            makeSegment(block)?.let { segments += it }
+        }
+        flushGap()
+
+        return segments
+    }
+
+    /**
+     * Normalizes curly/smart quotes to their ASCII equivalents so JSON parses
+     * cleanly. DeepSeek sometimes mixes typographic quotes into the [METADATA]
+     * block, which the strict subset of JSON rejects, and kotlinx.serialization
+     * silently drops the sections after the first smart quote even with isLenient.
+     *
+     *   U+201C "  U+201D "  -> "
+     *   U+2018 '  U+2019 '  -> '
+     *   U+00AB «  U+00BB »  -> "  (rare but seen)
+     *   U+201A ‚  U+201E „  -> low-9 marks -> ' and " respectively
+     */
+    private fun normalizeJsonQuotes(s: String): String {
+        val sb = StringBuilder(s.length)
+        for (c in s) {
+            when (c) {
+                '\u201C', '\u201D', '\u201E', '\u00AB', '\u00BB' -> sb.append('"')
+                '\u2018', '\u2019', '\u201A' -> sb.append('\'')
+                else -> sb.append(c)
+            }
+        }
+        return sb.toString()
+    }
 
     /**
      * A slug-style ID: lowercase letters, digits, dashes. No spaces, no capitals.
@@ -341,7 +598,7 @@ object TagParser {
         // ---- Attempt JSON metadata extraction (Path A) ----
         val metadataMatch = metadataBlockPattern.find(raw)
         val metadata: TurnMetadata? = metadataMatch?.let {
-            val jsonBody = it.groupValues[1].trim()
+            val jsonBody = normalizeJsonQuotes(it.groupValues[1].trim())
             runCatching {
                 metadataJson.decodeFromString<TurnMetadata>(jsonBody)
             }.getOrNull()
@@ -671,36 +928,15 @@ object TagParser {
             }
         }
 
-        // ---- Structured dialog/prose block extraction ----
-        // Extract BEFORE stripping so the full raw text is available for matching.
-        val narratorProse = narratorProsePattern.findAll(raw)
-            .map { cleanAsideContent(it.groupValues[1]) }
-            .filter { it.isNotBlank() }
-            .toList()
+        // ---- Structured dialog/prose block extraction (Phase B tokenizer path) ----
+        // Build segments first — all per-type lists derive from segments below.
+        val tokens = tokenizeNarrative(raw)
+        val segments = buildSegments(tokens).toMutableList()
 
-        val narratorAsidesFromTag = narratorAsidePattern.findAll(raw)
-            .map { cleanAsideContent(it.groupValues[1]) }
-            .filter { it.isNotBlank() }
-            .toList()
-        // Fallback: treat [SNARK] content as asides if no [NARRATOR_ASIDE] tags are present.
-        val narratorAsides: List<String> = if (narratorAsidesFromTag.isNotEmpty()) {
-            narratorAsidesFromTag
-        } else {
-            snarkPattern.findAll(raw)
-                .map { cleanAsideContent(it.groupValues[1]) }
-                .filter { it.isNotBlank() }
-                .toList()
-        }
-
-        val playerDialogs = playerDialogPattern.findAll(raw)
-            .map { cleanDialogContent(it.groupValues[1]) }
-            .filter { it.isNotBlank() }
-            .toList()
-
-        val npcDialogs = npcDialogPattern.findAll(raw)
-            .map { it.groupValues[1].trim() to cleanDialogContent(it.groupValues[2]) }
-            .filter { (name, text) -> name.isNotBlank() && text.isNotBlank() }
-            .toList()
+        val narratorProse = segments.filterIsInstance<NarrationSegmentData.Prose>().map { it.text }
+        val narratorAsides = segments.filterIsInstance<NarrationSegmentData.Aside>().map { it.text }
+        val playerDialogs = segments.filterIsInstance<NarrationSegmentData.PlayerDialog>().map { it.text }
+        val npcDialogs = segments.filterIsInstance<NarrationSegmentData.NpcDialog>().map { it.name to it.text }
 
         // Strip the mechanical tags from the narration body but keep SCENE at top as header.
         var narration = raw
@@ -773,94 +1009,9 @@ object TagParser {
             }
         }
 
-        // ---- Build ordered segments from structured tags ----
-        data class RawBlock(val start: Int, val end: Int, val seg: NarrationSegmentData)
-        val rawBlocks = mutableListOf<RawBlock>()
-
-        narratorProsePattern.findAll(raw).forEach { m ->
-            val t = cleanAsideContent(m.groupValues[1])
-            if (t.isNotBlank()) rawBlocks.add(RawBlock(m.range.first, m.range.last, NarrationSegmentData.Prose(t)))
-        }
-        narratorAsidePattern.findAll(raw).forEach { m ->
-            val t = cleanAsideContent(m.groupValues[1])
-            if (t.isNotBlank()) rawBlocks.add(RawBlock(m.range.first, m.range.last, NarrationSegmentData.Aside(t)))
-        }
-        snarkPattern.findAll(raw).forEach { m ->
-            val t = cleanAsideContent(m.groupValues[1])
-            if (t.isNotBlank() && narratorAsidesFromTag.isEmpty()) {
-                // Only use SNARK as asides if no NARRATOR_ASIDE tags present (same fallback logic)
-                rawBlocks.add(RawBlock(m.range.first, m.range.last, NarrationSegmentData.Aside(t)))
-            }
-        }
-        playerDialogPattern.findAll(raw).forEach { m ->
-            val t = cleanDialogContent(m.groupValues[1])
-            if (t.isNotBlank()) rawBlocks.add(RawBlock(m.range.first, m.range.last, NarrationSegmentData.PlayerDialog(t)))
-        }
-        npcDialogPattern.findAll(raw).forEach { m ->
-            val name = m.groupValues[1].trim()
-            val t = cleanDialogContent(m.groupValues[2])
-            if (name.isNotBlank() && t.isNotBlank()) rawBlocks.add(RawBlock(m.range.first, m.range.last, NarrationSegmentData.NpcDialog(name, t)))
-        }
-        playerActionPattern.findAll(raw).forEach { m ->
-            val t = cleanPlayerActionContent(m.groupValues[1])
-            if (t.isNotBlank()) rawBlocks.add(RawBlock(m.range.first, m.range.last, NarrationSegmentData.PlayerAction(t)))
-        }
-        npcActionPattern.findAll(raw).forEach { m ->
-            val name = m.groupValues[1].trim()
-            val t = formatNpcActionContent(m.groupValues[2], speakerName = name)
-            if (name.isNotBlank() && t.isNotBlank()) rawBlocks.add(RawBlock(m.range.first, m.range.last, NarrationSegmentData.NpcAction(name, t)))
-        }
-
-        rawBlocks.sortBy { it.start }
-
-        // Build final ordered segments — include untagged prose gaps
-        val segments = mutableListOf<NarrationSegmentData>()
-        var lastBlockEnd = 0
-        for (block in rawBlocks) {
-            if (block.start < lastBlockEnd) continue // overlapping block, skip
-            val gap = raw.substring(lastBlockEnd, block.start)
-            val gapCleaned = scenePattern.replace(gap, "")
-                .let { choicesPattern.replace(it, "") }
-                .let { metadataBlockPattern.replace(it, "") }
-                .let { tagPattern.replace(it, "") }
-                .trim()
-                .replace(Regex("\\n{3,}"), "\n\n")
-            if (gapCleaned.isNotBlank()) segments.add(NarrationSegmentData.Prose(gapCleaned))
-            segments.add(block.seg)
-            lastBlockEnd = block.end + 1
-        }
-        // Trailing text after last block
-        if (lastBlockEnd < raw.length) {
-            val trailing = raw.substring(lastBlockEnd)
-            val trailingCleaned = scenePattern.replace(trailing, "")
-                .let { choicesPattern.replace(it, "") }
-                .let { metadataBlockPattern.replace(it, "") }
-                .let { tagPattern.replace(it, "") }
-                .let { narratorProsePattern.replace(it, "") }
-                .let { narratorAsidePattern.replace(it, "") }
-                .let { playerDialogPattern.replace(it, "") }
-                .let { npcDialogPattern.replace(it, "") }
-                .let { playerActionPattern.replace(it, "") }
-                .let { npcActionPattern.replace(it, "") }
-                .let { snarkPattern.replace(it, "") }
-                .trim()
-                .replace(Regex("\\n{3,}"), "\n\n")
-            if (trailingCleaned.isNotBlank()) segments.add(NarrationSegmentData.Prose(trailingCleaned))
-        }
-
-        // Extract player actions and NPC actions into simple lists too
-        val playerActionsExtracted = playerActionPattern.findAll(raw)
-            .map { cleanPlayerActionContent(it.groupValues[1]) }
-            .filter { it.isNotBlank() }
-            .toList()
-
-        val npcActionsExtracted = npcActionPattern.findAll(raw)
-            .map { m ->
-                val n = m.groupValues[1].trim()
-                n to formatNpcActionContent(m.groupValues[2], speakerName = n)
-            }
-            .filter { (name, text) -> name.isNotBlank() && text.isNotBlank() }
-            .toList()
+        // Derive per-type action lists from segments (segments already built above)
+        val playerActionsExtracted = segments.filterIsInstance<NarrationSegmentData.PlayerAction>().map { it.text }
+        val npcActionsExtracted = segments.filterIsInstance<NarrationSegmentData.NpcAction>().map { it.name to it.text }
 
         return ParsedReply(
             scene, sceneDesc, narration, choices, damage, heal, xp,

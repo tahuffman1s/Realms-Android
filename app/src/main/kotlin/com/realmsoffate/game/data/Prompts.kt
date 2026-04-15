@@ -244,6 +244,7 @@ RULES:
 - Use the stable slug ids from the KNOWN NPCS roster. Never use display names where an id is expected.
 - DO NOT emit the old inline tags ([DAMAGE:N], [ITEM:...], [NPC_MET:...], etc.) — the metadata block replaces them entirely.
 - The [METADATA] block must be valid JSON. No comments, no trailing commas.
+- Use ONLY ASCII straight quotes ("). NEVER use smart/curly quotes (U+201C/201D " ", or U+2018/2019 ' '). Smart quotes break JSON parsing.
 - Enemies: list ALL enemies on the field every combat turn with current HP; the UI draws HP bars from this.
 - The "check" field is set when a skill check was resolved this turn — the DC and passed/total tell the game what happened. Set "passed" correctly based on total vs dc.
 
@@ -588,7 +589,7 @@ Now here are the full narrator instructions:
         "DC RESOLUTION: total >= DC = FULL clean success. NO 'but/however/yet/still/somehow' after a pass. EVER.\n" +
         "CONTINUITY: ONE story. Same characters, location, situation. Do NOT reset.\n" +
         "PERSONALITY: 2-3 [NARRATOR_ASIDE] per turn — YOUR reactions, mockery, praise. NOT actions.\n" +
-        "MECHANICAL: end response with [METADATA]{...}[/METADATA] JSON block; any key omitted means 'no effect'. ZERO numbers in prose.\n" +
+        "MECHANICAL: end response with [METADATA]{...}[/METADATA] JSON block; any key omitted means 'no effect'. ZERO numbers in prose. USE ASCII quotes in JSON, never smart/curly quotes.\n" +
         "Racial quirks. Mutations. 200-400 words."
 
     /** Backwards-compat: kept so older code paths that referenced the time tag don't blow up. */

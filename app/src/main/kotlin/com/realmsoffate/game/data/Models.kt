@@ -315,6 +315,24 @@ data class Dice(val roll: Int, val skill: String = "", val ability: String = "")
 @Serializable
 data class MerchantStock(val items: MutableMap<String, Int>)
 
+/**
+ * One turn's worth of raw AI exchange data — captured for retrospective diagnostics.
+ * Stored in SaveData so that reload → debug-dump still shows cache/source history.
+ */
+@Serializable
+data class DebugTurn(
+    val turn: Int,
+    val playerAction: String,
+    val classifiedSkill: String?,
+    val diceRoll: Int,
+    val userPromptSent: String,
+    val rawAiResponse: String,
+    val parsedScene: String,
+    val parsedNarration: String,
+    val parsedTags: String,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
 @Serializable
 data class SaveData(
     val version: Int = 2,
@@ -352,7 +370,9 @@ data class SaveData(
     /** In-flight death-save tracker — non-null if the player was bleeding out at save time. */
     val deathSave: com.realmsoffate.game.game.DeathSaveState? = null,
     /** Non-null when the player was mid-journey at save time. */
-    val travelState: TravelState? = null
+    val travelState: TravelState? = null,
+    // ---- diagnostic trail: last ~50 AI exchanges, preserved across reloads ----
+    val debugLog: List<DebugTurn> = emptyList()
 )
 
 /**

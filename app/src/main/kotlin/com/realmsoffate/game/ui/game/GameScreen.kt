@@ -127,16 +127,20 @@ fun GameScreen(vm: GameViewModel) {
         }
     }
 
-    // Debug dump launcher — exports full game state + AI exchange log as .txt
-    val debugLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("text/plain")
-    ) { uri: Uri? ->
-        if (uri != null) {
-            val dump = vm.exportDebugDump()
-            runCatching {
-                context.contentResolver.openOutputStream(uri)?.use { it.write(dump.toByteArray()) }
-            }
-            vm.postSystemMessage("Debug dump exported.")
+    // Debug dump — writes straight to the app's scoped external-storage dir
+    // (/sdcard/Android/data/com.realmsoffate.game/files/debug/) with no file
+    // picker. The desktop `pulldebug` fish function yanks the newest file into
+    // ~/Downloads/ over ADB, ready for Claude to read.
+    fun dumpDebugToFile() {
+        val dir = java.io.File(context.getExternalFilesDir(null), "debug")
+        if (!dir.exists()) dir.mkdirs()
+        val filename = vm.debugDumpFilename()
+        val file = java.io.File(dir, filename)
+        runCatching {
+            file.writeText(vm.exportDebugDump())
+            vm.postSystemMessage("Debug dump saved: $filename. Run 'pulldebug' on the PC.")
+        }.onFailure {
+            vm.postSystemMessage("Debug dump failed: ${it.message}")
         }
     }
 
@@ -241,6 +245,7 @@ fun GameScreen(vm: GameViewModel) {
                         is DisplayMessage.Narration -> {
                             NarrationBlock(
                                 msg.text, state.character?.name, msg, msg.segments,
+                                npcLog = state.npcLog,
                                 isLatestTurn = idx == state.messages.lastIndex || (idx == state.messages.size - 2 && state.messages.lastOrNull() is DisplayMessage.System),
                                 bookmarks = state.bookmarks,
                                 onToggleBookmark = { vm.toggleBookmark(it) },
@@ -439,7 +444,7 @@ fun GameScreen(vm: GameViewModel) {
                 when (action) {
                     "save" -> { vm.saveToSlot(); vm.postSystemMessage("Saved.") }
                     "download" -> exportLauncher.launch(vm.exportFilename())
-                    "debug" -> debugLauncher.launch(vm.debugDumpFilename())
+                    "debug" -> dumpDebugToFile()
                     "shortrest" -> vm.shortRest()
                     "longrest" -> vm.longRest()
                     "menu" -> vm.returnToTitle()
@@ -2252,12 +2257,31 @@ private fun StatChangePills(msg: DisplayMessage.Narration) {
     }
 }
 
+/**
+ * Resolves a raw NPC ref (may be a slug id, a display name, or an arbitrary
+ * string) to the NPC's current display name from the log. Falls back to the
+ * raw ref if no match — that keeps rendering safe for new NPCs whose
+ * [NPC_MET] hasn't been applied yet and for legacy name-form refs.
+ */
+private fun resolveNpcDisplayName(
+    ref: String,
+    npcLog: List<com.realmsoffate.game.data.LogNpc>
+): String {
+    if (ref.isBlank()) return ref
+    val byId = npcLog.firstOrNull { it.id == ref }
+    if (byId != null && byId.name.isNotBlank()) return byId.name
+    val byName = npcLog.firstOrNull { it.name.equals(ref, ignoreCase = true) }
+    if (byName != null && byName.name.isNotBlank()) return byName.name
+    return ref
+}
+
 @Composable
 private fun NarrationBlock(
     text: String,
     characterName: String? = null,
     msg: DisplayMessage.Narration? = null,
     structuredSegments: List<NarrationSegmentData> = emptyList(),
+    npcLog: List<com.realmsoffate.game.data.LogNpc> = emptyList(),
     isLatestTurn: Boolean = false,
     bookmarks: List<String> = emptyList(),
     onToggleBookmark: (String) -> Unit = {},
@@ -2298,6 +2322,7 @@ private fun NarrationBlock(
                         )
                     }
                     is NarrationSegmentData.NpcDialog -> {
+                        val displayName = resolveNpcDisplayName(seg.name, npcLog)
                         SwipeableMessage(
                             onSwipeLeft = if (isLatestTurn) {{ onAttackNpc(seg.name) }} else {{}},
                             onSwipeRight = { onOpenJournal(seg.name) },
@@ -2307,7 +2332,7 @@ private fun NarrationBlock(
                             rightIcon = Icons.Filled.Book
                         ) {
                             NpcDialogueBubble(
-                                name = seg.name,
+                                name = displayName,
                                 quote = seg.text,
                                 isBookmarked = bookmarks.contains("${seg.name}: ${seg.text}".take(300)),
                                 onToggleBookmark = { onToggleBookmark("${seg.name}: ${seg.text}".take(300)) },
@@ -2336,9 +2361,18 @@ private fun NarrationBlock(
                         NarratorQuipBubble(text = seg.text)
                     }
                     is NarrationSegmentData.NpcAction -> {
-                        // Parser already formats seg.text as a natural sentence
-                        // (handles pronouns, determiners, leaked dialog).
-                        NarratorQuipBubble(text = seg.text)
+                        // Parser formats seg.text as a natural sentence (handles
+                        // pronouns, determiners, leaked dialog). When the text begins
+                        // with the raw ref (slug or bare name), replace it with the
+                        // resolved display name so the player never sees slugs.
+                        val displayName = resolveNpcDisplayName(seg.name, npcLog)
+                        val actionText = if (seg.name.isNotBlank() && displayName != seg.name &&
+                            seg.text.startsWith(seg.name, ignoreCase = true)) {
+                            displayName + seg.text.substring(seg.name.length)
+                        } else {
+                            seg.text
+                        }
+                        NarratorQuipBubble(text = actionText)
                     }
                 }
             }

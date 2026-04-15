@@ -19,3 +19,11 @@ gradle-app.setting
 .project
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
+
+# Kotlin compiler sessions (per-build, not source)
+.kotlin/
+
+# Debug dumps pulled via the `pulldebug` fish function
+/debug-dumps/
+# Stray debug dumps that landed in the repo root from manual exports
+debug_*.txt
