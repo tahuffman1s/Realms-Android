@@ -57,7 +57,11 @@ object Races {
         RaceDef("Drow", dexBonus = 2, chaBonus = 1, intBonus = 1,
             traits = listOf("Superior darkvision", "Sunlight sensitivity", "Drow magic"),
             heightRange = "5'0\" – 5'10\"",
-            physiqueTemplate = "Ebony skin, white hair. Surface-dwellers distrust you openly. You squint in sunlight.")
+            physiqueTemplate = "Ebony skin, white hair. Surface-dwellers distrust you openly. You squint in sunlight."),
+        RaceDef("Githyanki", strBonus = 2, intBonus = 1,
+            traits = listOf("Astral knowledge", "Psionic blade", "Misty Step (1/long rest)"),
+            heightRange = "5'10\" – 6'8\"",
+            physiqueTemplate = "Tall, gaunt, yellow-green skin, sharp eyes the colour of old bronze. NPCs sense an alien stillness — the kind that carries silver swords and flies on red dragons in dreams.")
     )
     fun find(name: String) = list.firstOrNull { it.name.equals(name, true) }
 }

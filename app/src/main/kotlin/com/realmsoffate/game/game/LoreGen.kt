@@ -48,7 +48,44 @@ private val NPC_FIRSTS = listOf(
     "Viktor", "Talia", "Orion", "Meliora", "Gareth", "Ailis", "Nero", "Wren",
     "Soren", "Livia", "Edric", "Faye", "Ronan", "Zinnia", "Kellan", "Thessa",
     "Oberon", "Nephele", "Axel", "Maren", "Xander", "Sage", "Cedric", "Astrid",
-    "Eamon", "Lorelei", "Dante", "Verity", "Knox", "Juniper", "Cormac", "Iris"
+    "Eamon", "Lorelei", "Dante", "Verity", "Knox", "Juniper", "Cormac", "Iris",
+    // East Asian inspired
+    "Takeshi", "Mei-Ling", "Jiro", "Yuki", "Hana", "Kenji", "Sakura", "Ryu",
+    "Kaito", "Mizuki", "Taro", "Himari", "Ren", "Akemi", "Hiroshi", "Yumi",
+    // African inspired
+    "Kwame", "Zuri", "Kofi", "Nia", "Tendai", "Akua", "Jabari", "Adaeze",
+    "Chidi", "Zola", "Emeka", "Afia", "Seun", "Makena", "Dayo", "Imani",
+    // Middle Eastern inspired
+    "Farid", "Zahra", "Hassan", "Layla", "Rashid", "Noor", "Khalil", "Samira",
+    "Tariq", "Yasmin", "Karim", "Leila", "Basim", "Soraya", "Faris", "Rania",
+    // South Asian inspired
+    "Priya", "Arjun", "Kavi", "Indira", "Rohan", "Meera", "Vikram", "Leela",
+    "Rajan", "Ananya", "Devraj", "Kavita", "Suresh", "Nalini", "Dhruv", "Padma",
+    // Latin inspired
+    "Lucia", "Rafael", "Esperanza", "Mateo", "Valentina", "Diego", "Camila", "Emilio",
+    "Sofía", "Alejandro", "Catalina", "Rodrigo", "Isadora", "Benicio", "Llorena", "Cruz",
+    // Slavic inspired
+    "Katya", "Dmitri", "Anya", "Vladislav", "Mila", "Borislav", "Nadya", "Taras",
+    "Zoya", "Stanimir", "Oksana", "Radovan", "Svetla", "Mirko", "Daria", "Bogdan",
+    // Norse/Germanic inspired
+    "Ingrid", "Sigurd", "Freyja", "Gunnar", "Helga", "Leif", "Brunhilde", "Einar",
+    "Ragnhild", "Halvard", "Solveig", "Torsten", "Brynja", "Ulfr", "Astrid", "Hrolf",
+    // Additional fantasy names
+    "Eirik", "Branwen", "Theron", "Lysara", "Cael", "Rowena", "Aeric", "Tamara",
+    "Kiran", "Odessa", "Marcellus", "Isolde", "Daxton", "Calliope", "Leander", "Sylvaine",
+    "Corwin", "Nerissa", "Tyrell", "Ondine", "Baelor", "Fiora", "Cassian", "Ellara",
+    "Galen", "Maelis", "Ryker", "Thessaly", "Warrick", "Vivienne", "Bastian", "Ondina",
+    "Cato", "Elspeth", "Fenn", "Grielle", "Idris", "Jessamine", "Kael", "Luthien",
+    "Maddox", "Nerys", "Osric", "Phaedra", "Quinn", "Rosmund", "Stavros", "Tanith",
+    "Ulric", "Vaela", "Wolfram", "Xiomara", "Yorick", "Zenith", "Ambrose", "Briar",
+    "Cosimo", "Delphine", "Emeric", "Finola", "Garrick", "Hypatia", "Ivar", "Junia",
+    "Kestrel", "Liora", "Mercer", "Niobe", "Osgood", "Perdita", "Quillon", "Rhiannon",
+    "Severin", "Theodosia", "Umber", "Veridian", "Wynn", "Xanthia", "Yael", "Zosia",
+    "Adrius", "Belphoebe", "Cyrene", "Dagny", "Erasmus", "Fenella", "Godric", "Hesper",
+    "Ignatius", "Jovana", "Kellan", "Lorcan", "Morrigan", "Numa", "Oleander", "Prosper",
+    "Qadira", "Remiel", "Saoirse", "Tiberius", "Ursina", "Vesper", "Wilfreda", "Xena",
+    "Ysolde", "Zarael", "Anatole", "Bronwyn", "Crispin", "Desdemona", "Evander", "Flavia",
+    "Grantham", "Helewise", "Illyria", "Jareth", "Katriel", "Lysander"
 )
 private val NPC_TITLES = listOf(
     "the Wise", "the Cruel", "Ironhand", "Shadowbane", "the Lost", "Dawnbringer",
@@ -60,7 +97,22 @@ private val NPC_TITLES = listOf(
     "Redmantle", "the Twice-Cursed", "Bonechill", "the Reborn", "Quicksilver",
     "the Veiled", "Greywatch", "the Unbroken", "Frostblood", "the Mad",
     "Thornfield", "the Penitent", "Nightfall", "the Last", "Deeproot",
-    "the Forsaken", "Brightmore", "the Scorned", "Ashveil"
+    "the Forsaken", "Brightmore", "the Scorned", "Ashveil",
+    // Additional dark/creative titles
+    "Oathbreaker", "the Flayed", "Soulrender", "the Famished", "Voidwalker",
+    "the Unmourned", "Gorethane", "the Sewn-Shut", "Marrowdrinker", "the Pale",
+    "Skullwright", "the Dreaming", "Chainborn", "the Unrepentant", "Dreadmere",
+    "the Guttered", "Cinderfall", "the Sightless Oracle", "Rotweave", "the Beloved",
+    "Thornbriar", "the Wretched", "Gallowsmark", "the Unclean",
+    // Additional titles
+    "the Hollow-Eyed", "Ashbinder", "the Twice-Dead", "Crowfeeder", "the Liar King",
+    "Bonewarden", "the Candlelight", "Dustwalker", "the Many-Named", "Fleshwright",
+    "the Quiet Storm", "Goretide", "the Heretic", "Ironmaiden", "the Kingmaker",
+    "Lampblack", "the Nameless", "Nightsoil", "the Old Wolf", "Plaguetongue",
+    "the Red-Handed", "Saltblood", "the Turncoat", "Undermire", "the Vagrant Prince",
+    "Wormwood", "the Yearning", "Blackthorn", "the Deathless", "Ember-Crowned",
+    "the Fevered", "Gravesong", "the Hungering", "Ironside", "the Judged",
+    "Knifesmile", "the Lightless", "Mothkeeper", "the Ninth", "Oathbound"
 )
 private val NPC_ROLES = listOf(
     "king", "queen", "warlord", "archmage", "high priest", "assassin leader",
@@ -81,13 +133,21 @@ private val WORLD_NAME_PATTERNS: List<(Random) -> String> = listOf(
     { r -> "The ${listOf("Sundered", "Shattered", "Hollow", "Eternal", "Wounded", "Thirteenth").random(r)} ${listOf("Realms", "Reach", "Kingdoms", "Coast", "Expanse").random(r)}" },
     { r -> listOf("Aethelmar", "Veridonia", "Corvathia", "Dornmark", "Skalaria", "Ynderthel", "Thessarion", "Valdrith").random(r) },
     { r -> "Lands of ${NPC_FIRSTS.random(r)}" },
-    { r -> "${listOf("Ashen", "Iron", "Silver", "Obsidian", "Verdant", "Crimson").random(r)} ${listOf("March", "Reach", "Expanse", "Heartland", "Dominion").random(r)}" }
+    { r -> "${listOf("Ashen", "Iron", "Silver", "Obsidian", "Verdant", "Crimson").random(r)} ${listOf("March", "Reach", "Expanse", "Heartland", "Dominion").random(r)}" },
+    { r -> "The ${listOf("Bleeding", "Drowning", "Singing", "Forgotten", "Burning", "Sleeping").random(r)} ${listOf("Marches", "Wastes", "Isles", "Frontier", "Depths").random(r)}" },
+    { r -> listOf("Kharazad", "Xianyang", "Ashkhabar", "Morvenna", "Njordheim", "Takamagahara", "Aztlanara", "Wakanda").random(r) },
+    { r -> "The ${listOf("Seven", "Twelve", "Thousand", "Last", "First").random(r)} ${listOf("Kingdoms", "Thrones", "Towers", "Gates", "Crowns").random(r)}" },
+    { r -> "${FACTION_ADJS.random(r)} ${listOf("Empire", "Confederacy", "Wastes", "Shores", "Wilds").random(r)}" }
 )
 
 private val ERA_LABELS = listOf(
     "Age of Cinders", "Age of Reckoning", "Age of Silence",
     "Age of Banners", "Age of the Wandering Crown", "Age of Ruin",
-    "Age of the Long Winter", "Age of the Broken Seal"
+    "Age of the Long Winter", "Age of the Broken Seal",
+    "Age of the Shattered Sun", "Age of Thorns", "Age of the Drowning",
+    "Age of Iron and Bone", "Age of the Hollow Crown", "Age of Ashes",
+    "Age of the Serpent", "Age of the Red Moon", "Age of Chains",
+    "Age of the First Fire", "Age of the Unmaking", "Age of Whispers"
 )
 
 // ---- Primordial (6, as before) ----
@@ -179,7 +239,27 @@ private val RUMORS = listOf(
     "The last person to climb the cliff-temple came back speaking only in rhymes.",
     "A caravan of foreign silks ran empty — everyone gone, horses still walking.",
     "A beggar in the market wears a ring worth more than the whole street.",
-    "The old mill's wheel turns even when the river is frozen."
+    "The old mill's wheel turns even when the river is frozen.",
+    "A woman walks the trade road at midnight, asking each traveler the same question — but no one can remember what it was.",
+    "The garrison captain hasn't slept in three weeks. He says he doesn't need to.",
+    "Someone carved a name into the cornerstone of the new bridge. It hasn't been built yet.",
+    "The fish in the eastern lake have started swimming in circles. All of them. At once.",
+    "A blind potter makes cups that show you things when you drink from them.",
+    "Three roads meet at the crossroads and a fourth appears on foggy nights.",
+    "The undertaker bought a second shovel. He says one isn't going to be enough.",
+    "A crow landed on the throne during the last court session and nobody dared remove it.",
+    "The old tower rings like a bell when the wind blows from the north — but there's no bell inside.",
+    "A mapmaker drew a country that doesn't exist. Caravans have started heading there.",
+    "The baker's bread has been rising on its own, even before she adds the yeast.",
+    "A mercenary company disbanded overnight. Every member claims they can't remember why.",
+    "Someone stole the shadow off the statue in the square. The statue remains.",
+    "The prison is empty. Not because they freed the prisoners — the cells are simply empty.",
+    "A child in the market sells prophecies for a copper each. She's never been wrong.",
+    "The wells in the lower quarter taste of salt. The sea is fifty miles away.",
+    "A knight returned from a quest he was sent on yesterday. He says it took him seven years.",
+    "The flowers in the cemetery bloom in winter and die in spring.",
+    "A traveling merchant offers a box he says must never be opened. He gives it away for free.",
+    "The moon had a crack in it last night. By dawn it was whole again."
 )
 
 private val ECON_STATES = listOf(
@@ -227,14 +307,41 @@ private val GOALS = listOf(
     "expand territory", "defend the realm", "uncover an ancient truth",
     "enrich the treasury", "purge heretics", "seize the throne",
     "restore the old ways", "preserve the peace", "hunt a single enemy",
-    "outlast their rivals"
+    "outlast their rivals",
+    "broker peace between warring neighbors", "recover a stolen relic of immense power",
+    "open trade with a forbidden nation", "build a weapon of mass destruction",
+    "find a cure for a spreading plague", "assassinate a rival faction's leader",
+    "explore uncharted territory", "forge an alliance against a greater threat",
+    "overthrow their own corrupt leadership", "summon or bind a powerful entity"
 )
 private val DISPOSITIONS = listOf(
     "guarded to strangers", "hospitable to travellers", "openly hostile to outsiders",
-    "suspicious of all magic", "welcoming of kindred souls"
+    "suspicious of all magic", "welcoming of kindred souls",
+    "pragmatic and trade-focused", "fiercely independent", "bound by ancient oaths",
+    "fractured by internal politics", "united under a false prophet",
+    "haunted by a past atrocity", "secretly plotting expansion",
+    "zealously isolationist", "ruled by fear of the unknown",
+    "torn between tradition and progress"
 )
 
 object LoreGen {
+    // ---- Exposed pools for per-turn DeepSeek name/lore hints ----
+    fun npcFirstNames(): List<String> = NPC_FIRSTS
+    fun npcTitles(): List<String> = NPC_TITLES
+    fun npcRoles(): List<String> = NPC_ROLES
+    fun factionAdjs(): List<String> = FACTION_ADJS
+    fun factionNouns(): List<String> = FACTION_NOUNS
+    fun factionTypes(): List<String> = FACTION_TYPES
+    fun rulerTraits(): List<String> = RULER_TRAITS
+    fun moods(): List<String> = MOODS
+    fun rumors(): List<String> = RUMORS
+    fun govForms(): List<String> = GOV_FORMS
+    fun successions(): List<String> = SUCCESSIONS
+    fun exports(): List<String> = EXPORTS
+    fun imports(): List<String> = IMPORTS
+    fun goals(): List<String> = GOALS
+    fun dispositions(): List<String> = DISPOSITIONS
+
     fun generate(worldMap: WorldMap, seed: Long = System.currentTimeMillis()): WorldLore {
         val rand = Random(seed)
         val worldName = WORLD_NAME_PATTERNS.random(rand)(rand)

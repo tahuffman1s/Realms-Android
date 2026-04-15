@@ -109,18 +109,16 @@ fun NarrationMarkdown(
                     }
                 }
                 line.startsWith("> ") -> {
-                    Row(Modifier.fillMaxWidth().padding(start = 4.dp)) {
-                        Box(
-                            Modifier
-                                .width(3.dp)
-                                .height(24.dp)
-                                .background(realms.goldAccent.copy(alpha = 0.8f))
-                        )
+                    androidx.compose.material3.Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 2.dp, bottom = 2.dp)
+                    ) {
                         Text(
                             text = parseInline(line.removePrefix("> ")),
                             style = style.copy(fontStyle = FontStyle.Italic),
-                            modifier = Modifier.padding(start = 10.dp),
-                            color = MaterialTheme.colorScheme.onSurface
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                     }
                 }
@@ -136,14 +134,14 @@ fun NarrationMarkdown(
     }
 }
 
-fun parseInline(s: String): AnnotatedString = buildAnnotatedString {
+fun parseInline(s: String, boldColor: Long = 0xFFD4A843, italicColor: Long = 0): AnnotatedString = buildAnnotatedString {
     var i = 0
     while (i < s.length) {
         // ***bold italic***
         if (i + 2 < s.length && s[i] == '*' && s[i + 1] == '*' && s[i + 2] == '*') {
             val end = s.indexOf("***", i + 3)
             if (end > 0) {
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) {
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic, color = Color(boldColor))) {
                     append(s.substring(i + 3, end))
                 }
                 i = end + 3; continue
@@ -153,7 +151,7 @@ fun parseInline(s: String): AnnotatedString = buildAnnotatedString {
         if (i + 1 < s.length && s[i] == '*' && s[i + 1] == '*') {
             val end = s.indexOf("**", i + 2)
             if (end > 0) {
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color(boldColor))) {
                     append(s.substring(i + 2, end))
                 }
                 i = end + 2; continue
@@ -163,7 +161,10 @@ fun parseInline(s: String): AnnotatedString = buildAnnotatedString {
         if (s[i] == '*') {
             val end = s.indexOf('*', i + 1)
             if (end > 0) {
-                withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                withStyle(SpanStyle(
+                    fontStyle = FontStyle.Italic,
+                    color = if (italicColor != 0L) Color(italicColor) else Color.Unspecified
+                )) {
                     append(s.substring(i + 1, end))
                 }
                 i = end + 1; continue
@@ -183,7 +184,7 @@ fun parseInline(s: String): AnnotatedString = buildAnnotatedString {
         if (s[i] == '`') {
             val end = s.indexOf('`', i + 1)
             if (end > 0) {
-                withStyle(SpanStyle(background = Color(0x22_888888), fontFamily = FontFamily.Monospace)) {
+                withStyle(SpanStyle(background = Color(0x33_B197FF), fontFamily = FontFamily.Monospace, color = Color(0xFFE8E1F0))) {
                     append(s.substring(i + 1, end))
                 }
                 i = end + 1; continue

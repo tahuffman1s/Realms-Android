@@ -5,9 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -159,7 +156,7 @@ fun CharacterCreationScreen(vm: GameViewModel) {
                 .padding(pad)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             when (step) {
                 0 -> IdentityStep(
@@ -186,8 +183,10 @@ fun CharacterCreationScreen(vm: GameViewModel) {
                     primaryBonus = primaryBonus, onPrimary = { primaryBonus = it },
                     secondaryBonus = secondaryBonus, onSecondary = { secondaryBonus = it },
                     onRecommend = {
+                        // Use the verbatim per-class recommended array from the source-of-truth
+                        // CLASSES table so each class actually gets its own preset.
                         val def = Classes.find(cls)
-                        baseStats.value = recommendedStatsFor(def?.primary ?: "STR", def?.savingThrows.orEmpty())
+                        baseStats.value = (def?.recommended ?: intArrayOf(13, 13, 13, 13, 13, 13)).copyOf()
                     }
                 )
                 5 -> ConfirmStep(
@@ -198,7 +197,9 @@ fun CharacterCreationScreen(vm: GameViewModel) {
                     build = build, gender = gender, ageBand = ageBand
                 )
             }
-            Spacer(Modifier.height(8.dp))
+            // Generous bottom slack so the BEGIN THE TALE bar never covers the
+            // last bit of the confirm summary on short screens.
+            Spacer(Modifier.height(120.dp))
         }
     }
 }
@@ -271,26 +272,44 @@ private fun AppearanceStep(
 @Composable
 private fun RaceStep(race: String, onRace: (String) -> Unit) {
     SectionHeader("\u2694\uFE0F  RACE")
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.heightIn(max = 480.dp)
-    ) {
-        items(Races.list) { r ->
-            GridCard(
-                selected = r.name == race,
-                onClick = { onRace(r.name) },
-                emoji = raceEmoji(r.name),
-                title = r.name,
-                subtitle = r.traits.joinToString(", "),
-                hint = bonusLine(r)
-            )
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Races.list.chunked(3).forEach { row ->
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                row.forEach { r ->
+                    Box(Modifier.weight(1f)) {
+                        GridCard(
+                            selected = r.name == race,
+                            onClick = { onRace(r.name) },
+                            emoji = raceEmoji(r.name),
+                            title = r.name,
+                            subtitle = bonusLine(r),
+                            hint = ""
+                        )
+                    }
+                }
+                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
         }
     }
     Races.find(race)?.let {
+        Spacer(Modifier.height(4.dp))
         DetailCard {
-            Text(it.physiqueTemplate, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                it.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                it.traits.joinToString(" · "),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(it.physiqueTemplate, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -298,25 +317,43 @@ private fun RaceStep(race: String, onRace: (String) -> Unit) {
 @Composable
 private fun ClassStep(cls: String, onCls: (String) -> Unit) {
     SectionHeader("\uD83D\uDCAB  CLASS")
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.heightIn(max = 520.dp)
-    ) {
-        items(Classes.list) { c ->
-            GridCard(
-                selected = c.name == cls,
-                onClick = { onCls(c.name) },
-                emoji = classEmoji(c.name),
-                title = c.name,
-                subtitle = "d${c.hitDie} · ${c.primary}",
-                hint = c.proficiencies.take(2).joinToString(", ")
-            )
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Classes.list.chunked(3).forEach { row ->
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                row.forEach { c ->
+                    Box(Modifier.weight(1f)) {
+                        GridCard(
+                            selected = c.name == cls,
+                            onClick = { onCls(c.name) },
+                            emoji = classEmoji(c.name),
+                            title = c.name,
+                            subtitle = "d${c.hitDie} · ${c.primary}",
+                            hint = ""
+                        )
+                    }
+                }
+                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
         }
     }
     Classes.find(cls)?.let {
+        Spacer(Modifier.height(4.dp))
         DetailCard {
+            Text(
+                it.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                it.proficiencies.joinToString(" · "),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(2.dp))
             Text(
                 "Saves: ${it.savingThrows.joinToString(", ")}",
                 style = MaterialTheme.typography.bodySmall,
@@ -345,8 +382,15 @@ private fun StatsStep(
     val labels = listOf("STR", "DEX", "CON", "INT", "WIS", "CHA")
     val realms = RealmsTheme.colors
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            Modifier
+                .weight(1f)
+                .padding(end = 12.dp)  // breathing room from the Recommended chip
+        ) {
             SectionHeader("\uD83E\uDDE0  STATS")
             Text(
                 "Point-buy · $remaining of 27 points remaining",
@@ -387,13 +431,15 @@ private fun StatsStep(
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Column(Modifier.weight(1f)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column {
             Text("+2 to", style = MaterialTheme.typography.labelMedium, color = realms.goldAccent)
+            Spacer(Modifier.height(4.dp))
             BonusSelector(labels, primaryBonus, onPrimary, exclude = secondaryBonus)
         }
-        Column(Modifier.weight(1f)) {
+        Column {
             Text("+1 to", style = MaterialTheme.typography.labelMedium, color = realms.goldAccent)
+            Spacer(Modifier.height(4.dp))
             BonusSelector(labels, secondaryBonus, onSecondary, exclude = primaryBonus)
         }
     }
@@ -564,35 +610,45 @@ private fun GridCard(
              else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     Column(
         Modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(bg)
-            .border(1.dp, color, RoundedCornerShape(14.dp))
+            .border(1.dp, color, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
-            .padding(12.dp)
-            .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 6.dp, vertical = 10.dp)
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 72.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Text(emoji, fontSize = 28.sp)
-        Spacer(Modifier.height(4.dp))
+        Text(emoji, fontSize = 24.sp, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(2.dp))
         Text(
             title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
         )
-        Text(
-            subtitle,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1
-        )
+        if (subtitle.isNotBlank()) {
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
         if (hint.isNotBlank()) {
             Text(
                 hint,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
-                maxLines = 2
+                maxLines = 1,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
@@ -738,8 +794,9 @@ private fun GradientBeginButton(enabled: Boolean, onClick: () -> Unit, modifier:
                 Spacer(Modifier.width(8.dp))
                 Text(
                     "BEGIN THE TALE",
-                    style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 3.sp),
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleSmall.copy(letterSpacing = 2.sp),
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
                 )
             }
         }

@@ -135,6 +135,43 @@ object Scenarios {
             promptTemplate = { ch, loc, nearby, lore ->
                 "The inn at ${loc.icon} **${loc.name}** is warm and the ale is dark. A cloaked stranger at the back has been watching me since I came in. I'm a ${ch.race} ${ch.cls}, here to rest — or I was. Nearby: $nearby. $lore. Open with the firelight, the conversation that falls silent too quickly, the stranger's first words. Start a quest that could be the beginning of something — or the end of me."
             }
+        ),
+        Scenario(
+            id = "funeral", name = "The Last Rites", sceneHint = "temple",
+            promptTemplate = { ch, loc, nearby, lore ->
+                "I stand at the funeral of the only person who believed in me, in the temple at ${loc.icon} **${loc.name}**. The congregation watches me with suspicion — they blame me for the death. I'm a ${ch.race} ${ch.cls}. The priest's words ring hollow. Someone in this crowd knows the truth. Nearby: $nearby. $lore. Open with the grief, the incense, the whispered accusations. Start a quest to prove my innocence — or to discover if I truly am."
+            }
+        ),
+        Scenario(
+            id = "suspicious_cargo", name = "The Long Road", sceneHint = "road",
+            promptTemplate = { ch, loc, nearby, lore ->
+                "Day twelve of guarding a merchant caravan approaching ${loc.icon} **${loc.name}**. The pay is awful, the company worse — but the cargo is suspicious. Locked crates that moan at night. I'm a ${ch.race} ${ch.cls}. Something is deeply wrong with this job. Nearby: $nearby. $lore. Open with the road, the caravan, the nervous merchants. Let me discover what I'm really guarding."
+            }
+        ),
+        Scenario(
+            id = "debt_collector", name = "The Debt", sceneHint = "town",
+            promptTemplate = { ch, loc, nearby, lore ->
+                "I owe the wrong people a great deal of gold. They've tracked me to ${loc.icon} **${loc.name}**. I have until sundown to pay or find another way. I'm a ${ch.race} ${ch.cls} with empty pockets and a talent for making things worse. Nearby: $nearby. $lore. Open with the town, the collectors watching from across the square, and the desperate options before me."
+            },
+            modify = { ch -> ch.gold = 0 }
+        ),
+        Scenario(
+            id = "revolution", name = "The Uprising", sceneHint = "town",
+            promptTemplate = { ch, loc, nearby, lore ->
+                "The revolution in ${loc.icon} **${loc.name}** started an hour ago. Barricades in the streets. The old guard fights the new. I'm a ${ch.race} ${ch.cls} caught in the middle — and both sides want me to pick. Nearby: $nearby. $lore. Open with the chaos, the smell of smoke and blood, and the choice that will define everything."
+            }
+        ),
+        Scenario(
+            id = "contested_will", name = "The Will", sceneHint = "castle",
+            promptTemplate = { ch, loc, nearby, lore ->
+                "A stranger delivered a letter: I've inherited an estate near ${loc.icon} **${loc.name}** from a relative I never knew existed. The catch? Three other heirs received the same letter. I'm a ${ch.race} ${ch.cls}. The estate is magnificent, crumbling, and almost certainly haunted. Nearby: $nearby. $lore. Open with the arrival, the rival heirs, and the first sign that this inheritance comes with a price."
+            }
+        ),
+        Scenario(
+            id = "false_hero", name = "Mistaken Identity", sceneHint = "town",
+            promptTemplate = { ch, loc, nearby, lore ->
+                "The people of ${loc.icon} **${loc.name}** think I'm their prophesied savior. I am absolutely not. I'm a ${ch.race} ${ch.cls} who happened to arrive on the right day wearing the right colors. But they're desperate, and the real threat is very real. Nearby: $nearby. $lore. Open with the adoring crowd, my growing horror, and the monster they expect me to slay."
+            }
         )
     )
 

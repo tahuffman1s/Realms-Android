@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -80,8 +81,17 @@ fun TitleScreen(vm: GameViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(56.dp))
-            Text("\u2694\uFE0F", fontSize = 72.sp)
-            Spacer(Modifier.height(12.dp))
+            // Crisp vector sword (Lawnicons-style, same drawable as the launcher icon).
+            // Renders sharp at any size — the previous emoji rasterised blurry at 72sp.
+            androidx.compose.material3.Icon(
+                painter = androidx.compose.ui.res.painterResource(
+                    id = com.realmsoffate.game.R.drawable.ic_launcher_foreground
+                ),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(140.dp)
+            )
+            Spacer(Modifier.height(8.dp))
             Text(
                 "REALMS",
                 style = MaterialTheme.typography.displayMedium.copy(letterSpacing = 8.sp),
@@ -157,6 +167,15 @@ fun TitleScreen(vm: GameViewModel) {
                     enabled = true,
                     onClick = { vm.backToApiSetup() },
                     modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+            TextButton(onClick = { vm.resetTutorial() }) {
+                Text(
+                    "Replay Tutorial",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -400,34 +419,237 @@ private fun GraveyardSheet(
 
 @Composable
 private fun GraveDetailDialog(entry: GraveyardEntry, onDismiss: () -> Unit) {
-    AlertDialog(
+    val realms = RealmsTheme.colors
+    val moralLabel = when {
+        entry.morality > 30 -> "Virtuous"
+        entry.morality > 0 -> "Good"
+        entry.morality == 0 -> "Neutral"
+        entry.morality > -30 -> "Questionable"
+        else -> "Villainous"
+    }
+    val moralColor = when {
+        entry.morality > 0 -> realms.success
+        entry.morality == 0 -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> realms.fumbleRed
+    }
+    val categoryIcon = { cat: String -> when (cat) {
+        "birth", "start" -> "🌅"
+        "levelup" -> "⬆️"
+        "quest" -> "📜"
+        "travel" -> "🗺️"
+        "event" -> "🌍"
+        "combat", "battle" -> "⚔️"
+        "death" -> "💀"
+        else -> "•"
+    }}
+
+    androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
-        title = { Text(entry.characterName, style = MaterialTheme.typography.headlineSmall) },
-        text = {
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier
+                .fillMaxWidth(0.93f)
+                .fillMaxHeight(0.85f)
+        ) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                Text(
-                    "L${entry.level} ${entry.race} ${entry.cls}",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text("${entry.turns} turns · ${entry.xp} XP · ${entry.gold}g", style = MaterialTheme.typography.labelMedium)
-                Spacer(Modifier.height(8.dp))
-                Text(entry.causeOfDeath, style = MaterialTheme.typography.bodyMedium, color = RealmsTheme.colors.fumbleRed)
-                Spacer(Modifier.height(12.dp))
-                Text("LIFE STORY", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                entry.timeline.forEach { t ->
-                    Row(Modifier.padding(vertical = 2.dp)) {
-                        Text(
-                            "T${t.turn}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.width(36.dp)
+                // ---- Header: dark banner with name + epitaph ----
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color(0xFF1A0A0A), Color(0xFF2D1111), MaterialTheme.colorScheme.surface)
+                            )
                         )
-                        Text(t.text, style = MaterialTheme.typography.bodySmall)
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("⚰️", fontSize = 48.sp)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            entry.characterName,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            "L${entry.level} ${entry.race} ${entry.cls}",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                        if (entry.worldName.isNotBlank()) {
+                            Text(
+                                entry.worldName,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.White.copy(alpha = 0.5f)
+                            )
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Surface(
+                            color = realms.fumbleRed.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                entry.causeOfDeath,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                ),
+                                color = realms.fumbleRed,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
+
+                // ---- Stats row ----
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    GraveStat("Turns", entry.turns.toString(), MaterialTheme.colorScheme.primary)
+                    GraveStat("XP", "${entry.xp}", MaterialTheme.colorScheme.secondary)
+                    GraveStat("Gold", "${entry.gold}g", realms.goldAccent)
+                    GraveStat(moralLabel, "${entry.morality}", moralColor)
+                }
+                HorizontalDivider(Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                // ---- Companions ----
+                if (entry.companions.isNotEmpty()) {
+                    Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) {
+                        Text("COMPANIONS", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            entry.companions.forEach { name ->
+                                Surface(
+                                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            Modifier.size(20.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f)),
+                                            contentAlignment = Alignment.Center
+                                        ) { Text(name.take(1), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary) }
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(name, style = MaterialTheme.typography.labelMedium)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ---- Mutations ----
+                if (entry.mutations.isNotEmpty()) {
+                    Column(Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
+                        Text("WORLD MUTATIONS", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(4.dp))
+                        entry.mutations.forEach { m ->
+                            Text("• $m", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+
+                // ---- Backstory ----
+                entry.backstoryText?.let { bs ->
+                    if (bs.isNotBlank()) {
+                        Column(Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
+                            Text("BACKSTORY", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.height(4.dp))
+                            Surface(
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(
+                                    bs,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(10.dp),
+                                    maxLines = 8,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider(Modifier.padding(horizontal = 20.dp, vertical = 6.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                // ---- Timeline ----
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
+                    Text("LIFE STORY", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(8.dp))
+                    if (entry.timeline.isEmpty()) {
+                        Text("No story recorded.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        entry.timeline.forEachIndexed { idx, t ->
+                            Row(Modifier.padding(bottom = 8.dp)) {
+                                // Timeline dot + line
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(32.dp)) {
+                                    Text(categoryIcon(t.category), fontSize = 14.sp)
+                                    if (idx < entry.timeline.lastIndex) {
+                                        Box(
+                                            Modifier
+                                                .width(2.dp)
+                                                .height(20.dp)
+                                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                            shape = RoundedCornerShape(4.dp)
+                                        ) {
+                                            Text(
+                                                "T${t.turn}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                            )
+                                        }
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            t.category.replaceFirstChar { it.uppercase() },
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Text(t.text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ---- Close button ----
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp).height(48.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("Rest in Peace", fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                }
+                Spacer(Modifier.height(12.dp))
             }
         }
-    )
+    }
+}
+
+@Composable
+private fun GraveStat(label: String, value: String, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = color)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }

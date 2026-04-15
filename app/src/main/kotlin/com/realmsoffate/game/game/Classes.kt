@@ -12,8 +12,19 @@ data class ClassDef(
     val proficiencies: List<String>,
     val startingItems: List<Item>,
     val isCaster: Boolean,
-    val spellAbility: String? = null
+    val spellAbility: String? = null,
+    /**
+     * Recommended ability score array — STR, DEX, CON, INT, WIS, CHA.
+     * Verbatim from the web source-of-truth's CLASSES table.
+     */
+    val recommended: IntArray = intArrayOf(13, 13, 13, 13, 13, 13)
 )
+
+/**
+ * Look-up helper — recommended array per class. Falls back to a balanced
+ * 13-spread if the class isn't in the table.
+ */
+fun ClassDef.recommendedArray(): IntArray = recommended
 
 object Classes {
     val list = listOf(
@@ -27,7 +38,8 @@ object Classes {
                 Item("Shield", "+2 AC", "shield", "common", equipped = true),
                 Item("Healing Potion", "Restore 2d4+2 HP", "consumable", "common", qty = 2)
             ),
-            isCaster = false
+            isCaster = false,
+            recommended = intArrayOf(15, 14, 14, 8, 12, 8) // Fighter
         ),
         ClassDef(
             name = "Wizard", hitDie = 6, primary = "INT",
@@ -39,7 +51,8 @@ object Classes {
                 Item("Component Pouch", "For spellcasting", "pouch", "common"),
                 Item("Scroll of Shield", "Reaction, +5 AC", "scroll", "common")
             ),
-            isCaster = true, spellAbility = "INT"
+            isCaster = true, spellAbility = "INT",
+            recommended = intArrayOf(8, 14, 14, 15, 12, 8) // Wizard
         ),
         ClassDef(
             name = "Rogue", hitDie = 8, primary = "DEX",
@@ -52,7 +65,8 @@ object Classes {
                 Item("Thieves' Tools", "Pick locks, disable traps", "tool", "common"),
                 Item("Daggers", "+1d4 piercing", "weapon", "common", qty = 3)
             ),
-            isCaster = false
+            isCaster = false,
+            recommended = intArrayOf(8, 15, 14, 14, 12, 8) // Rogue
         ),
         ClassDef(
             name = "Cleric", hitDie = 8, primary = "WIS",
@@ -64,7 +78,8 @@ object Classes {
                 Item("Holy Symbol", "For divine spells", "focus", "common"),
                 Item("Shield", "+2 AC", "shield", "common", equipped = true)
             ),
-            isCaster = true, spellAbility = "WIS"
+            isCaster = true, spellAbility = "WIS",
+            recommended = intArrayOf(14, 8, 14, 8, 15, 12) // Cleric
         ),
         ClassDef(
             name = "Ranger", hitDie = 10, primary = "DEX",
@@ -76,7 +91,8 @@ object Classes {
                 Item("Leather Armor", "AC 11+DEX", "armor", "common", equipped = true, ac = 11),
                 Item("Quiver", "20 arrows", "gear", "common")
             ),
-            isCaster = true, spellAbility = "WIS"
+            isCaster = true, spellAbility = "WIS",
+            recommended = intArrayOf(8, 15, 14, 12, 14, 8) // Ranger
         ),
         ClassDef(
             name = "Barbarian", hitDie = 12, primary = "STR",
@@ -87,7 +103,8 @@ object Classes {
                 Item("Handaxes", "+1d6 slashing", "weapon", "common", qty = 2),
                 Item("Hide Armor", "AC 12+DEX", "armor", "common", equipped = true, ac = 12)
             ),
-            isCaster = false
+            isCaster = false,
+            recommended = intArrayOf(15, 14, 14, 8, 12, 8) // Barbarian
         ),
         ClassDef(
             name = "Bard", hitDie = 8, primary = "CHA",
@@ -98,7 +115,8 @@ object Classes {
                 Item("Lute", "Performance focus", "instrument", "common"),
                 Item("Leather Armor", "AC 11+DEX", "armor", "common", equipped = true, ac = 11)
             ),
-            isCaster = true, spellAbility = "CHA"
+            isCaster = true, spellAbility = "CHA",
+            recommended = intArrayOf(8, 14, 14, 8, 12, 15) // Bard
         ),
         ClassDef(
             name = "Paladin", hitDie = 10, primary = "STR",
@@ -110,7 +128,8 @@ object Classes {
                 Item("Shield", "+2 AC", "shield", "common", equipped = true),
                 Item("Holy Symbol", "For divine spells", "focus", "common")
             ),
-            isCaster = true, spellAbility = "CHA"
+            isCaster = true, spellAbility = "CHA",
+            recommended = intArrayOf(15, 8, 14, 8, 12, 14) // Paladin
         ),
         ClassDef(
             name = "Sorcerer", hitDie = 6, primary = "CHA",
@@ -121,7 +140,8 @@ object Classes {
                 Item("Arcane Focus", "Crystal orb", "focus", "common"),
                 Item("Component Pouch", "For spellcasting", "pouch", "common")
             ),
-            isCaster = true, spellAbility = "CHA"
+            isCaster = true, spellAbility = "CHA",
+            recommended = intArrayOf(8, 14, 14, 8, 12, 15) // Sorcerer
         ),
         ClassDef(
             name = "Warlock", hitDie = 8, primary = "CHA",
@@ -132,7 +152,8 @@ object Classes {
                 Item("Leather Armor", "AC 11+DEX", "armor", "common", equipped = true, ac = 11),
                 Item("Pact Weapon Focus", "Arcane channel", "focus", "uncommon")
             ),
-            isCaster = true, spellAbility = "CHA"
+            isCaster = true, spellAbility = "CHA",
+            recommended = intArrayOf(8, 14, 14, 8, 12, 15) // Warlock
         ),
         ClassDef(
             name = "Monk", hitDie = 8, primary = "DEX",
@@ -143,7 +164,8 @@ object Classes {
                 Item("Darts", "+1d4 piercing", "weapon", "common", qty = 10),
                 Item("Monk's Robes", "AC 10+DEX+WIS", "armor", "common", equipped = true)
             ),
-            isCaster = false
+            isCaster = false,
+            recommended = intArrayOf(8, 15, 14, 8, 14, 12) // Monk
         ),
         ClassDef(
             name = "Druid", hitDie = 8, primary = "WIS",
@@ -155,7 +177,8 @@ object Classes {
                 Item("Druidic Focus", "Carved staff", "focus", "common"),
                 Item("Healing Berries", "+1d4 HP", "consumable", "common", qty = 3)
             ),
-            isCaster = true, spellAbility = "WIS"
+            isCaster = true, spellAbility = "WIS",
+            recommended = intArrayOf(8, 14, 14, 12, 15, 8) // Druid
         )
     )
 

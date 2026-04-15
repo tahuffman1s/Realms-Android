@@ -3,6 +3,7 @@ package com.realmsoffate.game.ui.map
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -23,8 +24,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
@@ -62,7 +61,13 @@ import kotlin.math.min
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorldMapScreen(state: GameUiState, onClose: () -> Unit) {
+fun WorldMapScreen(
+    state: GameUiState,
+    onClose: () -> Unit,
+    onTravel: (MapLocation) -> Unit = {},
+    onCancelTravel: () -> Unit = {},
+    isTraveling: Boolean = false
+) {
     val wm = state.worldMap ?: return
     val cur = wm.locations.getOrNull(state.currentLoc)
     val density = LocalDensity.current
@@ -71,11 +76,11 @@ fun WorldMapScreen(state: GameUiState, onClose: () -> Unit) {
 
     var zoom by remember { mutableFloatStateOf(1f) }
     var pan by remember { mutableStateOf(Offset.Zero) }
-    var terrain by remember { mutableStateOf(false) }
     var showFactions by remember { mutableStateOf(false) }
     var canvasSize by remember { mutableStateOf(Size(1f, 1f)) }
+    var selectedLocation by remember { mutableStateOf<MapLocation?>(null) }
 
-    val gm = remember(terrain, dark) { mapPalette(terrain, dark) }
+    val gm = remember(dark) { mapPalette(false, dark) }
 
     val infinite = rememberInfiniteTransition(label = "pulse")
     val pulse by infinite.animateFloat(
@@ -99,9 +104,166 @@ fun WorldMapScreen(state: GameUiState, onClose: () -> Unit) {
     val chipFg = if (dark) Color(0xFFE8E1F0) else Color(0xFF3C4043)
 
     Scaffold(
-        containerColor = gm.land,
-        topBar = {
-            Surface(color = Color.Transparent) {
+        containerColor = gm.land
+    ) { _ ->
+        Box(Modifier.fillMaxSize()) {
+            MapCanvas(
+                wm = wm,
+                cur = cur,
+                playerPos = state.playerPos,
+                zoom = zoom,
+                pan = pan,
+                showFactions = showFactions,
+                factions = state.worldLore?.factions.orEmpty(),
+                palette = gm,
+                playerDot = extended.playerDot,
+                pulse = pulse,
+                onSizeChanged = { canvasSize = it },
+                onTransform = { panDelta, zoomDelta ->
+                    pan = Offset(pan.x + panDelta.x / zoom, pan.y + panDelta.y / zoom)
+                    zoom = (zoom * zoomDelta).coerceIn(0.5f, 4f)
+                },
+                onLocationTap = { selectedLocation = it }
+            )
+            // Right-edge controls
+            Column(
+                Modifier.align(Alignment.CenterEnd).padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                MapControl(onClick = { showFactions = !showFactions }, icon = Icons.Default.Flag, chipBg = chipBg, tint = if (showFactions) extended.goldAccent else chipFg)
+                Spacer(Modifier.height(4.dp))
+                MapControl(onClick = { zoom = min(4f, zoom * 1.3f) }, icon = Icons.Default.Add, chipBg = chipBg, tint = chipFg)
+                MapControl(onClick = { zoom = max(0.5f, zoom / 1.3f) }, icon = Icons.Default.Remove, chipBg = chipBg, tint = chipFg)
+            }
+            // Compass — hovering top-right of the map area, away from the
+            // controls column (which is centered on the right edge).
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding().padding(top = 76.dp, end = 12.dp)
+                    .size(40.dp).clip(CircleShape)
+                    .background(chipBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("N", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = extended.fumbleRed)
+                    Text("\u25B2", fontSize = 11.sp, color = chipFg)
+                }
+            }
+            // Bottom strip — scale bar, distance pills, and attribution all in a
+            // single contained block at the bottom so they stop fighting the
+            // right-edge controls.
+            Column(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+            ) {
+                // Scale bar (compact, top of the strip)
+                Row(
+                    Modifier.padding(start = 12.dp, top = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val scalePx = (100f * zoom * (canvasSize.width / mw)).coerceIn(40f, 160f)
+                    Column {
+                        Box(
+                            Modifier
+                                .width(with(density) { scalePx.toDp() })
+                                .height(8.dp)
+                        ) {
+                            Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(2.dp).background(chipFg))
+                            Box(Modifier.align(Alignment.BottomStart).width(2.dp).height(8.dp).background(chipFg))
+                            Box(Modifier.align(Alignment.BottomEnd).width(2.dp).height(8.dp).background(chipFg))
+                        }
+                        Spacer(Modifier.height(2.dp))
+                        Surface(color = chipBg, shape = RoundedCornerShape(4.dp)) {
+                            Text(
+                                "${(100f / 15f).toInt()} leagues",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                color = chipFg
+                            )
+                        }
+                    }
+                }
+                // Distance pills row
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    WorldGen.connected(wm, state.currentLoc).forEach { (dest, dist) ->
+                        Surface(
+                            color = chipBg,
+                            shape = RoundedCornerShape(18.dp),
+                            shadowElevation = 3.dp
+                        ) {
+                            Row(
+                                Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(dest.icon, style = MaterialTheme.typography.bodySmall)
+                                Spacer(Modifier.width(4.dp))
+                                Text(dest.name, style = MaterialTheme.typography.labelMedium, color = chipFg)
+                                Spacer(Modifier.width(4.dp))
+                                Text("(${dist}lg)", style = MaterialTheme.typography.labelSmall, color = extended.fumbleRed, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
+                Text(
+                    "\u00A9 Realms of Fate \u00B7 Cartographer's Guild",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 12.dp, bottom = 4.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = chipFg.copy(alpha = 0.55f),
+                    textAlign = TextAlign.End
+                )
+            }
+            // Travel dialog
+            selectedLocation?.let { loc ->
+                val isCurrent = loc.id == state.currentLoc
+                val currentLocObj = state.worldMap?.locations?.getOrNull(state.currentLoc)
+                val road = state.worldMap?.roads?.firstOrNull {
+                    (it.from == state.currentLoc && it.to == loc.id) ||
+                    (it.to == state.currentLoc && it.from == loc.id)
+                }
+                AlertDialog(
+                    onDismissRequest = { selectedLocation = null },
+                    title = { Text("${loc.icon} ${loc.name}") },
+                    text = {
+                        Column {
+                            Text("${loc.type.replaceFirstChar { it.uppercase() }}", style = MaterialTheme.typography.labelMedium)
+                            if (isCurrent) {
+                                Text("You are here.", style = MaterialTheme.typography.bodyMedium)
+                            } else if (road != null) {
+                                Text("Distance: ${road.dist} leagues by road", style = MaterialTheme.typography.bodyMedium)
+                            } else {
+                                Text("No direct road from ${currentLocObj?.name ?: "here"}.", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        if (!isCurrent && road != null) {
+                            Button(onClick = {
+                                onTravel(loc)
+                                selectedLocation = null
+                            }) { Text("Travel") }
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { selectedLocation = null }) { Text("Close") }
+                    }
+                )
+            }
+            // Top bar overlay — floats above the map canvas
+            Surface(
+                modifier = Modifier.align(Alignment.TopCenter),
+                color = Color.Transparent
+            ) {
                 Row(
                     Modifier.statusBarsPadding().padding(12.dp).fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -144,114 +306,48 @@ fun WorldMapScreen(state: GameUiState, onClose: () -> Unit) {
                     ) { Icon(Icons.Default.MyLocation, "Center") }
                 }
             }
-        }
-    ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
-            MapCanvas(
-                wm = wm,
-                cur = cur,
-                playerPos = state.playerPos,
-                zoom = zoom,
-                pan = pan,
-                showFactions = showFactions,
-                factions = state.worldLore?.factions.orEmpty(),
-                palette = gm,
-                playerDot = extended.playerDot,
-                pulse = pulse,
-                onSizeChanged = { canvasSize = it },
-                onTransform = { panDelta, zoomDelta ->
-                    pan = Offset(pan.x + panDelta.x / zoom, pan.y + panDelta.y / zoom)
-                    zoom = (zoom * zoomDelta).coerceIn(0.5f, 4f)
-                }
-            )
-            // Right-edge controls
-            Column(
-                Modifier.align(Alignment.CenterEnd).padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                MapControl(onClick = { terrain = !terrain }, icon = Icons.Default.Terrain, chipBg = chipBg, tint = if (terrain) extended.info else chipFg)
-                MapControl(onClick = { showFactions = !showFactions }, icon = Icons.Default.Flag, chipBg = chipBg, tint = if (showFactions) extended.goldAccent else chipFg)
-                Spacer(Modifier.height(4.dp))
-                MapControl(onClick = { zoom = min(4f, zoom * 1.3f) }, icon = Icons.Default.Add, chipBg = chipBg, tint = chipFg)
-                MapControl(onClick = { zoom = max(0.5f, zoom / 1.3f) }, icon = Icons.Default.Remove, chipBg = chipBg, tint = chipFg)
-            }
-            // Scale bar
-            Row(
-                Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 92.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val scalePx = (100f * zoom * (canvasSize.width / mw)).coerceIn(40f, 160f)
-                Column {
-                    Box(
-                        Modifier
-                            .width(with(density) { scalePx.toDp() })
-                            .height(8.dp)
-                    ) {
-                        Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(2.dp).background(chipFg))
-                        Box(Modifier.align(Alignment.BottomStart).width(2.dp).height(8.dp).background(chipFg))
-                        Box(Modifier.align(Alignment.BottomEnd).width(2.dp).height(8.dp).background(chipFg))
-                    }
-                    Spacer(Modifier.height(2.dp))
-                    Surface(color = chipBg, shape = RoundedCornerShape(4.dp)) {
-                        Text(
-                            "${(100f / 15f).toInt()} leagues",
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                            color = chipFg
-                        )
-                    }
-                }
-            }
-            // Compass
-            Box(
-                Modifier.align(Alignment.BottomEnd).padding(end = 74.dp, bottom = 120.dp)
-                    .size(40.dp).clip(CircleShape)
-                    .background(chipBg),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("N", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = extended.fumbleRed)
-                    Text("\u25B2", fontSize = 11.sp, color = chipFg)
-                }
-            }
-            // Nearby destinations pill bar + attribution
-            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    WorldGen.connected(wm, state.currentLoc).forEach { (dest, dist) ->
-                        Surface(
-                            color = chipBg,
-                            shape = RoundedCornerShape(18.dp),
-                            shadowElevation = 3.dp
-                        ) {
-                            Row(
-                                Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(dest.icon, style = MaterialTheme.typography.bodySmall)
-                                Spacer(Modifier.width(4.dp))
-                                Text(dest.name, style = MaterialTheme.typography.labelMedium, color = chipFg)
-                                Spacer(Modifier.width(4.dp))
-                                Text("(${dist}lg)", style = MaterialTheme.typography.labelSmall, color = extended.fumbleRed, fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-                    }
-                }
-                Text(
-                    "\u00A9 Realms of Fate \u00B7 Cartographer's Guild",
+            // Traveling banner with cancel button
+            if (isTraveling) {
+                val travel = state.travelState
+                Surface(
                     modifier = Modifier
+                        .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .navigationBarsPadding()
-                        .padding(end = 12.dp, bottom = 2.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = chipFg.copy(alpha = 0.55f),
-                    textAlign = TextAlign.End
-                )
+                        .padding(12.dp),
+                    color = chipBg,
+                    shape = RoundedCornerShape(16.dp),
+                    tonalElevation = 6.dp
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "TRAVELING",
+                                style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 2.sp),
+                                color = extended.goldAccent
+                            )
+                            if (travel != null) {
+                                Text(
+                                    "${travel.destName} — ${travel.leaguesTraveled}/${travel.totalLeagues} leagues",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = chipFg
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Button(
+                            onClick = onCancelTravel,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        ) { Text("Cancel") }
+                    }
+                }
             }
         }
     }
@@ -347,7 +443,8 @@ private fun MapCanvas(
     playerDot: Color,
     pulse: Float,
     onSizeChanged: (Size) -> Unit,
-    onTransform: (pan: Offset, zoom: Float) -> Unit
+    onTransform: (pan: Offset, zoom: Float) -> Unit,
+    onLocationTap: (MapLocation) -> Unit = {}
 ) {
     val factionColors = remember {
         listOf(
@@ -371,6 +468,27 @@ private fun MapCanvas(
             .pointerInput(Unit) {
                 detectTransformGestures { _, panChange, zoomChange, _ ->
                     onTransform(panChange, zoomChange)
+                }
+            }
+            .pointerInput(wm.locations, zoom, pan) {
+                detectTapGestures { tapOffset ->
+                    val mw = wm.width.toFloat()
+                    val mh = wm.height.toFloat()
+                    val scale = minOf(size.width / mw, size.height / mh) * zoom
+                    val offX = size.width / 2f + pan.x * scale - mw / 2f * scale
+                    val offY = size.height / 2f + pan.y * scale - mh / 2f * scale
+                    val worldX = (tapOffset.x - offX) / scale
+                    val worldY = (tapOffset.y - offY) / scale
+                    val hitRadius = 25f
+                    val hit = wm.locations.minByOrNull {
+                        hypot((it.x - worldX).toDouble(), (it.y - worldY).toDouble())
+                    }
+                    if (hit != null) {
+                        val dist = hypot((hit.x - worldX).toDouble(), (hit.y - worldY).toDouble())
+                        if (dist < hitRadius) {
+                            onLocationTap(hit)
+                        }
+                    }
                 }
             }
     ) {
@@ -401,66 +519,71 @@ private fun MapCanvas(
 
         // Layer 2: faction washes
         if (showFactions) {
-            factionBases.forEach { (_, loc, color) ->
+            factionBases.forEach { (faction, loc, color) ->
+                val isDestroyed = faction.status == "destroyed"
                 drawCircle(
-                    color = color.copy(alpha = 0.25f),
+                    color = if (isDestroyed) Color.Gray.copy(alpha = 0.12f) else color.copy(alpha = 0.25f),
                     center = Offset(tx(loc.x.toFloat()), ty(loc.y.toFloat())),
                     radius = 90f * scale
                 )
-            }
-        }
-
-        // Layer 3: forest patches
-        wm.terrain.filter { it.type == "tree" }.forEach { t ->
-            drawCircle(
-                color = palette.park.copy(alpha = 0.6f),
-                center = Offset(tx(t.x), ty(t.y)),
-                radius = (t.size * 3f + 18f) * scale
-            )
-            drawCircle(
-                color = palette.forest.copy(alpha = 0.45f),
-                center = Offset(tx(t.x), ty(t.y)),
-                radius = (t.size * 1.8f + 8f) * scale
-            )
-        }
-
-        // Layer 4: mountain washes
-        wm.terrain.filter { it.type == "mountain" }.forEach { t ->
-            drawCircle(
-                color = palette.mountain.copy(alpha = 0.7f),
-                center = Offset(tx(t.x), ty(t.y)),
-                radius = (t.size * 2.2f + 14f) * scale
-            )
-        }
-
-        // Layer 5a: lakes
-        wm.lakes.forEach { lk ->
-            withTransform({
-                rotate(lk.rot, Offset(tx(lk.x), ty(lk.y)))
-            }) {
-                drawOval(
-                    color = palette.waterDark,
-                    topLeft = Offset(tx(lk.x - lk.rx - 1.5f), ty(lk.y - lk.ry - 1.5f)),
-                    size = Size((lk.rx + 1.5f) * 2f * scale, (lk.ry + 1.5f) * 2f * scale),
-                    alpha = 0.7f
-                )
-                drawOval(
-                    color = palette.water,
-                    topLeft = Offset(tx(lk.x - lk.rx), ty(lk.y - lk.ry)),
-                    size = Size(lk.rx * 2f * scale, lk.ry * 2f * scale)
-                )
-            }
-        }
-
-        // Layer 5b: rivers
-        wm.rivers.forEach { pts ->
-            if (pts.size > 1) {
-                val path = Path().apply {
-                    moveTo(tx(pts[0].x), ty(pts[0].y))
-                    for (p in 1 until pts.size) lineTo(tx(pts[p].x), ty(pts[p].y))
+                // Destroyed factions get a faint hatched border to signal collapse
+                if (isDestroyed) {
+                    drawCircle(
+                        color = Color.Gray.copy(alpha = 0.30f),
+                        center = Offset(tx(loc.x.toFloat()), ty(loc.y.toFloat())),
+                        radius = 90f * scale,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = 1.5f * scale,
+                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(
+                                floatArrayOf(6f * scale, 5f * scale)
+                            )
+                        )
+                    )
                 }
-                drawPath(path, palette.waterDark, style = Stroke(width = 5.5f * scale, cap = androidx.compose.ui.graphics.StrokeCap.Round), alpha = 0.6f)
-                drawPath(path, palette.water, style = Stroke(width = 3.5f * scale, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+            }
+            // Faction name labels
+            factionBases.forEach { (faction, loc, _) ->
+                val cx = tx(loc.x.toFloat())
+                val cy = ty(loc.y.toFloat()) - 95f * scale
+                drawContext.canvas.nativeCanvas.apply {
+                    val label = if (faction.status == "destroyed") "${faction.name} (Fallen)" else faction.name
+                    val paint = android.graphics.Paint().apply {
+                        color = android.graphics.Color.WHITE
+                        textSize = 10f * scale
+                        textAlign = android.graphics.Paint.Align.CENTER
+                        isFakeBoldText = true
+                        isAntiAlias = true
+                    }
+                    val haloPaint = android.graphics.Paint(paint).apply {
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 3f * scale
+                        color = android.graphics.Color.BLACK
+                    }
+                    drawText(label, cx, cy, haloPaint)
+                    drawText(label, cx, cy, paint)
+                }
+            }
+            // Contested territories — check pairs of factions for overlap
+            for (i in factionBases.indices) {
+                for (j in i + 1 until factionBases.size) {
+                    val (_, baseA, _) = factionBases[i]
+                    val (_, baseB, _) = factionBases[j]
+                    val dist = hypot((baseA.x - baseB.x).toDouble(), (baseA.y - baseB.y).toDouble())
+                    if (dist < 120.0) {
+                        val midX = tx((baseA.x + baseB.x) / 2f)
+                        val midY = ty((baseA.y + baseB.y) / 2f)
+                        drawContext.canvas.nativeCanvas.apply {
+                            val paint = android.graphics.Paint().apply {
+                                color = android.graphics.Color.RED
+                                textSize = 9f * scale
+                                textAlign = android.graphics.Paint.Align.CENTER
+                                isFakeBoldText = true
+                                isAntiAlias = true
+                            }
+                            drawText("⚔ Contested", midX, midY, paint)
+                        }
+                    }
+                }
             }
         }
 
@@ -518,20 +641,7 @@ private fun MapCanvas(
             }
         }
 
-        // Layer 8: mountain peak triangles
-        wm.terrain.filter { it.type == "mountain" }.forEach { m ->
-            val s = max(3f, m.size * 0.4f) * scale
-            val cx = tx(m.x); val cy = ty(m.y)
-            val path = Path().apply {
-                moveTo(cx, cy - s)
-                lineTo(cx - s, cy + s * 0.6f)
-                lineTo(cx + s, cy + s * 0.6f)
-                close()
-            }
-            drawPath(path, palette.peak.copy(alpha = 0.55f))
-        }
-
-        // Layer 9: location pins
+        // Layer 9: location pins — all locations get full teardrop pins
         wm.locations.forEach { loc ->
             val cx = tx(loc.x.toFloat()); val cy = ty(loc.y.toFloat())
             val isCur = loc.id == currentId
@@ -545,51 +655,48 @@ private fun MapCanvas(
                     style = Stroke(width = 1.5f * scale)
                 )
             }
-            if (disc) {
-                // Teardrop pin
-                val path = Path().apply {
-                    moveTo(cx, cy + 4f * scale)
-                    cubicTo(cx - 11f * scale, cy - 4f * scale, cx - 11f * scale, cy - 20f * scale, cx, cy - 22f * scale)
-                    cubicTo(cx + 11f * scale, cy - 20f * scale, cx + 11f * scale, cy - 4f * scale, cx, cy + 4f * scale)
-                    close()
+            // Teardrop pin for all locations
+            val path = Path().apply {
+                moveTo(cx, cy + 4f * scale)
+                cubicTo(cx - 11f * scale, cy - 4f * scale, cx - 11f * scale, cy - 20f * scale, cx, cy - 22f * scale)
+                cubicTo(cx + 11f * scale, cy - 20f * scale, cx + 11f * scale, cy - 4f * scale, cx, cy + 4f * scale)
+                close()
+            }
+            drawPath(path, pinColor.copy(alpha = if (disc) 1f else 0.6f))
+            drawCircle(palette.labelHalo, radius = 6f * scale, center = Offset(cx, cy - 14f * scale))
+            // Icon emoji via native canvas
+            drawContext.canvas.nativeCanvas.apply {
+                val paint = android.graphics.Paint().apply {
+                    isAntiAlias = true
+                    textSize = 10f * scale
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    alpha = if (disc) 255 else 153
                 }
-                drawPath(path, pinColor)
-                drawCircle(palette.labelHalo, radius = 6f * scale, center = Offset(cx, cy - 14f * scale))
-                // Icon emoji via native canvas
-                drawContext.canvas.nativeCanvas.apply {
-                    val paint = android.graphics.Paint().apply {
-                        isAntiAlias = true
-                        textSize = 10f * scale
-                        textAlign = android.graphics.Paint.Align.CENTER
-                    }
-                    drawText(loc.icon, cx, cy - 11f * scale, paint)
+                drawText(loc.icon, cx, cy - 11f * scale, paint)
+            }
+            // Label with halo
+            drawContext.canvas.nativeCanvas.apply {
+                val label = loc.name
+                val textSize = if (isCur) 11f * scale else 9f * scale
+                val haloPaint = android.graphics.Paint().apply {
+                    isAntiAlias = true
+                    this.textSize = textSize
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    style = android.graphics.Paint.Style.STROKE
+                    strokeWidth = 3f
+                    color = palette.labelHalo.toArgb()
+                    alpha = if (disc) 255 else 180
                 }
-                // Label with halo
-                drawContext.canvas.nativeCanvas.apply {
-                    val label = loc.name
-                    val size = if (isCur) 11f * scale else 9f * scale
-                    val haloPaint = android.graphics.Paint().apply {
-                        isAntiAlias = true
-                        textSize = size
-                        textAlign = android.graphics.Paint.Align.CENTER
-                        style = android.graphics.Paint.Style.STROKE
-                        strokeWidth = 3f
-                        color = palette.labelHalo.toArgb()
-                    }
-                    val textPaint = android.graphics.Paint().apply {
-                        isAntiAlias = true
-                        textSize = size
-                        textAlign = android.graphics.Paint.Align.CENTER
-                        color = if (isCur) palette.pinCur.toArgb() else palette.label.toArgb()
-                        isFakeBoldText = isCur
-                    }
-                    drawText(label, cx, cy + 16f * scale, haloPaint)
-                    drawText(label, cx, cy + 16f * scale, textPaint)
+                val textPaint = android.graphics.Paint().apply {
+                    isAntiAlias = true
+                    this.textSize = textSize
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    color = if (isCur) palette.pinCur.toArgb() else palette.label.toArgb()
+                    isFakeBoldText = isCur
+                    alpha = if (disc) 255 else 153
                 }
-            } else {
-                drawCircle(palette.labelHalo, radius = 5.5f * scale, center = Offset(cx, cy))
-                drawCircle(pinColor, radius = 5.5f * scale, center = Offset(cx, cy), style = Stroke(width = 1.5f * scale))
-                drawCircle(pinColor, radius = 2.5f * scale, center = Offset(cx, cy))
+                drawText(label, cx, cy + 16f * scale, haloPaint)
+                drawText(label, cx, cy + 16f * scale, textPaint)
             }
         }
 

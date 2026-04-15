@@ -1,8 +1,11 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.realmsoffate.game.ui.panels
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
@@ -740,6 +743,61 @@ private fun LoreWorldTab(state: GameUiState) {
                 }
             }
         }
+        // Living World — silent rumours of recent shifts. The narrator weaves
+        // these into prose; the player checks here for the bigger picture.
+        if (state.worldEvents.isNotEmpty()) {
+            item {
+                Spacer(Modifier.height(6.dp))
+                SectionCap("LIVING WORLD")
+                Text(
+                    "Whispers reaching you from beyond the immediate scene.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+            }
+            items(state.worldEvents.takeLast(8).reversed()) { ev ->
+                LivingWorldRow(ev)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LivingWorldRow(ev: com.realmsoffate.game.data.WorldEvent) {
+    val realms = RealmsTheme.colors
+    Surface(
+        color = realms.warning.copy(alpha = 0.10f),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth().border(
+            1.dp, realms.warning.copy(alpha = 0.35f), RoundedCornerShape(12.dp)
+        )
+    ) {
+        Row(
+            Modifier.padding(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Text(ev.icon, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        ev.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = realms.warning,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        "T${ev.turn}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(ev.text, style = MaterialTheme.typography.bodySmall)
+            }
+        }
     }
 }
 
@@ -766,6 +824,31 @@ private fun LoreFactionsTab(state: GameUiState) {
                 Column(Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(f.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        if (f.status != "active") {
+                            Spacer(Modifier.width(6.dp))
+                            Surface(
+                                color = when (f.status) {
+                                    "destroyed" -> MaterialTheme.colorScheme.error
+                                    "subjugated" -> realms.warning
+                                    "player_controlled" -> realms.success
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                }.copy(alpha = 0.16f),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    f.status.uppercase().replace("_", " "),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = when (f.status) {
+                                        "destroyed" -> MaterialTheme.colorScheme.error
+                                        "subjugated" -> realms.warning
+                                        "player_controlled" -> realms.success
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                         StatusTag("REP ${formatSigned(rep)}", repColor)
                     }
                     Text(
@@ -804,9 +887,11 @@ private fun LoreFactionsTab(state: GameUiState) {
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold
                                 )
+                                val isDeceased = g.ruler.contains("Deceased", ignoreCase = true)
                                 Text(
-                                    "Ruler: ${g.ruler}" + if (g.rulerTrait.isNotBlank()) " (${g.rulerTrait})" else "",
-                                    style = MaterialTheme.typography.bodySmall
+                                    "Ruler: ${g.ruler}" + if (g.rulerTrait.isNotBlank() && !isDeceased) " (${g.rulerTrait})" else "",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isDeceased) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                                 )
                                 if (g.yearsInPower > 0) {
                                     Text(
@@ -933,27 +1018,83 @@ private fun LoreNpcsTab(state: GameUiState) {
         EmptyState("\uD83D\uDC64", "No NPCs recorded.")
         return
     }
+    // Cross-reference met-NPC journal to surface dead status on lore NPCs.
+    val deadNpcNames = state.npcLog
+        .filter { it.status == "dead" }
+        .map { it.name.lowercase() }
+        .toSet()
+
     LazyColumn(
         Modifier.padding(horizontal = 14.dp).heightIn(max = 560.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(lore.npcs) { n ->
+            val isDead = n.name.lowercase() in deadNpcNames
             Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                color = if (isDead)
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                else
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(Modifier.padding(12.dp)) {
-                    Text(n.name, style = MaterialTheme.typography.titleSmall)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            n.name,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = if (isDead)
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                            else
+                                MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (isDead) {
+                            Spacer(Modifier.width(6.dp))
+                            Surface(
+                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.16f),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    "\u2620\uFE0F DEAD",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                     Text(
                         "${n.race} ${n.role} · ${n.location}",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = if (isDead) 0.45f else 1f
+                        )
                     )
-                    if (n.appearance.isNotBlank()) Text(n.appearance, style = MaterialTheme.typography.bodySmall)
-                    if (n.personality.isNotBlank()) Text("— ${n.personality}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (n.appearance.isNotBlank()) Text(
+                        n.appearance,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(
+                            alpha = if (isDead) 0.4f else 1f
+                        )
+                    )
+                    if (n.personality.isNotBlank()) Text(
+                        "— ${n.personality}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = if (isDead) 0.4f else 1f
+                        )
+                    )
                     n.faction?.let {
-                        Text("\u25B8 $it", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 3.dp))
+                        Text(
+                            "\u25B8 $it",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary.copy(
+                                alpha = if (isDead) 0.4f else 1f
+                            ),
+                            modifier = Modifier.padding(top = 3.dp)
+                        )
                     }
                 }
             }
@@ -1110,15 +1251,23 @@ private fun LoreRumorsTab(state: GameUiState) {
 
 private enum class JournalFilter(val label: String, val icon: String, val match: (String) -> Boolean) {
     All("All", "∗", { true }),
-    Friendly("Friendly", "🟢", { it in setOf("friendly", "ally", "love", "grateful", "allied", "romantic") }),
-    Hostile("Hostile", "🔴", { it in setOf("hostile", "enemy", "rival", "feared") }),
-    Neutral("Neutral", "🟣", { it !in setOf("friendly", "ally", "love", "grateful", "allied", "romantic", "hostile", "enemy", "rival", "feared") })
+    Friendly("Friendly", "🟢", { r ->
+        listOf("friendly", "ally", "love", "grateful", "allied", "romantic", "warm", "helpful", "loyal", "trusted").any { r.contains(it) }
+    }),
+    Hostile("Hostile", "🔴", { r ->
+        listOf("hostile", "enemy", "rival", "feared", "angry", "aggressive", "hateful", "suspicious", "distrustful").any { r.contains(it) }
+    }),
+    Neutral("Neutral", "🟣", { r ->
+        val friendly = listOf("friendly", "ally", "love", "grateful", "allied", "romantic", "warm", "helpful", "loyal", "trusted")
+        val hostile = listOf("hostile", "enemy", "rival", "feared", "angry", "aggressive", "hateful", "suspicious", "distrustful")
+        !friendly.any { r.contains(it) } && !hostile.any { r.contains(it) }
+    })
 }
 
 @Composable
-fun JournalPanel(state: GameUiState, onClose: () -> Unit) {
+fun JournalPanel(state: GameUiState, focusNpc: String? = null, onClose: () -> Unit) {
     var filter by remember { mutableStateOf(JournalFilter.All) }
-    var selected by remember { mutableStateOf<String?>(null) }
+    var selected by remember { mutableStateOf<String?>(focusNpc) }
     val filtered = state.npcLog.filter { filter.match(it.relationship.lowercase()) }
     PanelSheet(
         "\uD83D\uDCD6  Journal",
@@ -1167,9 +1316,9 @@ fun JournalPanel(state: GameUiState, onClose: () -> Unit) {
             Spacer(Modifier.height(6.dp))
         }
         FilterTabs(
-            tabs = JournalFilter.values().map { it.label to it.icon },
-            selectedIndex = JournalFilter.values().indexOf(filter),
-            onSelect = { filter = JournalFilter.values()[it] }
+            tabs = JournalFilter.entries.map { it.label to it.icon },
+            selectedIndex = JournalFilter.entries.indexOf(filter),
+            onSelect = { filter = JournalFilter.entries[it] }
         )
         Spacer(Modifier.height(6.dp))
         if (filtered.isEmpty()) {
@@ -1218,6 +1367,21 @@ fun JournalPanel(state: GameUiState, onClose: () -> Unit) {
                                 Text("${n.race} ${n.role} · ${n.age}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             RelationshipTag(n.relationship)
+                            if (n.status == "dead") {
+                                Spacer(Modifier.width(4.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.16f),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        "☠️ DEAD",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
                         }
                         if (n.personality.isNotBlank()) Text(
                             n.personality,
@@ -1252,6 +1416,27 @@ private fun NpcDetailCard(
         )
     ) {
         Column(Modifier.padding(14.dp)) {
+            if (npc.status == "dead") {
+                Surface(
+                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.14f),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("☠️", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "DECEASED",
+                            style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 3.sp),
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier.size(56.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiaryContainer),
@@ -1331,9 +1516,25 @@ private fun NpcDetailCard(
                     style = MaterialTheme.typography.bodySmall.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
                 )
             }
+            if (npc.memorableQuotes.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("✨", style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "MEMORABLE LINES",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = realms.goldAccent
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                npc.memorableQuotes.forEach { line ->
+                    DialogueLine(line, accent = realms.goldAccent)
+                }
+            }
             if (npc.dialogueHistory.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
-                Text("MEMORABLE LINES", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Text("RECENT DIALOGUE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.height(4.dp))
                 npc.dialogueHistory.takeLast(6).forEach { line ->
                     DialogueLine(line)
@@ -1344,12 +1545,16 @@ private fun NpcDetailCard(
 }
 
 @Composable
-private fun DialogueLine(raw: String) {
+private fun DialogueLine(
+    raw: String,
+    accent: androidx.compose.ui.graphics.Color? = null
+) {
     // Entries are stored as "T12: \"the dialogue\"" — parse gently.
     val turnSep = raw.indexOf(':')
     val turnLabel = if (turnSep > 0 && raw.startsWith("T")) raw.substring(0, turnSep) else ""
     val body = if (turnSep > 0) raw.substring(turnSep + 1).trim() else raw
     val realms = RealmsTheme.colors
+    val barColor = accent ?: MaterialTheme.colorScheme.primary
     Row(Modifier.padding(vertical = 2.dp)) {
         if (turnLabel.isNotBlank()) {
             Text(
@@ -1362,9 +1567,9 @@ private fun DialogueLine(raw: String) {
         }
         Box(
             Modifier
-                .width(2.dp)
-                .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+                .width(if (accent != null) 3.dp else 2.dp)
+                .heightIn(min = 16.dp)
+                .background(barColor.copy(alpha = if (accent != null) 0.8f else 0.4f))
         )
         Spacer(Modifier.width(8.dp))
         Text(
@@ -1797,7 +2002,7 @@ private val spellLevelLabels = mapOf(
 fun SpellsPanel(
     state: GameUiState,
     onClose: () -> Unit,
-    onHotbar: (Int, String?) -> Unit,
+    onHotbar: (Int, String?) -> Unit = { _, _ -> },
     onCast: (spell: com.realmsoffate.game.game.Spell) -> Unit = {}
 ) {
     val ch = state.character ?: return
@@ -1855,18 +2060,8 @@ fun SpellsPanel(
                     item {
                         SpellDetailCard(
                             spell = sp,
-                            inHotbar = state.hotbar.contains(name),
-                            hotbar = state.hotbar,
                             canCast = sp.level == 0 || (ch.spellSlots[sp.level] ?: 0) > 0,
-                            onCast = { onCast(sp) },
-                            onToggleHotbar = {
-                                val slot = state.hotbar.indexOf(name)
-                                if (slot >= 0) onHotbar(slot, null)
-                                else {
-                                    val empty = state.hotbar.indexOfFirst { it == null }
-                                    if (empty >= 0) onHotbar(empty, name)
-                                }
-                            }
+                            onCast = { onCast(sp) }
                         )
                     }
                 }
@@ -1959,11 +2154,8 @@ private fun SpellCard(
 @Composable
 private fun SpellDetailCard(
     spell: com.realmsoffate.game.game.Spell,
-    inHotbar: Boolean,
-    hotbar: List<String?>,
     canCast: Boolean,
-    onCast: () -> Unit,
-    onToggleHotbar: () -> Unit
+    onCast: () -> Unit
 ) {
     val realms = RealmsTheme.colors
     Surface(
@@ -2011,21 +2203,12 @@ private fun SpellDetailCard(
                 }
             }
             Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = onCast,
-                    enabled = canCast,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp)
-                ) { Text(if (canCast) "Cast Now" else "No Slots") }
-                OutlinedButton(
-                    onClick = onToggleHotbar,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text(if (inHotbar) "Remove from Hotbar" else "Add to Hotbar", maxLines = 1)
-                }
-            }
+            Button(
+                onClick = onCast,
+                enabled = canCast,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp)
+            ) { Text(if (canCast) "Cast Now" else "No Slots") }
         }
     }
 }
@@ -2037,7 +2220,11 @@ fun StatsPanel(state: GameUiState, onClose: () -> Unit) {
     val ch = state.character ?: return
     val realms = RealmsTheme.colors
     PanelSheet("\uD83D\uDCCA  Character", onClose = onClose) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Column(
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+        ) {
             Text(ch.name, style = MaterialTheme.typography.headlineSmall)
             Text(
                 "L${ch.level} ${ch.race} ${ch.cls}",
@@ -2116,20 +2303,20 @@ fun StatsPanel(state: GameUiState, onClose: () -> Unit) {
                 }
             }
 
-            ch.backstory?.let {
+            ch.backstory?.let { bs ->
                 Spacer(Modifier.height(14.dp))
                 SectionCap("BACKSTORY")
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        it.promptText,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(12.dp),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BackstoryCard("\uD83C\uDF05", "Origin", bs.origin, Color(0xFF5B7FC7))
+                    BackstoryCard("\uD83C\uDFAF", "Motivation", bs.motivation, Color(0xFFD4A843))
+                    BackstoryCard("\uD83D\uDC94", "Flaw", bs.flaw, Color(0xFFC44040))
+                    BackstoryCard("\uD83D\uDD17", "Bond", bs.bond, Color(0xFF4A9E5E))
+                    BackstoryCard("\uD83D\uDD73\uFE0F", "Dark Secret", bs.darkSecret, Color(0xFF8B6CC7))
+                    BackstoryCard("\uD83D\uDD0D", "Lost Item", bs.lostItem, Color(0xFFD4A843))
+                    BackstoryCard("\u2620\uFE0F", "Personal Enemy", bs.personalEnemy, Color(0xFFC44040))
+                    bs.prophecy?.let { p ->
+                        if (p.isNotBlank()) BackstoryCard("\uD83D\uDD2E", "Prophecy", p, Color(0xFFB197FF))
+                    }
                 }
             }
         }
@@ -2149,6 +2336,44 @@ private fun StatTile(label: String, value: String, color: Color, modifier: Modif
         ) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = color)
             Text(value, style = MaterialTheme.typography.titleMedium, color = color, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun BackstoryCard(icon: String, label: String, text: String, accent: Color) {
+    Surface(
+        color = accent.copy(alpha = 0.08f),
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(Modifier.padding(12.dp)) {
+            Box(
+                Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(accent.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(icon, fontSize = 18.sp)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    label.uppercase(),
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp),
+                    color = accent,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
     }
 }

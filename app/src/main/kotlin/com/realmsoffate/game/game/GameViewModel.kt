@@ -16,6 +16,7 @@ import com.realmsoffate.game.data.Item
 import com.realmsoffate.game.data.LogNpc
 import com.realmsoffate.game.data.ParsedReply
 import com.realmsoffate.game.data.PlayerPos
+import com.realmsoffate.game.data.TravelState
 import com.realmsoffate.game.data.PreferencesStore
 import com.realmsoffate.game.data.Prompts
 import com.realmsoffate.game.data.Quest
@@ -23,14 +24,18 @@ import com.realmsoffate.game.data.GraveyardEntry
 import com.realmsoffate.game.data.SaveData
 import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
+import com.realmsoffate.game.data.SerializedBuyback
+import com.realmsoffate.game.data.NarrationSegmentData
 import com.realmsoffate.game.data.TagParser
 import com.realmsoffate.game.data.TimelineEntry
 import com.realmsoffate.game.data.WorldEvent
+import com.realmsoffate.game.data.HistoryEntry
 import com.realmsoffate.game.data.WorldLore
 import com.realmsoffate.game.data.WorldMap
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -48,11 +53,6 @@ data class GameUiState(
     val party: List<PartyCompanion> = emptyList(),
     val quests: List<Quest> = emptyList(),
     val hotbar: List<String?> = List(6) { null },
-    val timeOfDay: String = "day",
-    /** TimeSystem accumulator — advances phase when it crosses the threshold. */
-    val timeAccumulator: Int = 0,
-    /** Current weather id from WeatherSystem.table. Rolled on start + travel + long rest. */
-    val weather: String = "clear",
     val turns: Int = 0,
     val morality: Int = 0,
     val factionRep: Map<String, Int> = emptyMap(),
@@ -64,12 +64,36 @@ data class GameUiState(
     val isGenerating: Boolean = false,
     val error: String? = null,
     val merchantStocks: Map<String, Map<String, Int>> = emptyMap(),
+    /** Merchants available at current location — shown as tappable buttons in the chat. */
+    val availableMerchants: List<String> = emptyList(),
     val lastCheck: CheckDisplay? = null,
     val lastDice: Int = 0,
     /** Non-null when the current scene is a battle. Round counter + ally initiative. */
     val combat: CombatState? = null,
     /** Non-null when the player is at 0 HP and rolling death saves. */
-    val deathSave: DeathSaveState? = null
+    val deathSave: DeathSaveState? = null,
+    /**
+     * The dice preview shown after the player commits an action but BEFORE the
+     * narrator sees it. Tapping Continue on the preview clears this and dispatches
+     * the action to the AI with the pre-rolled value.
+     */
+    val preRoll: PreRollDisplay? = null,
+    /**
+     * Index into `messages` of the player bubble that started the current turn.
+     * The chat list scrolls to this row so each turn reads top-down rather than
+     * jumping to the bottom of the narration.
+     */
+    val turnStartIndex: Int = 0,
+    /** Bookmarked text snippets from individual bubbles. */
+    val bookmarks: List<String> = emptyList(),
+    /** Non-null when the player is actively traveling between locations. */
+    val travelState: TravelState? = null,
+    /**
+     * Memoized per-game stable system-prompt suffix. Null until first AI call;
+     * cleared on level-up, mutation change, character replacement, or load. See
+     * Prompts.buildSessionSystem.
+     */
+    val cachedSessionSystem: String? = null
 )
 
 data class CheckDisplay(
@@ -78,10 +102,53 @@ data class CheckDisplay(
     val mod: Int, val prof: Int, val crit: Boolean
 )
 
+/**
+ * Pre-roll preview shown to the player BEFORE the action is sent to the
+ * narrator. They see the d20 result, the modifier breakdown, and the running
+ * total; tapping Continue commits the action and the AI sees the same number.
+ *
+ *   skill / ability are null for "freeform" actions that don't trigger a check.
+ *   crit is true on nat 20 / nat 1 — used for the visual flourish.
+ */
+data class PreRollDisplay(
+    val action: String,
+    val skill: String?,
+    val ability: String,
+    val roll: Int,
+    val mod: Int,
+    val prof: Int,
+    val total: Int,
+    val crit: Boolean
+)
+
+@kotlinx.serialization.Serializable
 sealed interface DisplayMessage {
+    @kotlinx.serialization.Serializable
+    @kotlinx.serialization.SerialName("player")
     data class Player(val text: String) : DisplayMessage
-    data class Narration(val text: String, val scene: String, val sceneDesc: String) : DisplayMessage
+
+    @kotlinx.serialization.Serializable
+    @kotlinx.serialization.SerialName("narration")
+    data class Narration(
+        val text: String, val scene: String, val sceneDesc: String,
+        val hpBefore: Int = 0, val hpAfter: Int = 0, val maxHp: Int = 0,
+        val goldBefore: Int = 0, val goldAfter: Int = 0,
+        val xpGained: Int = 0,
+        val conditionsAdded: List<String> = emptyList(),
+        val conditionsRemoved: List<String> = emptyList(),
+        val itemsGained: List<String> = emptyList(),
+        val itemsRemoved: List<String> = emptyList(),
+        val moralDelta: Int = 0,
+        val repDeltas: List<Pair<String, Int>> = emptyList(),
+        val segments: List<NarrationSegmentData> = emptyList()
+    ) : DisplayMessage
+
+    @kotlinx.serialization.Serializable
+    @kotlinx.serialization.SerialName("event")
     data class Event(val icon: String, val title: String, val text: String) : DisplayMessage
+
+    @kotlinx.serialization.Serializable
+    @kotlinx.serialization.SerialName("system")
     data class System(val text: String) : DisplayMessage
 }
 
@@ -96,7 +163,7 @@ class GameViewModel(
     private val _ui = MutableStateFlow(GameUiState())
     val ui: StateFlow<GameUiState> = _ui.asStateFlow()
 
-    private val _provider = MutableStateFlow(AiProvider.GEMINI)
+    private val _provider = MutableStateFlow(AiProvider.DEEPSEEK)
     val provider: StateFlow<AiProvider> = _provider.asStateFlow()
 
     private val _apiKey = MutableStateFlow("")
@@ -128,6 +195,267 @@ class GameViewModel(
 
     fun dismissLevelUp() { _pendingLevelUp.value = null }
 
+    /** Stat points available to assign from level-ups. */
+    private val _pendingStatPoints = MutableStateFlow(0)
+    val pendingStatPoints: StateFlow<Int> = _pendingStatPoints.asStateFlow()
+
+    /** Non-null when the player should choose a feat (at levels 4, 8, 12, 16, 20). */
+    private val _pendingFeat = MutableStateFlow(false)
+    val pendingFeat: StateFlow<Boolean> = _pendingFeat.asStateFlow()
+
+    fun assignStatPoint(stat: String) {
+        val pts = _pendingStatPoints.value
+        if (pts <= 0) return
+        val s = _ui.value
+        val ch = s.character ?: return
+        when (stat.uppercase()) {
+            "STR" -> ch.abilities.str += 1
+            "DEX" -> ch.abilities.dex += 1
+            "CON" -> { ch.abilities.con += 1; ch.maxHp += 1; ch.hp += 1 }
+            "INT" -> ch.abilities.int += 1
+            "WIS" -> ch.abilities.wis += 1
+            "CHA" -> ch.abilities.cha += 1
+            else -> return
+        }
+        _pendingStatPoints.value = pts - 1
+        _ui.value = s.copy(character = ch)
+    }
+
+    fun selectFeat(featName: String) {
+        val s = _ui.value
+        val ch = s.character ?: return
+        val feat = Feats.find(featName) ?: return
+        feat.apply(ch)
+        ch.feats.add(featName)
+        _pendingFeat.value = false
+        _ui.value = s.copy(character = ch, messages = s.messages + DisplayMessage.System("Feat acquired: $featName"))
+    }
+
+    fun dismissFeat() { _pendingFeat.value = false }
+
+    private val _fontScale = MutableStateFlow(1.0f)
+    val fontScale: StateFlow<Float> = _fontScale.asStateFlow()
+
+    fun setFontScale(scale: Float) {
+        _fontScale.value = scale.coerceIn(0.7f, 1.6f)
+        viewModelScope.launch { prefs.saveFontScale(_fontScale.value) }
+    }
+
+    // ---- Debug log — records every AI exchange for diagnostics ----
+    data class DebugTurn(
+        val turn: Int,
+        val playerAction: String,
+        val classifiedSkill: String?,
+        val diceRoll: Int,
+        val userPromptSent: String,
+        val rawAiResponse: String,
+        val parsedScene: String,
+        val parsedNarration: String,
+        val parsedTags: String,
+        val timestamp: Long = System.currentTimeMillis()
+    )
+    private val _debugLog = mutableListOf<DebugTurn>()
+
+    private fun logDebugTurn(
+        turn: Int, action: String, skill: String?, roll: Int,
+        prompt: String, raw: String, parsed: com.realmsoffate.game.data.ParsedReply
+    ) {
+        val tags = buildString {
+            if (parsed.damage > 0) appendLine("DAMAGE:${parsed.damage}")
+            if (parsed.heal > 0) appendLine("HEAL:${parsed.heal}")
+            if (parsed.xp > 0) appendLine("XP:${parsed.xp}")
+            if (parsed.goldGained > 0) appendLine("GOLD:${parsed.goldGained}")
+            if (parsed.goldLost > 0) appendLine("GOLD_LOST:${parsed.goldLost}")
+            parsed.checks.forEach { appendLine("CHECK:${it.skill}|${it.ability}|DC${it.dc}|${if (it.passed) "PASS" else "FAIL"}|${it.total}") }
+            parsed.npcsMet.forEach { appendLine("NPC_MET:${it.name}|${it.race}|${it.role}|${it.relationship}") }
+            parsed.questStarts.forEach { appendLine("QUEST_START:${it.title}") }
+            parsed.questComplete.forEach { appendLine("QUEST_COMPLETE:$it") }
+            parsed.questFails.forEach { appendLine("QUEST_FAIL:$it") }
+            parsed.shops.forEach { (m, _) -> appendLine("SHOP:$m") }
+            parsed.travelTo?.let { appendLine("TRAVEL:$it") }
+            parsed.partyJoins.forEach { appendLine("PARTY_JOIN:${it.name}") }
+            parsed.partyLeaves.forEach { appendLine("PARTY_LEAVE:$it") }
+            parsed.enemies.forEach { (n, hp, max) -> appendLine("ENEMY:$n|$hp/$max") }
+            parsed.factionUpdates.forEach { (n, f, v) -> appendLine("FACTION_UPDATE:$n|$f|$v") }
+            parsed.npcDeaths.forEach { appendLine("NPC_DIED:$it") }
+            parsed.npcUpdates.forEach { (n, f, v) -> appendLine("NPC_UPDATE:$n|$f|$v") }
+            parsed.conditionsAdded.forEach { appendLine("CONDITION:$it") }
+            parsed.conditionsRemoved.forEach { appendLine("REMOVE_CONDITION:$it") }
+            parsed.itemsGained.forEach { appendLine("ITEM:${it.name}|${it.type}|${it.rarity}") }
+            parsed.itemsRemoved.forEach { appendLine("REMOVE_ITEM:$it") }
+            parsed.loreEntries.forEach { appendLine("LORE:$it") }
+            if (parsed.moralDelta != 0) appendLine("MORAL:${parsed.moralDelta}")
+            parsed.repDeltas.forEach { (f, d) -> appendLine("REP:$f|$d") }
+            parsed.dialogues.forEach { (name, lines) -> lines.forEach { (t, q) -> appendLine("DIALOGUE:$name(T$t):$q") } }
+            parsed.narratorProse.forEach { appendLine("NARRATOR_PROSE:${it.take(80)}...") }
+            parsed.narratorAsides.forEach { appendLine("NARRATOR_ASIDE:$it") }
+            parsed.playerActions.forEach { appendLine("PLAYER_ACTION:${it.take(80)}") }
+            parsed.npcActions.forEach { (n, a) -> appendLine("NPC_ACTION:$n:${a.take(80)}") }
+            parsed.npcDialogs.forEach { (n, d) -> appendLine("NPC_DIALOG:$n:${d.take(80)}") }
+            parsed.npcQuotes.forEach { (n, q) -> appendLine("NPC_QUOTE:$n:${q.take(80)}") }
+            parsed.playerDialogs.forEach { appendLine("PLAYER_DIALOG:${it.take(80)}") }
+            if (parsed.segments.isNotEmpty()) appendLine("SEGMENTS:${parsed.segments.size} blocks")
+            appendLine("CACHE_HIT:${ai.lastCacheHit}/${ai.lastPromptTokens} tokens")
+        }
+        _debugLog.add(DebugTurn(
+            turn = turn, playerAction = action, classifiedSkill = skill,
+            diceRoll = roll, userPromptSent = prompt, rawAiResponse = raw,
+            parsedScene = "${parsed.scene}|${parsed.sceneDesc}",
+            parsedNarration = parsed.narration.take(500),
+            parsedTags = tags
+        ))
+        // Cap at 50 turns to avoid memory bloat
+        if (_debugLog.size > 50) _debugLog.removeAt(0)
+    }
+
+    /** Generates a comprehensive debug dump as a plain-text string. */
+    fun exportDebugDump(): String {
+        val s = _ui.value
+        val ch = s.character
+        return buildString {
+            appendLine("═══════════════════════════════════════")
+            appendLine("  REALMS OF FATE — DEBUG DUMP")
+            appendLine("  ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())}")
+            appendLine("═══════════════════════════════════════")
+            appendLine()
+
+            // ---- Character ----
+            appendLine("── CHARACTER ──")
+            if (ch != null) {
+                appendLine("Name: ${ch.name}  Race: ${ch.race}  Class: ${ch.cls}  Level: ${ch.level}")
+                appendLine("HP: ${ch.hp}/${ch.maxHp}  AC: ${ch.ac}  Gold: ${ch.gold}  XP: ${ch.xp}")
+                appendLine("STR:${ch.abilities.str} DEX:${ch.abilities.dex} CON:${ch.abilities.con} INT:${ch.abilities.int} WIS:${ch.abilities.wis} CHA:${ch.abilities.cha}")
+                appendLine("Proficiency: +${ch.proficiency}")
+                appendLine("Conditions: ${ch.conditions.joinToString(", ").ifBlank { "none" }}")
+                appendLine("Feats: ${ch.feats.joinToString(", ").ifBlank { "none" }}")
+                appendLine("Equipped: ${ch.inventory.filter { it.equipped }.joinToString(", ") { it.name }.ifBlank { "nothing" }}")
+                appendLine("Inventory: ${ch.inventory.joinToString(", ") { "${it.name}(x${it.qty})" }.ifBlank { "empty" }}")
+                ch.backstory?.let {
+                    appendLine("Backstory: origin=${it.origin}, flaw=${it.flaw}, bond=${it.bond}")
+                    appendLine("  darkSecret=${it.darkSecret}")
+                    appendLine("  personalEnemy=${it.personalEnemy}")
+                    appendLine("  lostItem=${it.lostItem}")
+                    appendLine("  prophecy=${it.prophecy ?: "none"}")
+                }
+            } else appendLine("(no character)")
+
+            appendLine()
+            appendLine("── WORLD STATE ──")
+            appendLine("Turn: ${s.turns}  Morality: ${s.morality}")
+            appendLine("Location: ${s.worldMap?.locations?.getOrNull(s.currentLoc)?.let { "${it.name} (${it.type})" } ?: "unknown"}")
+            appendLine("Scene: ${s.currentScene} | ${s.currentSceneDesc}")
+            appendLine("Faction Rep: ${s.factionRep.entries.joinToString(", ") { "${it.key}:${it.value}" }.ifBlank { "none" }}")
+            s.combat?.let { appendLine("Combat: round ${it.round}, ${it.order.size} combatants") }
+
+            appendLine()
+            appendLine("── FACTIONS ──")
+            s.worldLore?.factions?.forEach { f ->
+                appendLine("  ${f.name} (${f.type}) status=${f.status} ruler=${f.ruler} currency=${f.currency}")
+            }
+
+            appendLine()
+            appendLine("── NPC LOG (${s.npcLog.size} NPCs) ──")
+            s.npcLog.forEach { n ->
+                appendLine("  ${n.name} | ${n.race} ${n.role} | ${n.relationship} | status=${n.status} | lastSeen=T${n.lastSeenTurn} at ${n.lastLocation}")
+                if (n.dialogueHistory.isNotEmpty()) {
+                    n.dialogueHistory.takeLast(3).forEach { appendLine("    > $it") }
+                }
+            }
+
+            appendLine()
+            appendLine("── PARTY (${s.party.size}) ──")
+            s.party.forEach { appendLine("  ${it.name} ${it.race} ${it.role} L${it.level} HP${it.hp}/${it.maxHp}") }
+
+            appendLine()
+            appendLine("── QUESTS ──")
+            s.quests.forEach { q ->
+                appendLine("  [${q.status}] ${q.title} (${q.type}) by ${q.giver}")
+                q.objectives.forEachIndexed { i, o -> appendLine("    ${if (q.completed.getOrElse(i) { false }) "✓" else "○"} $o") }
+            }
+
+            appendLine()
+            appendLine("── WORLD EVENTS ──")
+            s.worldEvents.forEach { appendLine("  T${it.turn}: ${it.icon} ${it.title} — ${it.text}") }
+
+            appendLine()
+            appendLine("── DISPLAY MESSAGES (${s.messages.size}) ──")
+            s.messages.forEachIndexed { i, msg ->
+                when (msg) {
+                    is DisplayMessage.Player -> appendLine("  [$i] PLAYER: ${msg.text}")
+                    is DisplayMessage.Narration -> appendLine("  [$i] NARRATION (${msg.scene}): ${msg.text.take(200)}...")
+                    is DisplayMessage.Event -> appendLine("  [$i] EVENT: ${msg.icon} ${msg.title}")
+                    is DisplayMessage.System -> appendLine("  [$i] SYSTEM: ${msg.text}")
+                }
+            }
+
+            appendLine()
+            appendLine("── CHAT HISTORY (${s.history.size} messages) ──")
+            s.history.forEach { m ->
+                appendLine("  [${m.role}] ${m.content.take(300)}${if (m.content.length > 300) "..." else ""}")
+                appendLine()
+            }
+
+            appendLine()
+            appendLine("══════════════════════════════════════════")
+            appendLine("  AI EXCHANGE LOG (${_debugLog.size} turns)")
+            appendLine("══════════════════════════════════════════")
+            _debugLog.forEach { d ->
+                appendLine()
+                appendLine("──── TURN ${d.turn} ────")
+                appendLine("Action: ${d.playerAction}")
+                appendLine("Classified Skill: ${d.classifiedSkill ?: "none (freeform)"}")
+                appendLine("Dice: d20=${d.diceRoll}")
+                appendLine("Scene: ${d.parsedScene}")
+                appendLine()
+                appendLine("USER PROMPT SENT:")
+                appendLine(d.userPromptSent)
+                appendLine()
+                appendLine("RAW AI RESPONSE:")
+                appendLine(d.rawAiResponse)
+                appendLine()
+                appendLine("PARSED TAGS:")
+                appendLine(d.parsedTags.ifBlank { "(none)" })
+                appendLine()
+                appendLine("PARSED NARRATION (first 500 chars):")
+                appendLine(d.parsedNarration)
+            }
+
+            appendLine()
+            appendLine("── SYSTEM PROMPT ──")
+            appendLine(Prompts.DS_PREFIX.take(500) + "...")
+            appendLine("(...)")
+            appendLine(Prompts.SYS.take(500) + "...")
+            appendLine()
+            appendLine("── PER_TURN_REMINDER ──")
+            appendLine(Prompts.PER_TURN_REMINDER)
+        }
+    }
+
+    fun debugDumpFilename(): String {
+        val ch = _ui.value.character
+        val name = ch?.let { SaveStore.slotKeyFor(it.name) } ?: "debug"
+        return "debug_${name}_T${_ui.value.turns}_${System.currentTimeMillis() / 1000}.txt"
+    }
+
+    /** Tutorial step — null means tutorial is complete or dismissed. */
+    private val _tutorialStep = MutableStateFlow<Int?>(null)
+    val tutorialStep: StateFlow<Int?> = _tutorialStep.asStateFlow()
+
+    fun advanceTutorial() {
+        val current = _tutorialStep.value ?: return
+        val next = current + 1
+        _tutorialStep.value = if (next > 8) null else next
+    }
+
+    fun dismissTutorial() {
+        _tutorialStep.value = null
+        viewModelScope.launch { prefs.setTutorialComplete() }
+    }
+
+    fun resetTutorial() {
+        viewModelScope.launch { prefs.resetTutorial() }
+    }
+
     /** Set to a Rest type (short/long) when player initiates via slash command / overlay. */
     private val _restOverlay = MutableStateFlow<String?>(null)
     val restOverlay: StateFlow<String?> = _restOverlay.asStateFlow()
@@ -154,8 +482,6 @@ class GameViewModel(
         ch.conditions.removeAll { it.lowercase() !in permanent }
         _ui.value = s.copy(
             character = ch,
-            timeOfDay = "dawn",
-            timeAccumulator = 0,
             messages = s.messages + DisplayMessage.System("Long rest — fully restored.")
         )
         logTimeline("event", "Long rest — full heal + slots restored")
@@ -163,6 +489,40 @@ class GameViewModel(
     }
 
     fun dismissRest() { _restOverlay.value = null }
+
+    /** Start traveling to a destination. Calculates road distance and begins turn-by-turn travel. */
+    fun startTravel(destId: Int) {
+        val s = _ui.value
+        val wm = s.worldMap ?: return
+        val dest = wm.locations.getOrNull(destId) ?: return
+        if (destId == s.currentLoc) return
+
+        // Find direct road
+        val road = wm.roads.firstOrNull {
+            (it.from == s.currentLoc && it.to == destId) ||
+            (it.to == s.currentLoc && it.from == destId)
+        } ?: return
+
+        val travel = TravelState(
+            destId = destId,
+            totalLeagues = road.dist,
+            leaguesTraveled = 0,
+            roadPath = listOf(s.currentLoc, destId),
+            destName = dest.name
+        )
+        _ui.value = s.copy(travelState = travel)
+
+        // Submit the first travel turn
+        submitAction("I begin traveling to ${dest.name}. The road stretches ${road.dist} leagues ahead.")
+    }
+
+    fun cancelTravel() {
+        val s = _ui.value
+        if (s.travelState != null) {
+            _ui.value = s.copy(travelState = null)
+            postSystemMessage("Travel cancelled. You stop on the road.")
+        }
+    }
 
     /** Current target-prompt spec — null when no picker is showing. */
     private val _targetPrompt = MutableStateFlow<com.realmsoffate.game.ui.overlays.TargetPromptSpec?>(null)
@@ -182,6 +542,7 @@ class GameViewModel(
     private val _activeShop = MutableStateFlow<String?>(null)
     val activeShop: StateFlow<String?> = _activeShop.asStateFlow()
     fun dismissShop() { _activeShop.value = null }
+    fun openShop(merchantName: String) { _activeShop.value = merchantName }
 
     fun buyItem(merchant: String, itemName: String, price: Int) {
         val s = _ui.value
@@ -334,6 +695,7 @@ class GameViewModel(
                 refreshSlots()
             }
         }
+        viewModelScope.launch { prefs.fontScale.collect { _fontScale.value = it } }
     }
 
     fun refreshSlots() {
@@ -345,6 +707,12 @@ class GameViewModel(
 
     /** Returns to the title screen without wiping state (for pause/menu). */
     fun returnToTitle() {
+        // Drop any in-flight overlays so they don't bleed into the next load.
+        _pendingLevelUp.value = null
+        _restOverlay.value = null
+        _activeShop.value = null
+        _targetPrompt.value = null
+        _showInitiative.value = false
         _screen.value = Screen.Title
         refreshSlots()
     }
@@ -445,14 +813,9 @@ class GameViewModel(
             val startLoc = wm.locations[wm.startId]
             startLoc.discovered = true
 
-            // Roll an opening scenario + weather to set atmosphere.
+            // Pick an opening scenario.
             val scenario = Scenarios.random()
             scenario.modify?.invoke(char)
-            val mutationIds = lore.mutationIds.toSet()
-            val weather = WeatherSystem.applyMutations(
-                WeatherSystem.roll(startLoc.type),
-                mutationIds
-            )
 
             _ui.value = GameUiState(
                 character = char,
@@ -460,8 +823,6 @@ class GameViewModel(
                 currentLoc = wm.startId,
                 playerPos = PlayerPos(startLoc.x.toFloat(), startLoc.y.toFloat()),
                 worldLore = lore,
-                weather = weather,
-                timeOfDay = "day",
                 history = emptyList(),
                 currentScene = scenario.sceneHint,
                 messages = listOf(
@@ -469,6 +830,13 @@ class GameViewModel(
                 )
             )
             _screen.value = Screen.Game
+
+            // Start tutorial on first game.
+            viewModelScope.launch {
+                if (!prefs.isTutorialComplete()) {
+                    _tutorialStep.value = 0
+                }
+            }
 
             // Seed opening narration with the scenario prompt template.
             val nearby = WorldGen.connected(wm, wm.startId).joinToString(", ") { (d, dist) -> "${d.icon} ${d.name} (${dist}lg)" }
@@ -478,22 +846,217 @@ class GameViewModel(
         }
     }
 
+    /**
+     * Atomic guard against rapid taps. Compose-side click events can fire faster
+     * than the StateFlow update propagates, so we synchronously claim the slot
+     * by writing `isGenerating = true` before any further work.
+     */
+    @Synchronized
+    private fun tryClaimSubmit(): GameUiState? {
+        val state = _ui.value
+        if (state.character == null) return null
+        if (state.isGenerating || state.preRoll != null) return null
+        // Reserve the slot immediately. Subsequent taps will see isGenerating=true
+        // and bail before we even compute the roll.
+        _ui.value = state.copy(isGenerating = true)
+        return state
+    }
+
+    /**
+     * Local keyword-based skill classifier — used as fallback when the API
+     * classifier fails. Always returns a skill name (never null): dialogue → Persuasion,
+     * unrecognised actions → Perception.
+     */
+    private fun localClassifyAction(action: String): String? {
+        val a = action.lowercase()
+        return when {
+            // Combat
+            a.contains("attack") || a.contains("strike") || a.contains("stab") ||
+            a.contains("slash") || a.contains("shoot") || a.contains("kill") ||
+            a.contains("punch") || a.contains("kick") || a.contains("fight") -> "Attack"
+            // Stealth
+            a.contains("sneak") || a.contains("hide") || a.contains("creep") ||
+            a.contains("shadow") || a.contains("silent") || a.contains("stealthi") -> "Stealth"
+            // Persuasion / social
+            a.contains("persuade") || a.contains("convince") || a.contains("plead") ||
+            a.contains("negotiate") || a.contains("charm") || a.contains("flatter") -> "Persuasion"
+            // Deception
+            a.contains("lie") || a.contains("deceive") || a.contains("bluff") ||
+            a.contains("trick") || a.contains("pretend") || a.contains("disguise") -> "Deception"
+            // Intimidation
+            a.contains("intimidat") || a.contains("threaten") || a.contains("scare") ||
+            a.contains("menac") || a.contains("growl") -> "Intimidation"
+            // Perception
+            a.contains("look") || a.contains("search") || a.contains("examine") ||
+            a.contains("inspect") || a.contains("scan") || a.contains("watch") ||
+            a.contains("listen") || a.contains("observe") -> "Perception"
+            // Investigation
+            a.contains("investigat") || a.contains("analyze") || a.contains("study") ||
+            a.contains("deduc") || a.contains("clue") -> "Investigation"
+            // Athletics
+            a.contains("climb") || a.contains("jump") || a.contains("lift") ||
+            a.contains("push") || a.contains("pull") || a.contains("swim") ||
+            a.contains("grapple") || a.contains("shove") || a.contains("break down") -> "Athletics"
+            // Acrobatics
+            a.contains("dodge") || a.contains("flip") || a.contains("tumble") ||
+            a.contains("balance") || a.contains("acrobat") || a.contains("leap") -> "Acrobatics"
+            // Sleight of Hand
+            a.contains("pick the lock") || a.contains("pickpocket") || a.contains("steal") ||
+            a.contains("lockpick") || a.contains("sleight") || a.contains("pilfer") ||
+            a.contains("pick lock") || a.contains("unlock") -> "Sleight Of Hand"
+            // Arcana
+            a.contains("cast") || a.contains("spell") || a.contains("magic") ||
+            a.contains("arcane") || a.contains("enchant") || a.contains("ritual") -> "Arcana"
+            // Medicine
+            a.contains("heal") || a.contains("bandage") || a.contains("treat wound") ||
+            a.contains("first aid") || a.contains("medicin") -> "Medicine"
+            // Survival
+            a.contains("track") || a.contains("forage") || a.contains("hunt") ||
+            a.contains("navigate") || a.contains("camp") || a.contains("survive") -> "Survival"
+            // Religion
+            a.contains("pray") || a.contains("bless") || a.contains("divine") ||
+            a.contains("holy") || a.contains("temple") || a.contains("worship") -> "Religion"
+            // Nature
+            a.contains("nature") || a.contains("animal") || a.contains("plant") ||
+            a.contains("herb") || a.contains("beast") -> "Nature"
+            // Insight
+            a.contains("read") || a.contains("sense motive") || a.contains("insight") ||
+            a.contains("tell if") || a.contains("lying") || a.contains("trust") -> "Insight"
+            // Performance
+            a.contains("sing") || a.contains("play music") || a.contains("perform") ||
+            a.contains("dance") || a.contains("entertain") -> "Performance"
+            // Pure dialogue — use Persuasion as the social check
+            a.contains("say ") || a.contains("tell ") || a.contains("ask ") ||
+            a.contains("i say") || a.contains("i tell") || a.contains("i ask") ||
+            a.startsWith("\"") || a.startsWith("\u201c") -> "Persuasion"
+            // Default: if it sounds like an action, use Perception as catch-all
+            a.contains("try") || a.contains("attempt") -> "Perception"
+            else -> "Perception"
+        }
+    }
+
     fun submitAction(action: String, skill: String? = null, seed: Boolean = false) {
+        val state = tryClaimSubmit() ?: return
+        val char = state.character ?: return  // re-checked for the type checker
+
+        // Seed turn (opening narration) — skip the pre-roll preview entirely.
+        if (seed) {
+            _ui.value = _ui.value.copy(isGenerating = false)
+            dispatchToAi(action, skill, seed = true, preRolled = Dice.d20())
+            return
+        }
+
+        // No skill specified — fire a lightweight classifier to determine whether
+        // this freeform action warrants a skill check. The user sees "thinking"
+        // dots during the ~200ms call since isGenerating stays true.
+        if (skill == null) {
+            // Fire a lightweight classifier to determine if this action warrants a check.
+            // Falls back to local keyword matching if the API call fails.
+            viewModelScope.launch {
+                var classified = try {
+                    ai.classifyAction(_apiKey.value, action)
+                } catch (_: Exception) { null }
+
+                // Local fallback if the API classifier failed or returned null
+                if (classified == null) {
+                    classified = localClassifyAction(action)
+                }
+
+                // Every action gets a pre-roll — use the classified skill (Attack uses STR,
+                // dialogue defaults to Persuasion, catch-all defaults to Perception).
+                val effectiveSkill = classified ?: "Perception"
+                val roll = Dice.d20()
+                val ability = if (effectiveSkill == "Attack") "STR" else skillToAbility(effectiveSkill)
+                val mod = char.abilities.modByName(ability)
+                val prof = if (classProficient(char.cls, effectiveSkill)) char.proficiency else 0
+                val total = roll + mod + prof
+                _ui.value = _ui.value.copy(
+                    isGenerating = false,
+                    preRoll = PreRollDisplay(
+                        action = action,
+                        skill = effectiveSkill,
+                        ability = ability,
+                        roll = roll,
+                        mod = mod,
+                        prof = prof,
+                        total = total,
+                        crit = roll == 20 || roll == 1
+                    )
+                )
+            }
+            return
+        }
+
+        // Skill-tagged action: roll d20 + show preview. The actual AI call
+        // is deferred until the player taps Send It on the dice breakdown.
+        val roll = Dice.d20()
+        val ability = skillToAbility(skill)
+        val mod = char.abilities.modByName(ability)
+        val prof = if (classProficient(char.cls, skill)) char.proficiency else 0
+        val total = roll + mod + prof
+        _ui.value = _ui.value.copy(
+            isGenerating = false,  // release the claim; preRoll is the new gate
+            preRoll = PreRollDisplay(
+                action = action,
+                skill = skill,
+                ability = ability,
+                roll = roll,
+                mod = mod,
+                prof = prof,
+                total = total,
+                crit = roll == 20 || roll == 1
+            )
+        )
+    }
+
+    /**
+     * Called when the player taps Continue on the pre-roll preview. Posts the
+     * optimistic player bubble (so the chat shows what they did immediately),
+     * captures the turn-start scroll anchor, and dispatches to the AI with the
+     * pre-rolled value.
+     */
+    fun confirmPreRoll() {
+        val state = _ui.value
+        val pre = state.preRoll ?: return
+        // Drop the preview AND post the player bubble synchronously so the feed
+        // updates the moment the player commits.
+        val newMsgs = state.messages + DisplayMessage.Player(pre.action)
+        _ui.value = state.copy(
+            preRoll = null,
+            messages = newMsgs,
+            turnStartIndex = newMsgs.lastIndex
+        )
+        dispatchToAi(pre.action, pre.skill, seed = false, preRolled = pre.roll)
+    }
+
+    fun cancelPreRoll() {
+        // Rolls are final — no take-backs
+    }
+
+    /**
+     * Sends the action to the AI provider with the pre-rolled d20 value. Splits
+     * the original submitAction's network + parse work out of the entry point so
+     * the pre-roll dialog can defer the actual call.
+     */
+    private fun dispatchToAi(
+        action: String,
+        skill: String?,
+        seed: Boolean,
+        preRolled: Int
+    ) {
         val state = _ui.value
         val char = state.character ?: return
-        if (state.isGenerating) return
         viewModelScope.launch {
             _ui.value = state.copy(isGenerating = true, error = null)
 
-            // Roll d20 for the action (always a real 1-20; seed turns just skip the dice line in the prompt)
-            val roll = Dice.d20()
+            val roll = preRolled
             val ability = skill?.let { skillToAbility(it) } ?: "STR"
             val mod = char.abilities.modByName(ability)
             val prof = if (skill != null && classProficient(char.cls, skill)) char.proficiency else 0
             val total = roll + mod + prof
 
-            // Build per-turn user prompt (dynamic context)
-            val sys = Prompts.SYS
+            val sessionSystem = sessionSystemFor(state, char)
+            val sys = Prompts.SYS + "\n\n" + sessionSystem
             val userPrompt = buildUserPrompt(state, char, action, skill, ability, roll, mod, prof, total, suppressDice = seed)
             val userMsg = ChatMsg(role = "user", content = userPrompt)
             val nh = state.history + userMsg
@@ -506,11 +1069,20 @@ class GameViewModel(
             }
 
             val parsed = TagParser.parse(raw, state.turns + 1)
+            logDebugTurn(state.turns + 1, action, skill, roll, userPrompt, raw, parsed)
             // On seed turns we don't surface the dice reveal — the character hasn't acted yet.
             val updated = applyParsed(state, char, parsed, action, roll, mod, prof, suppressCheck = seed)
+            // Decide whether the session system we just computed is still valid for the
+            // next turn. If applyParsed advanced the character's level or replaced
+            // worldLore, the string is stale — null out to force rebuild. Otherwise
+            // persist it so next turn hits the DeepSeek prefix cache.
+            val levelChanged = updated.character?.level != state.character?.level
+            val loreChanged = updated.worldLore !== state.worldLore
+            val sessionSystemToPersist = if (levelChanged || loreChanged) null else sessionSystem
             val withHistory = updated.copy(
                 history = nh + ChatMsg(role = "assistant", content = raw),
-                isGenerating = false
+                isGenerating = false,
+                cachedSessionSystem = sessionSystemToPersist
             )
             _ui.value = withHistory
 
@@ -526,6 +1098,10 @@ class GameViewModel(
                     )
                     logTimeline("event", "Went down — death saves beginning")
                 }
+                // Persist the death-save state so a force-quit during this fragile
+                // window restores the player at the brink rather than walking around at 0 HP.
+                saveToSlot("autosave")
+                withHistory.character?.let { c -> saveToSlot(SaveStore.slotKeyFor(c.name)) }
                 return@launch
             } else if (liveHp > 0 && _ui.value.deathSave != null) {
                 // Healed out of it.
@@ -536,21 +1112,60 @@ class GameViewModel(
             }
 
             // Combat state: on scene=battle, lazily start a round tracker; otherwise clear.
+            // Case-insensitive in case the AI emits "Battle" / "BATTLE" — TagParser
+            // already trims, but the source-of-truth example uses lowercase so we
+            // defend rather than depend on it.
             val nowScene = withHistory.currentScene
             _ui.value = _ui.value.let { cur ->
                 val ch2 = cur.character ?: return@let cur
-                if (nowScene == "battle") {
+                if (nowScene.equals("battle", ignoreCase = true)) {
                     val existing = cur.combat
-                    val combat = if (existing == null) {
-                        // First round of a new battle — flash the INITIATIVE overlay.
+                    var combat = if (existing == null) {
                         _showInitiative.value = true
                         CombatSystem.startCombat(ch2, cur.party)
                     } else {
                         CombatSystem.syncHp(existing.next(), ch2, cur.party)
                     }
-                    cur.copy(combat = combat)
+                    // Merge enemy combatants from [ENEMY] tags into the initiative order
+                    var updatedNpcLog = cur.npcLog
+                    if (parsed.enemies.isNotEmpty()) {
+                        val currentOrder = combat.order.toMutableList()
+                        parsed.enemies.forEach { (name, hp, maxHp) ->
+                            val idx = currentOrder.indexOfFirst { it.name.equals(name, true) && !it.isPlayer }
+                            if (idx >= 0) {
+                                // Update existing enemy HP
+                                currentOrder[idx] = currentOrder[idx].copy(hp = hp, maxHp = maxHp)
+                            } else {
+                                // New enemy — add to the order
+                                currentOrder.add(Combatant(name = name, hp = hp, maxHp = maxHp, initiative = Dice.d(20), isPlayer = false))
+                            }
+                        }
+                        // Find enemies at 0 HP before removing them — mark them dead in npcLog
+                        val killedByHp = currentOrder.filter { !it.isPlayer && it.hp <= 0 }.map { it.name }
+                        if (killedByHp.isNotEmpty()) {
+                            val mutableLog = updatedNpcLog.toMutableList()
+                            killedByHp.forEach { deadName ->
+                                val npcIdx = mutableLog.indexOfFirst { it.name.equals(deadName, true) }
+                                if (npcIdx >= 0) {
+                                    mutableLog[npcIdx] = mutableLog[npcIdx].copy(
+                                        status = "dead",
+                                        relationship = "dead",
+                                        relationshipNote = "Killed turn ${cur.turns}"
+                                    )
+                                }
+                            }
+                            updatedNpcLog = mutableLog
+                        }
+                        // Remove enemies at 0 HP
+                        currentOrder.removeAll { !it.isPlayer && it.hp <= 0 }
+                        combat = combat.copy(order = currentOrder)
+                    }
+                    cur.copy(combat = combat, npcLog = updatedNpcLog)
                 } else if (cur.combat != null) {
-                    cur.copy(combat = null)
+                    cur.copy(
+                        combat = null,
+                        messages = cur.messages + DisplayMessage.System("⚔️ Combat has ended.")
+                    )
                 } else cur
             }
 
@@ -567,19 +1182,59 @@ class GameViewModel(
 
     fun pickChoice(c: Choice) = submitAction(c.text, skill = c.skill)
 
+    fun toggleBookmark(text: String) {
+        val s = _ui.value
+        val current = s.bookmarks.toMutableList()
+        val trimmed = text.take(300)
+        if (current.any { it == trimmed }) current.remove(trimmed)
+        else current.add(trimmed)
+        _ui.value = s.copy(bookmarks = current)
+    }
+
+    fun removeBookmark(text: String) {
+        val s = _ui.value
+        _ui.value = s.copy(bookmarks = s.bookmarks.filter { it != text })
+    }
+
+    fun isBookmarked(text: String): Boolean = _ui.value.bookmarks.contains(text.take(300))
+
     /** Slash-command helper — inserts a system line into the message feed. */
     fun postSystemMessage(text: String) {
         val s = _ui.value
         _ui.value = s.copy(messages = s.messages + DisplayMessage.System(text))
     }
 
+    /**
+     * Returns the memoized per-game stable system suffix, building and caching it
+     * on first call. The cache is invalidated (set to null) wherever level, mutations,
+     * worldLore, or the character itself change. See GameUiState.cachedSessionSystem.
+     */
+    private fun sessionSystemFor(state: GameUiState, char: Character): String {
+        // Pure: returns the cached string if present, otherwise builds a fresh
+        // one. The caller is responsible for persisting the result into state
+        // after applyParsed runs — writing to _ui.value here would get clobbered
+        // when applyParsed's returned copy is committed.
+        return state.cachedSessionSystem
+            ?: com.realmsoffate.game.data.buildSessionSystem(char, state.worldLore)
+    }
+
+    /**
+     * Per-turn volatile state briefing. Character sheet / backstory / mutations /
+     * world palette have all moved to buildSessionSystem (now in the system message)
+     * so DeepSeek's prefix cache can hit them across turns.
+     */
     private fun buildUserPrompt(
         s: GameUiState, ch: Character, action: String, skill: String?, ability: String,
         roll: Int, mod: Int, prof: Int, total: Int, suppressDice: Boolean = false
     ): String {
-        val loc = s.worldMap?.locations?.getOrNull(s.currentLoc)
-        val localFaction = LoreGen.findLocalFaction(s.worldMap!!, s.worldLore, s.currentLoc)
-        val nearby = WorldGen.connected(s.worldMap, s.currentLoc)
+        // Defensive: if worldMap is somehow null (shouldn't happen post-startNewGame
+        // but a corrupt save or interrupted init could leave it that way), bail out
+        // with a minimal action context rather than NPE'ing the whole turn.
+        val wm = s.worldMap ?: return "ACTION: $action"
+        val loc = wm.locations.getOrNull(s.currentLoc)
+        val localFaction = LoreGen.findLocalFaction(wm, s.worldLore, s.currentLoc)
+        val nearby = WorldGen.connected(wm, s.currentLoc)
+
         val eventCtx = if (s.worldEvents.isNotEmpty())
             "\nRECENT WORLD EVENTS (reference these):\n" +
                 s.worldEvents.takeLast(3).joinToString("\n") { "${it.icon} ${it.prompt}" }
@@ -598,45 +1253,33 @@ class GameViewModel(
             .joinToString("\n") { "${it.name} (${it.race} ${it.role})" }
             .let { if (it.isNotBlank()) "\nNPCs HERE:\n$it" else "" }
 
-        val mutCtx = s.worldLore?.mutations.orEmpty()
-            .joinToString("\n") { "- $it" }
-            .let { if (it.isNotBlank()) "\nWORLD CONDITIONS:\n$it" else "" }
-
-        val primordialCtx = s.worldLore?.primordial.orEmpty().take(1)
-            .joinToString("\n") { "- $it" }
-            .let { if (it.isNotBlank()) "\nWORLD LORE (refer obliquely):\n$it" else "" }
-
         val inv = ch.inventory.filter { it.equipped }.joinToString(", ") { it.name }.ifBlank { "nothing" }
         val invAll = ch.inventory.joinToString(", ") { "${it.name} (x${it.qty})" }
 
-        // Expand mutation prompt strings for the narrator — each mutation's full
-        // id-mapped AI prompt string is richer than the short description string.
-        val mutationPrompts = s.worldLore?.mutationIds.orEmpty()
-            .mapNotNull { Mutations.find(it)?.prompt }
-            .joinToString("\n")
-            .let { if (it.isNotBlank()) "\nACTIVE MUTATIONS:\n$it" else "" }
-        val weatherLine = WeatherSystem.table[s.weather]?.let {
-            "\nWEATHER: ${it.label} (${it.effects})"
-        } ?: ""
-
         val cs = buildString {
-            append("You are ${ch.name}, a L${ch.level} ${ch.race} ${ch.cls}.")
-            append("\nHP:${ch.hp}/${ch.maxHp}  AC:${ch.ac}  Gold:${ch.gold}")
-            append("\nABILITIES — STR:${ch.abilities.str} DEX:${ch.abilities.dex} CON:${ch.abilities.con} INT:${ch.abilities.int} WIS:${ch.abilities.wis} CHA:${ch.abilities.cha}")
-            append("\nPROFICIENCY: +${ch.proficiency}")
+            // Per-turn volatile state — HP/AC/Gold change every turn so stay here
+            append("HP:${ch.hp}/${ch.maxHp}  AC:${ch.ac}  Gold:${ch.gold}")
             append("\nMORALITY: ${s.morality}   ")
             append("FACTION REP: ${s.factionRep.entries.joinToString { "${it.key}:${it.value}" }.ifBlank { "none" }}")
-            append("\nRACIAL PHYSIQUE: ${ch.racialPhysique}")
             loc?.let { append("\nLOCATION: ${it.name} (${it.type})") }
             localFaction?.let { append("\nLOCAL FACTION: ${it.name} (${it.type}); currency: ${it.currency}") }
             append("\nNEARBY: ${nearby.joinToString(", ") { "${it.first.name} (${it.second}lg)" }}")
-            append("\nTIME: ${s.timeOfDay}  TURN: ${s.turns + 1}")
-            append(weatherLine)
-            append(mutationPrompts)
-            append(mutCtx); append(primordialCtx); append(partyCtx); append(questCtx); append(npcCtx); append(eventCtx)
+            append("\nTURN: ${s.turns + 1}")
+            s.travelState?.let { t ->
+                append("\nTRAVELING: You are on the road to ${t.destName}. ${t.leaguesTraveled}/${t.totalLeagues} leagues traveled. ${t.totalLeagues - t.leaguesTraveled} leagues remaining.")
+                append("\nNarrate the journey — describe the road, encounters, weather, terrain. The player is actively traveling, not at a settled location.")
+            }
+            append(partyCtx); append(questCtx); append(npcCtx); append(eventCtx)
             append("\nEquipped: $inv")
             append("\nInventory: ${invAll.ifBlank { "empty" }}")
-            ch.backstory?.let { append("\nBACKSTORY: ${it.promptText}") }
+            // Feed recent narration context so the AI doesn't lose the thread
+            val recentNarration = s.messages
+                .filterIsInstance<DisplayMessage.Narration>()
+                .takeLast(2)
+                .joinToString("\n---\n") { it.text.take(300) }
+            if (recentNarration.isNotBlank()) {
+                append("\n\nRECENT STORY (continue from here, do not reset or contradict):\n$recentNarration")
+            }
         }
 
         val diceLine = if (suppressDice) "" else "\nDICE: d20=$roll" +
@@ -651,6 +1294,10 @@ class GameViewModel(
         playerAction: String, roll: Int, mod: Int, prof: Int,
         suppressCheck: Boolean = false
     ): GameUiState {
+        // Capture stats before mutations for stat-change pill display
+        val hpBefore = ch.hp
+        val goldBefore = ch.gold
+
         // Mutate a working copy of the character
         val char = ch.copy(
             abilities = ch.abilities.copy(),
@@ -695,13 +1342,36 @@ class GameViewModel(
                 char.spellSlots[idx] = n
             }
             pendingLevelUp = char.level
+            // Feat levels: 4, 8, 12, 16, 20 — offer feat choice instead of stat points
+            if (char.level % 4 == 0) {
+                _pendingFeat.value = true
+            } else {
+                _pendingStatPoints.value += 2
+            }
             logTimeline("levelup", "Reached level ${char.level}.")
         }
 
-        // Display message list
+        // Display message list — the player bubble is already in state.messages
+        // (posted optimistically by confirmPreRoll), so we just append narration.
+        // Seed turns are the exception: they have no preRoll path so the player
+        // bubble must be added here.
         val newMsgs = state.messages.toMutableList().apply {
-            add(DisplayMessage.Player(playerAction))
-            add(DisplayMessage.Narration(parsed.narration, parsed.scene, parsed.sceneDesc))
+            val alreadyHasPlayer = lastOrNull() is DisplayMessage.Player &&
+                (lastOrNull() as? DisplayMessage.Player)?.text == playerAction
+            if (!alreadyHasPlayer) add(DisplayMessage.Player(playerAction))
+            add(DisplayMessage.Narration(
+                parsed.narration, parsed.scene, parsed.sceneDesc,
+                hpBefore = hpBefore, hpAfter = char.hp, maxHp = char.maxHp,
+                goldBefore = goldBefore, goldAfter = char.gold,
+                xpGained = parsed.xp,
+                conditionsAdded = parsed.conditionsAdded,
+                conditionsRemoved = parsed.conditionsRemoved,
+                itemsGained = parsed.itemsGained.map { it.name },
+                itemsRemoved = parsed.itemsRemoved,
+                moralDelta = parsed.moralDelta,
+                repDeltas = parsed.repDeltas,
+                segments = parsed.segments
+            ))
         }
 
         // Morality + faction rep
@@ -710,12 +1380,48 @@ class GameViewModel(
             parsed.repDeltas.forEach { (f, d) -> it[f] = (it.getOrDefault(f, 0) + d).coerceIn(-100, 100) }
         }
 
-        // Travel — rolls fresh weather for the new terrain type.
+        // Travel — turn-by-turn progression.
         var currentLoc = state.currentLoc
         var worldMap = state.worldMap
         var playerPos = state.playerPos
-        var newWeather = state.weather
-        if (parsed.travelTo != null && worldMap != null) {
+        var travelState = state.travelState
+
+        if (travelState != null && worldMap != null) {
+            // Progress travel by ~2-4 leagues per turn (road travel pace)
+            val leaguesThisTurn = 2 + (roll % 3) // 2-4 leagues based on dice
+            val newTraveled = (travelState.leaguesTraveled + leaguesThisTurn)
+                .coerceAtMost(travelState.totalLeagues)
+
+            if (newTraveled >= travelState.totalLeagues) {
+                // Arrived at destination
+                val dest = worldMap.locations.getOrNull(travelState.destId)
+                if (dest != null) {
+                    if (!dest.discovered) {
+                        val newLocs = worldMap.locations.toMutableList().also { it[travelState.destId] = dest.copy(discovered = true) }
+                        worldMap = worldMap.copy(locations = newLocs)
+                    }
+                    currentLoc = travelState.destId
+                    playerPos = PlayerPos(dest.x.toFloat(), dest.y.toFloat())
+                    newMsgs.add(DisplayMessage.System("You arrive at ${dest.icon} ${dest.name}"))
+                    logTimeline("travel", "Arrived at ${dest.name}")
+                }
+                travelState = null // Travel complete
+            } else {
+                // Still traveling — interpolate position along the road
+                val progress = newTraveled.toFloat() / travelState.totalLeagues.toFloat()
+                val fromLoc = worldMap.locations.getOrNull(state.currentLoc)
+                val toLoc = worldMap.locations.getOrNull(travelState.destId)
+                if (fromLoc != null && toLoc != null) {
+                    val interpX = fromLoc.x + (toLoc.x - fromLoc.x) * progress
+                    val interpY = fromLoc.y + (toLoc.y - fromLoc.y) * progress
+                    playerPos = PlayerPos(interpX, interpY)
+                }
+                travelState = travelState.copy(leaguesTraveled = newTraveled)
+                val remaining = travelState.totalLeagues - newTraveled
+                newMsgs.add(DisplayMessage.System("Traveled $leaguesThisTurn leagues. $remaining leagues remain to ${travelState.destName}."))
+            }
+        } else if (parsed.travelTo != null && worldMap != null) {
+            // Legacy instant travel from AI [TRAVEL:] tag (when not using map travel)
             val idx = worldMap.locations.indexOfFirst { it.name.equals(parsed.travelTo, true) }
             if (idx >= 0) {
                 val dest = worldMap.locations[idx]
@@ -725,8 +1431,6 @@ class GameViewModel(
                 }
                 currentLoc = idx
                 playerPos = PlayerPos(dest.x.toFloat(), dest.y.toFloat())
-                val mutationIds = state.worldLore?.mutationIds.orEmpty().toSet()
-                newWeather = WeatherSystem.applyMutations(WeatherSystem.roll(dest.type), mutationIds)
                 newMsgs.add(DisplayMessage.System("You travel to ${dest.icon} ${dest.name}"))
                 logTimeline("travel", "Arrived at ${dest.name}")
             }
@@ -734,6 +1438,7 @@ class GameViewModel(
 
         // NPC log merge
         val npcLog = state.npcLog.toMutableList()
+        val currentLocName = worldMap?.locations?.getOrNull(currentLoc)?.name.orEmpty()
         parsed.npcsMet.forEach { n ->
             val existing = npcLog.indexOfFirst { it.name.equals(n.name, true) }
             if (existing >= 0) {
@@ -741,10 +1446,37 @@ class GameViewModel(
                 npcLog[existing] = old.copy(
                     relationship = n.relationship,
                     lastSeenTurn = state.turns + 1,
-                    lastLocation = worldMap?.locations?.getOrNull(currentLoc)?.name.orEmpty()
+                    lastLocation = currentLocName
                 )
             } else {
-                npcLog.add(n.copy(lastLocation = worldMap?.locations?.getOrNull(currentLoc)?.name.orEmpty()))
+                npcLog.add(n.copy(lastLocation = currentLocName))
+            }
+        }
+        // Auto-register any NPC who appears in a dialog or action tag but was not
+        // formally introduced via [NPC_MET]. The narrator often skips the tag for
+        // minor or recurring NPCs, and the user expects every named speaker/actor
+        // to show up in the log. Later [NPC_MET] updates will enrich these stubs.
+        val autoNames = buildList {
+            parsed.npcDialogs.forEach { (name, _) -> if (name.isNotBlank()) add(name) }
+            parsed.npcActions.forEach { (name, _) -> if (name.isNotBlank()) add(name) }
+        }.distinctBy { it.lowercase() }
+        autoNames.forEach { name ->
+            val idx = npcLog.indexOfFirst { it.name.equals(name, true) }
+            if (idx >= 0) {
+                // Already logged — refresh lastSeen and location.
+                val old = npcLog[idx]
+                npcLog[idx] = old.copy(
+                    lastSeenTurn = state.turns + 1,
+                    lastLocation = currentLocName.ifBlank { old.lastLocation }
+                )
+            } else {
+                // Stub entry — name only; later turns (or an [NPC_MET] tag) fill in the rest.
+                npcLog.add(LogNpc(
+                    name = name,
+                    lastLocation = currentLocName,
+                    metTurn = state.turns + 1,
+                    lastSeenTurn = state.turns + 1
+                ))
             }
         }
         // Attach extracted dialogue to any NPC currently in the log so the journal
@@ -761,6 +1493,156 @@ class GameViewModel(
                     lastSeenTurn = state.turns + 1
                 )
             }
+        }
+        // Also attach dialogue captured via the structured [NPC_DIALOG:Name] tag
+        // (parsed.dialogues comes from a regex fallback over the prose body; the
+        // structured tag content bypasses that pass).
+        parsed.npcDialogs.forEach { (name, quote) ->
+            val idx = npcLog.indexOfFirst { it.name.equals(name, true) }
+            if (idx >= 0 && quote.isNotBlank()) {
+                val old = npcLog[idx]
+                val entry = "T${state.turns + 1}: \"$quote\""
+                if (entry !in old.dialogueHistory) {
+                    val merged = (old.dialogueHistory + entry).takeLast(20).toMutableList()
+                    npcLog[idx] = old.copy(dialogueHistory = merged, lastSeenTurn = state.turns + 1)
+                }
+            }
+        }
+        // Narrator-curated memorable quotes via [NPC_QUOTE:Name|quote] — store in
+        // a separate list (capped at 12) so they persist beyond the rolling
+        // dialogueHistory buffer. Deduplicated by exact entry text.
+        parsed.npcQuotes.forEach { (name, quote) ->
+            val idx = npcLog.indexOfFirst { it.name.equals(name, true) }
+            if (idx >= 0 && quote.isNotBlank()) {
+                val old = npcLog[idx]
+                val entry = "T${state.turns + 1}: \"$quote\""
+                if (entry !in old.memorableQuotes) {
+                    val merged = (old.memorableQuotes + entry).takeLast(12).toMutableList()
+                    npcLog[idx] = old.copy(memorableQuotes = merged, lastSeenTurn = state.turns + 1)
+                }
+            }
+        }
+
+        // NPC deaths
+        parsed.npcDeaths.forEach { deadName ->
+            val idx = npcLog.indexOfFirst { it.name.equals(deadName, true) }
+            if (idx >= 0) {
+                npcLog[idx] = npcLog[idx].copy(
+                    status = "dead",
+                    relationship = "dead",
+                    relationshipNote = "Killed turn ${state.turns + 1}"
+                )
+            }
+            newMsgs.add(DisplayMessage.System("☠️ ${deadName} has died."))
+            logTimeline("event", "$deadName died")
+        }
+
+        // Remove dead NPCs from combat order
+        val deadNames = parsed.npcDeaths.map { it.lowercase() }.toSet()
+        var combatState = state.combat
+        if (combatState != null && deadNames.isNotEmpty()) {
+            combatState = combatState.copy(
+                order = combatState.order.filter { c ->
+                    c.name.lowercase() !in deadNames
+                }
+            )
+        }
+
+        // NPC updates
+        parsed.npcUpdates.forEach { (name, field, value) ->
+            val idx = npcLog.indexOfFirst { it.name.equals(name, true) }
+            if (idx >= 0) {
+                val old = npcLog[idx]
+                npcLog[idx] = when (field.lowercase()) {
+                    "relationship" -> old.copy(relationship = value)
+                    "role" -> old.copy(role = value)
+                    "faction" -> old.copy(faction = value)
+                    "location" -> old.copy(lastLocation = value)
+                    "status" -> old.copy(status = value)
+                    "name" -> {
+                        // Player learned the NPC's real name — rename the existing
+                        // entry in place, and merge with any stub that was already
+                        // logged under the new name (e.g. the AI used the real name
+                        // before emitting the rename).
+                        val newName = value.trim()
+                        if (newName.isBlank() || newName.equals(old.name, true)) {
+                            old
+                        } else {
+                            val existingNewIdx = npcLog.indexOfFirst {
+                                it.name.equals(newName, true) && !it.name.equals(old.name, true)
+                            }
+                            if (existingNewIdx >= 0) {
+                                // Merge `old` (which has the history under the placeholder)
+                                // with the existing entry under the real name.
+                                val other = npcLog[existingNewIdx]
+                                val merged = mergeNpcEntries(primary = other, secondary = old).copy(name = newName)
+                                npcLog.removeAt(existingNewIdx)
+                                // Account for index shift: `idx` may have moved if
+                                // existingNewIdx was before it.
+                                val targetIdx = if (existingNewIdx < idx) idx - 1 else idx
+                                // Replace the renamed old entry at targetIdx with the merged entry.
+                                npcLog[targetIdx] = merged
+                                return@forEach
+                            }
+                            old.copy(name = newName)
+                        }
+                    }
+                    else -> old
+                }
+            }
+        }
+
+        // Faction updates
+        var worldLoreUpdated = state.worldLore
+        parsed.factionUpdates.forEach { (factionName, field, value) ->
+            worldLoreUpdated = worldLoreUpdated?.let { lore ->
+                val newFactions = lore.factions.map { f ->
+                    if (f.name.equals(factionName, true)) {
+                        when (field.lowercase()) {
+                            "status" -> f.copy(status = value)
+                            "ruler" -> f.copy(ruler = value, government = f.government?.copy(ruler = value))
+                            "disposition" -> f.copy(disposition = value)
+                            "mood" -> f.copy(mood = value)
+                            "description" -> f.copy(description = value)
+                            "type" -> f.copy(type = value)
+                            else -> f
+                        }
+                    } else f
+                }
+                lore.copy(factions = newFactions)
+            }
+            newMsgs.add(DisplayMessage.System("📜 ${factionName}: $field → $value"))
+            logTimeline("event", "Faction $factionName: $field changed to $value")
+        }
+
+        // Mark faction leaders as deceased when they die
+        parsed.npcDeaths.forEach { deadName ->
+            val factions = worldLoreUpdated?.factions.orEmpty()
+            factions.forEachIndexed { fIdx, faction ->
+                if (faction.ruler.equals(deadName, ignoreCase = true) ||
+                    faction.government?.ruler?.equals(deadName, ignoreCase = true) == true
+                ) {
+                    val updatedFactions = worldLoreUpdated!!.factions.toMutableList()
+                    updatedFactions[fIdx] = faction.copy(
+                        ruler = "$deadName (Deceased)",
+                        government = faction.government?.copy(ruler = "$deadName (Deceased)")
+                    )
+                    worldLoreUpdated = worldLoreUpdated!!.copy(factions = updatedFactions)
+                }
+            }
+        }
+
+        // New lore entries
+        parsed.loreEntries.forEach { entry ->
+            worldLoreUpdated = worldLoreUpdated?.let { lore ->
+                val newHistory = lore.history + HistoryEntry(
+                    era = "recent",
+                    year = state.turns + 1,
+                    text = entry
+                )
+                lore.copy(history = newHistory)
+            }
+            logTimeline("event", "Lore: $entry")
         }
 
         // Quests
@@ -790,78 +1672,139 @@ class GameViewModel(
             if (idx >= 0) quests[idx] = quests[idx].copy(status = "failed", turnCompleted = state.turns + 1)
         }
 
-        // Party joins
+        // Party joins + leaves
         val party = state.party.toMutableList().apply {
             parsed.partyJoins.forEach {
                 add(it)
                 logTimeline("birth", "${it.name} the ${it.race} ${it.role} joined the party.")
             }
+            parsed.partyLeaves.forEach { name ->
+                val idx = indexOfFirst { it.name.equals(name, ignoreCase = true) }
+                if (idx >= 0) {
+                    val gone = removeAt(idx)
+                    logTimeline("event", "${gone.name} left the party.")
+                }
+            }
         }
 
-        // Merchant stocks — popping up the Shop overlay when a new merchant appears.
+        // Merchant stocks — save stock and expose button; do NOT auto-open the overlay.
         val merchants = state.merchantStocks.toMutableMap()
+        val newMerchants = state.availableMerchants.toMutableList()
         parsed.shops.forEach { (name, items) ->
             merchants[name] = items
-            _activeShop.value = name
+            if (!newMerchants.contains(name)) newMerchants.add(name)
+            newMsgs.add(DisplayMessage.System("\uD83D\uDCB0 $name is open for business — tap to browse"))
         }
 
-        // Check display for animation (skipped on seed turns where no player action has occurred yet)
-        val check = if (suppressCheck) null else parsed.checks.firstOrNull()?.let { c ->
-            CheckDisplay(
-                skill = c.skill, ability = c.ability, dc = c.dc,
-                passed = c.passed, total = c.total, roll = roll,
-                mod = mod, prof = prof, crit = roll == 20 || roll == 1
-            )
+        // The pre-roll dialog already showed the breakdown to the player BEFORE
+        // dispatching to the AI. Showing the DiceRollerDialog again on the response
+        // would be a redundant second reveal — so we no longer populate `lastCheck`.
+        // Instead we post a single inline result line in the chat feed with the
+        // AUTHORITATIVE total (our d20 + mod + prof) and pass/fail vs the DC the
+        // narrator picked. This catches the case where the AI hallucinates a wrong
+        // total: we override and display the right one.
+        val check: CheckDisplay? = null
+        parsed.checks.firstOrNull()?.takeUnless { suppressCheck }?.let { c ->
+            val authTotal = roll + mod + prof
+            val passed = if (roll == 20) true
+                         else if (roll == 1) false
+                         else authTotal >= c.dc
+            val verdict = if (passed) "PASSED" else "FAILED"
+            val critLabel = when (roll) {
+                20 -> " · NAT 20!"
+                1 -> " · NAT 1!"
+                else -> ""
+            }
+            val resultLine = "${if (passed) "✓" else "✗"} ${c.skill} (${c.ability}) DC ${c.dc} — $verdict ($authTotal)$critLabel"
+            newMsgs.add(DisplayMessage.System(resultLine))
         }
 
         // Advance time contextually — [TIME:phase] tag forces, otherwise accumulator.
-        val (newTime, newAcc) = if (parsed.timeOfDay != null) {
-            parsed.timeOfDay to 0
-        } else {
-            val tick = TimeSystem.advance(
-                state.timeOfDay, state.timeAccumulator,
-                TimeSystem.classifyAction(playerAction)
-            )
-            tick.phase to tick.accumulator
-        }
-
+        // cachedSessionSystem is NOT set here — dispatchToAi decides after applyParsed
+        // whether to persist the freshly-built string or force a rebuild next turn.
         return state.copy(
             character = char,
             worldMap = worldMap,
+            worldLore = worldLoreUpdated ?: state.worldLore,
             currentLoc = currentLoc,
             playerPos = playerPos,
-            weather = newWeather,
             morality = newMorality,
             factionRep = newRep,
             npcLog = npcLog,
             party = party,
             quests = quests,
             merchantStocks = merchants,
+            availableMerchants = newMerchants,
             turns = state.turns + 1,
-            timeOfDay = newTime,
-            timeAccumulator = newAcc,
             currentScene = parsed.scene,
             currentSceneDesc = parsed.sceneDesc,
             currentChoices = parsed.choices,
             messages = newMsgs,
             lastCheck = check,
-            lastDice = roll
+            lastDice = roll,
+            combat = combatState,
+            travelState = travelState
         )
     }
 
-    private fun advanceTimeOfDay(cur: String): String = when (cur) {
-        "dawn" -> "day"; "day" -> "dusk"; "dusk" -> "night"; "night" -> "dawn"; else -> "day"
+    /**
+     * Merges two NPC log entries when the player learns a placeholder NPC's real
+     * name and both records exist. Prefers non-blank fields from [primary] (the
+     * entry under the real name), falling back to [secondary] (the placeholder).
+     * Unions dialogueHistory and memorableQuotes, preserving chronological order
+     * and deduplicating, then caps each at its usual size. Uses the earlier
+     * metTurn and later lastSeenTurn.
+     */
+    private fun mergeNpcEntries(primary: LogNpc, secondary: LogNpc): LogNpc {
+        fun pickStr(a: String, b: String): String = if (a.isNotBlank()) a else b
+        fun pickStrN(a: String?, b: String?): String? = a?.takeIf { it.isNotBlank() } ?: b
+        val dialog = (secondary.dialogueHistory + primary.dialogueHistory)
+            .distinct()
+            .takeLast(20)
+            .toMutableList()
+        val memorable = (secondary.memorableQuotes + primary.memorableQuotes)
+            .distinct()
+            .takeLast(12)
+            .toMutableList()
+        return primary.copy(
+            race = pickStr(primary.race, secondary.race),
+            role = pickStr(primary.role, secondary.role),
+            age = pickStr(primary.age, secondary.age),
+            relationship = pickStr(primary.relationship, secondary.relationship),
+            appearance = pickStr(primary.appearance, secondary.appearance),
+            personality = pickStr(primary.personality, secondary.personality),
+            thoughts = pickStr(primary.thoughts, secondary.thoughts),
+            faction = pickStrN(primary.faction, secondary.faction),
+            lastLocation = pickStr(primary.lastLocation, secondary.lastLocation),
+            metTurn = minOf(primary.metTurn, secondary.metTurn),
+            lastSeenTurn = maxOf(primary.lastSeenTurn, secondary.lastSeenTurn),
+            dialogueHistory = dialog,
+            memorableQuotes = memorable,
+            relationshipNote = pickStr(primary.relationshipNote, secondary.relationshipNote),
+            status = if (primary.status == "alive" && secondary.status != "alive") secondary.status else primary.status
+        )
     }
 
     private fun levelThreshold(level: Int): Int = Companion.levelThreshold(level)
 
+    /**
+     * World events used to interrupt the chat with a big EventCard announcement.
+     * That broke immersion and pre-empted the narrator's reveal. Now they're
+     * recorded silently — added to `worldEvents` (so the AI keeps weaving them
+     * into prose via the per-turn context) and to the timeline (for the death
+     * screen and Lore panel's history). The player discovers them through:
+     *   1) the narrator dropping organic hints next turn,
+     *   2) a small bell on the Lore button + the Lore panel's "Living World" feed.
+     */
     private fun maybeRollWorldEvent() {
         val s = _ui.value
         val ev = WorldEvents.maybeGenerate(s.worldLore, s.worldMap, s.turns, s.lastEventTurn) ?: return
         _ui.value = s.copy(
             worldEvents = s.worldEvents + ev,
             lastEventTurn = s.turns,
-            messages = s.messages + DisplayMessage.Event(ev.icon, ev.title, ev.text)
+            // One-line teaser only — no card, no spoilers. The narrator will
+            // weave the actual event into prose; the full text lives in Lore.
+            messages = s.messages + DisplayMessage.System("\uD83C\uDF10 The world shifts somewhere distant — see Lore.")
         )
         logTimeline("event", "${ev.title}: ${ev.text.take(60)}")
     }
@@ -875,6 +1818,43 @@ class GameViewModel(
         else -> "STR"
     }
 
+    /** Infer the most appropriate ability from free-form action text. */
+    private fun inferAbilityFromAction(action: String): String {
+        val a = action.lowercase()
+        return when {
+            // STR — physical force, breaking, lifting, grappling
+            a.contains("attack") || a.contains("strike") || a.contains("hit") ||
+            a.contains("punch") || a.contains("kick") || a.contains("grapple") ||
+            a.contains("shove") || a.contains("push") || a.contains("lift") ||
+            a.contains("break") || a.contains("smash") || a.contains("force") -> "STR"
+            // DEX — stealth, agility, ranged, dodging, lockpicking
+            a.contains("sneak") || a.contains("stealth") || a.contains("hide") ||
+            a.contains("dodge") || a.contains("shoot") || a.contains("arrow") ||
+            a.contains("bow") || a.contains("pick lock") || a.contains("lockpick") ||
+            a.contains("climb") || a.contains("acrobat") || a.contains("leap") ||
+            a.contains("jump") || a.contains("dart") || a.contains("dagger") -> "DEX"
+            // INT — knowledge, investigation, magic, reading, studying
+            a.contains("cast") || a.contains("spell") || a.contains("magic") ||
+            a.contains("investigate") || a.contains("study") || a.contains("read") ||
+            a.contains("arcana") || a.contains("recall") || a.contains("decipher") ||
+            a.contains("analyze") || a.contains("examine") || a.contains("research") -> "INT"
+            // WIS — perception, insight, survival, healing, sensing
+            a.contains("look") || a.contains("listen") || a.contains("search") ||
+            a.contains("perceive") || a.contains("sense") || a.contains("track") ||
+            a.contains("heal") || a.contains("medicine") || a.contains("pray") ||
+            a.contains("meditat") || a.contains("forage") || a.contains("surviv") -> "WIS"
+            // CHA — persuasion, deception, intimidation, performance, social
+            a.contains("persuad") || a.contains("convince") || a.contains("talk") ||
+            a.contains("say") || a.contains("tell") || a.contains("ask") ||
+            a.contains("lie") || a.contains("deceiv") || a.contains("bluff") ||
+            a.contains("intimidat") || a.contains("threaten") || a.contains("charm") ||
+            a.contains("flirt") || a.contains("sing") || a.contains("perform") ||
+            a.contains("bribe") || a.contains("negotiate") || a.contains("barter") -> "CHA"
+            // Default to STR for truly ambiguous actions
+            else -> "STR"
+        }
+    }
+
     private fun classProficient(cls: String, skill: String): Boolean {
         val clsDef = Classes.find(cls) ?: return false
         return clsDef.proficiencies.any { it.equals(skill, true) }
@@ -882,6 +1862,10 @@ class GameViewModel(
 
     fun dismissLastCheck() {
         _ui.value = _ui.value.copy(lastCheck = null)
+    }
+
+    fun clearError() {
+        _ui.value = _ui.value.copy(error = null)
     }
 
     fun updateHotbar(index: Int, spellName: String?) {
@@ -913,36 +1897,62 @@ class GameViewModel(
 
     fun saveToSlot(slot: String = "autosave") {
         viewModelScope.launch {
-            val s = _ui.value
-            val ch = s.character ?: return@launch
-            val wm = s.worldMap ?: return@launch
-            val data = SaveData(
-                character = ch,
-                morality = s.morality,
-                factionRep = s.factionRep,
-                worldMap = wm,
-                currentLoc = s.currentLoc,
-                playerPos = s.playerPos,
-                worldLore = s.worldLore,
-                worldEvents = s.worldEvents,
-                lastEventTurn = s.lastEventTurn,
-                npcLog = s.npcLog,
-                party = s.party,
-                quests = s.quests,
-                hotbar = s.hotbar,
-                timeOfDay = s.timeOfDay,
-                history = s.history,
-                turns = s.turns,
-                scene = s.currentScene,
-                savedAt = java.time.Instant.now().toString()
-            )
-            SaveStore.write(slot, data)
+            SaveStore.write(slot, snapshotSaveData() ?: return@launch)
         }
+    }
+
+    /**
+     * Captures every piece of state the player should see when reloading:
+     * character (with conditions + currency), world, NPC dialogue history,
+     * timeline, conditions, in-flight shop/buyback, weather, accumulator, the
+     * full chat-feed display messages, and the AI conversation history.
+     */
+    private fun snapshotSaveData(): SaveData? {
+        val s = _ui.value
+        val ch = s.character ?: return null
+        val wm = s.worldMap ?: return null
+        val buyback = _buybackStocks.value.mapValues { entry ->
+            entry.value.map { SerializedBuyback(item = it.item, price = it.price) }
+        }
+        return SaveData(
+            character = ch,
+            morality = s.morality,
+            factionRep = s.factionRep,
+            worldMap = wm,
+            currentLoc = s.currentLoc,
+            playerPos = s.playerPos,
+            worldLore = s.worldLore,
+            worldEvents = s.worldEvents,
+            lastEventTurn = s.lastEventTurn,
+            npcLog = s.npcLog,
+            party = s.party,
+            quests = s.quests,
+            hotbar = s.hotbar,
+            history = s.history,
+            turns = s.turns,
+            scene = s.currentScene,
+            savedAt = java.time.Instant.now().toString(),
+            sceneDesc = s.currentSceneDesc,
+            merchantStocks = s.merchantStocks,
+            buybackStocks = buyback,
+            currentChoices = s.currentChoices,
+            timeline = timeline.toList(),
+            displayMessages = s.messages,
+            deathSave = s.deathSave,
+            travelState = s.travelState
+        )
     }
 
     fun loadSlot(slot: String = "autosave") {
         viewModelScope.launch {
             val d = SaveStore.read(slot) ?: return@launch
+            // Restore the in-memory timeline so death-screen reads the full life.
+            timeline.clear()
+            timeline.addAll(d.timeline)
+            // Restore buyback stocks from the persisted form.
+            _buybackStocks.value = d.buybackStocks.mapValues { e ->
+                e.value.map { com.realmsoffate.game.ui.overlays.BuybackEntry(item = it.item, price = it.price) }
+            }
             _ui.value = GameUiState(
                 character = d.character,
                 worldMap = d.worldMap,
@@ -955,14 +1965,35 @@ class GameViewModel(
                 party = d.party,
                 quests = d.quests,
                 hotbar = d.hotbar,
-                timeOfDay = d.timeOfDay,
                 morality = d.morality,
                 factionRep = d.factionRep,
                 history = d.history,
                 turns = d.turns,
                 currentScene = d.scene,
-                messages = listOf(DisplayMessage.System("Loaded — ${d.character.name}, turn ${d.turns}"))
+                currentSceneDesc = d.sceneDesc,
+                merchantStocks = d.merchantStocks,
+                currentChoices = d.currentChoices,
+                // Restore the rendered chat feed if the save has it; otherwise show
+                // a single "loaded" line so the player has context.
+                messages = if (d.displayMessages.isNotEmpty()) {
+                    d.displayMessages + DisplayMessage.System("Loaded — ${d.character.name}, turn ${d.turns}")
+                } else {
+                    listOf(DisplayMessage.System("Loaded — ${d.character.name}, turn ${d.turns}"))
+                },
+                turnStartIndex = if (d.displayMessages.isNotEmpty()) d.displayMessages.lastIndex else 0,
+                // Restore in-flight death-save tracker so reload picks the player up
+                // exactly where they fell.
+                deathSave = d.deathSave,
+                // Restore any in-progress road travel.
+                travelState = d.travelState
             )
+            // Clear any stale ephemeral overlays so they don't leak into the loaded run.
+            _pendingLevelUp.value = null
+            _restOverlay.value = null
+            _activeShop.value = null
+            _targetPrompt.value = null
+            _showInitiative.value = false
+            _lastDeath.value = null
             _screen.value = Screen.Game
         }
     }
@@ -978,32 +2009,7 @@ class GameViewModel(
     }
 
     /** Serialises the live in-memory state to a JSON string for export. */
-    fun exportCurrentJson(): String? {
-        val s = _ui.value
-        val ch = s.character ?: return null
-        val wm = s.worldMap ?: return null
-        val data = SaveData(
-            character = ch,
-            morality = s.morality,
-            factionRep = s.factionRep,
-            worldMap = wm,
-            currentLoc = s.currentLoc,
-            playerPos = s.playerPos,
-            worldLore = s.worldLore,
-            worldEvents = s.worldEvents,
-            lastEventTurn = s.lastEventTurn,
-            npcLog = s.npcLog,
-            party = s.party,
-            quests = s.quests,
-            hotbar = s.hotbar,
-            timeOfDay = s.timeOfDay,
-            history = s.history,
-            turns = s.turns,
-            scene = s.currentScene,
-            savedAt = java.time.Instant.now().toString()
-        )
-        return SaveStore.toJson(data)
-    }
+    fun exportCurrentJson(): String? = snapshotSaveData()?.let { SaveStore.toJson(it) }
 
     /** Suggested filename for a save export, e.g. `Kaelis_L4_turn31.json`. */
     fun exportFilename(): String {

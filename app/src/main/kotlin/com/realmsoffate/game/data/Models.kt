@@ -85,7 +85,9 @@ data class Character(
     /** Per-faction local currency holdings (name → amount). Gold lives in `gold`. */
     val currencyBalances: MutableMap<String, Int> = mutableMapOf(),
     /** Active conditions — Poisoned, Blessed, Cursed, Charmed, Frightened, etc. */
-    val conditions: MutableList<String> = mutableListOf()
+    val conditions: MutableList<String> = mutableListOf(),
+    /** Feats selected on level-up (every 4th level). */
+    val feats: MutableList<String> = mutableListOf()
 ) {
     val proficiency: Int get() = when (level) {
         in 1..4 -> 2; in 5..8 -> 3; in 9..12 -> 4; in 13..16 -> 5; else -> 6
@@ -131,6 +133,20 @@ data class WorldMap(
 data class PlayerPos(val x: Float, val y: Float)
 
 @Serializable
+data class TravelState(
+    /** Destination location index in WorldMap.locations. */
+    val destId: Int,
+    /** Total road distance in leagues. */
+    val totalLeagues: Int,
+    /** Leagues already traveled. */
+    val leaguesTraveled: Int = 0,
+    /** Road path: list of location IDs from source to destination. */
+    val roadPath: List<Int> = emptyList(),
+    /** The name of the destination for display. */
+    val destName: String = ""
+)
+
+@Serializable
 data class PastRuler(
     val name: String,
     val yearsAgo: Int,
@@ -174,7 +190,9 @@ data class Faction(
     val mood: String = "",
     val disposition: String = "",
     val goal: String = "",
-    val currency: String = "gold"
+    val currency: String = "gold",
+    var status: String = "active", // active, destroyed, player_controlled, subjugated
+    var ruler: String = ""
 )
 
 @Serializable
@@ -241,7 +259,15 @@ data class LogNpc(
     val metTurn: Int,
     var lastSeenTurn: Int,
     val dialogueHistory: MutableList<String> = mutableListOf(),
-    var relationshipNote: String = ""
+    /**
+     * Lines the narrator flagged as memorable via [NPC_QUOTE:Name|quote] — threats,
+     * confessions, prophecies, revelations. Curated by the AI, distinct from the
+     * rolling `dialogueHistory` which captures every recent line. Capped at 12.
+     * Format: "T{turn}: \"quote\"".
+     */
+    val memorableQuotes: MutableList<String> = mutableListOf(),
+    var relationshipNote: String = "",
+    var status: String = "alive" // alive, dead, missing, imprisoned
 )
 
 @Serializable
@@ -287,7 +313,7 @@ data class MerchantStock(val items: MutableMap<String, Int>)
 
 @Serializable
 data class SaveData(
-    val version: Int = 1,
+    val version: Int = 2,
     val character: Character,
     val morality: Int,
     val factionRep: Map<String, Int>,
@@ -301,12 +327,36 @@ data class SaveData(
     val party: List<PartyCompanion>,
     val quests: List<Quest>,
     val hotbar: List<String?>,
-    val timeOfDay: String,
+    /** Legacy field — kept for v1/v2 save compatibility. No longer surfaced anywhere. */
+    val timeOfDay: String = "",
     val history: List<ChatMsg>,
     val turns: Int,
     val scene: String,
-    val savedAt: String
+    val savedAt: String,
+    // ---- v2 additions: complete reload state ----
+    val sceneDesc: String = "",
+    /** Legacy weather field — preserved for save compat, ignored at load. */
+    val weather: String = "",
+    /** Legacy time accumulator — preserved for save compat, ignored at load. */
+    val timeAccumulator: Int = 0,
+    val merchantStocks: Map<String, Map<String, Int>> = emptyMap(),
+    val buybackStocks: Map<String, List<SerializedBuyback>> = emptyMap(),
+    val currentChoices: List<Choice> = emptyList(),
+    val timeline: List<TimelineEntry> = emptyList(),
+    /** Rendered chat feed so reloads restore the entire visible history. */
+    val displayMessages: List<com.realmsoffate.game.game.DisplayMessage> = emptyList(),
+    /** In-flight death-save tracker — non-null if the player was bleeding out at save time. */
+    val deathSave: com.realmsoffate.game.game.DeathSaveState? = null,
+    /** Non-null when the player was mid-journey at save time. */
+    val travelState: TravelState? = null
 )
+
+/**
+ * Persistable buyback row — the live UI uses ui.overlays.BuybackEntry but
+ * that type is in the UI module. Save/load translates between them.
+ */
+@Serializable
+data class SerializedBuyback(val item: Item, val price: Int)
 
 @Serializable
 data class Choice(val n: Int, val text: String, val skill: String)

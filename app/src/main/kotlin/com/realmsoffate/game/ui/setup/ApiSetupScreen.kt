@@ -1,8 +1,6 @@
 package com.realmsoffate.game.ui.setup
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,7 +14,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -25,7 +22,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.realmsoffate.game.data.AiProvider
 import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
@@ -69,25 +65,8 @@ fun ApiSetupScreen(vm: GameViewModel) {
             )
             Spacer(Modifier.height(36.dp))
 
-            // Provider tiles
-            SectionLabel("\uD83E\uDD16  AI PROVIDER")
-            Spacer(Modifier.height(10.dp))
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                AiProvider.values().forEach { p ->
-                    ProviderTile(
-                        provider = p,
-                        selected = p == provider,
-                        onClick = { vm.setProvider(p) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
+            // DeepSeek provider header
             Spacer(Modifier.height(14.dp))
-            // Info blurb
             Surface(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(14.dp),
@@ -95,19 +74,19 @@ fun ApiSetupScreen(vm: GameViewModel) {
             ) {
                 Column(Modifier.padding(14.dp)) {
                     Text(
-                        providerHeadline(provider),
+                        "DEEPSEEK",
                         style = MaterialTheme.typography.titleSmall,
-                        color = providerColor(provider, realms)
+                        color = Color(0xFFB197FF)
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        providerBody(provider),
+                        "Nearly free · \$0.28/M tokens",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        providerLink(provider),
+                        "platform.deepseek.com/api_keys",
                         style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
                         color = realms.goldAccent
                     )
@@ -123,7 +102,7 @@ fun ApiSetupScreen(vm: GameViewModel) {
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text(provider.placeholder, style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)) },
                 singleLine = true,
-                leadingIcon = { Icon(Icons.Default.Key, null, tint = providerColor(provider, realms)) },
+                leadingIcon = { Icon(Icons.Default.Key, null, tint = Color(0xFFB197FF)) },
                 trailingIcon = {
                     if (valid) Icon(Icons.Default.Lock, null, tint = realms.success)
                 },
@@ -159,42 +138,6 @@ private fun SectionLabel(text: String) {
 }
 
 @Composable
-private fun ProviderTile(
-    provider: AiProvider,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val realms = RealmsTheme.colors
-    val color = providerColor(provider, realms)
-    val bg = if (selected) color.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-    val borderColor = if (selected) color else MaterialTheme.colorScheme.outlineVariant
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(bg)
-            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 6.dp)
-    ) {
-        Text(
-            provider.label.uppercase(),
-            style = MaterialTheme.typography.titleSmall,
-            color = color,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            providerTagline(provider),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
 private fun StartButton(valid: Boolean, onClick: () -> Unit) {
     val realms = RealmsTheme.colors
     Surface(
@@ -220,32 +163,3 @@ private fun StartButton(valid: Boolean, onClick: () -> Unit) {
     }
 }
 
-private fun providerColor(p: AiProvider, realms: com.realmsoffate.game.ui.theme.RealmsExtendedColors): Color = when (p) {
-    AiProvider.GEMINI -> Color(0xFF4285F4)
-    AiProvider.DEEPSEEK -> Color(0xFFB197FF)
-    AiProvider.CLAUDE -> realms.goldAccent
-}
-
-private fun providerTagline(p: AiProvider): String = when (p) {
-    AiProvider.GEMINI -> "Free\n250/day"
-    AiProvider.DEEPSEEK -> "~Free\n$0.28/M"
-    AiProvider.CLAUDE -> "Premium\nSonnet 4"
-}
-
-private fun providerHeadline(p: AiProvider): String = when (p) {
-    AiProvider.GEMINI -> "100% FREE tier"
-    AiProvider.DEEPSEEK -> "Nearly free, highly tuned"
-    AiProvider.CLAUDE -> "Best narrative quality"
-}
-
-private fun providerBody(p: AiProvider): String = when (p) {
-    AiProvider.GEMINI -> "250 requests/day, no credit card. Gemini 2.5 Flash — fast, coherent."
-    AiProvider.DEEPSEEK -> "5M free tokens (~500 turns), then $0.28/M. Web-port sampling (temp 0.9, top_p 0.95, cache-stable prefix)."
-    AiProvider.CLAUDE -> "$5 free credit (~80 turns). Claude Sonnet — richest world consistency, strongest NPCs."
-}
-
-private fun providerLink(p: AiProvider): String = when (p) {
-    AiProvider.GEMINI -> "aistudio.google.com/apikey"
-    AiProvider.DEEPSEEK -> "platform.deepseek.com/api_keys"
-    AiProvider.CLAUDE -> "console.anthropic.com"
-}

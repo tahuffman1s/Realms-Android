@@ -1,17 +1,11 @@
 package com.realmsoffate.game.data
 
 enum class AiProvider(val id: String, val label: String, val placeholder: String) {
-    GEMINI("gemini", "Gemini", "AIza..."),
-    DEEPSEEK("deepseek", "DeepSeek", "sk-..."),
-    CLAUDE("claude", "Claude", "sk-ant-api03-...");
+    DEEPSEEK("deepseek", "DeepSeek", "sk-...");
 
-    fun validate(key: String): Boolean = when (this) {
-        GEMINI -> key.length > 20
-        DEEPSEEK -> key.length > 20
-        CLAUDE -> key.startsWith("sk-")
-    }
+    fun validate(key: String): Boolean = key.length > 20
 
     companion object {
-        fun from(id: String?): AiProvider = values().firstOrNull { it.id == id } ?: GEMINI
+        fun from(id: String?): AiProvider = DEEPSEEK
     }
 }

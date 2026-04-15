@@ -20,14 +20,60 @@ class SeededRandom(seed: Long) {
 private data class LocTemplate(val type: String, val icon: String, val names: List<String>)
 
 private val locTemplates = listOf(
-    LocTemplate("town", "\uD83C\uDFD8\uFE0F", listOf("Thornwick", "Blackfen", "Oakhaven", "Greystone", "Ravenhollow", "Silvermoor", "Ironbrook", "Ashenford", "Duskvale", "Redfern", "Mosswater", "Kingsreach")),
-    LocTemplate("city", "\uD83C\uDFDB\uFE0F", listOf("Silverhold", "Highport", "Stormgate", "Goldharbor", "Crownspire", "Emberwatch")),
-    LocTemplate("dungeon", "\uD83D\uDD73\uFE0F", listOf("The Blackroot Depths", "Shadowmire Crypt", "Sunken Halls", "Crimson Keep", "The Hollow Pit", "Tomb of Kings")),
-    LocTemplate("forest", "\uD83C\uDF32", listOf("Whispering Woods", "Thornvale", "Moonlit Forest", "Emerald Glade", "Duskwood", "Wildroot")),
-    LocTemplate("mountain", "\u26F0\uFE0F", listOf("Stormpeak", "Grimspire", "Dragon's Tooth", "Frostfang", "Ashridge")),
-    LocTemplate("ruins", "\uD83D\uDDFF", listOf("Eldarian Ruins", "Fallen Spire", "Shattered Temple", "Sunken Altar")),
-    LocTemplate("castle", "\uD83C\uDFF0", listOf("Stonewatch Keep", "Grimhold", "Redthorn Castle")),
-    LocTemplate("camp", "\u26FA", listOf("Hunter's Rest", "Outrider Camp", "Bandit Roost"))
+    LocTemplate("town", "\uD83C\uDFD8\uFE0F", listOf(
+        "Thornwick", "Blackfen", "Oakhaven", "Greystone", "Ravenhollow", "Silvermoor", "Ironbrook", "Ashenford", "Duskvale", "Redfern", "Mosswater", "Kingsreach",
+        "Willowmere", "Briarcliff", "Dunmoor", "Foxhollow", "Hearthwick", "Millhaven", "Copperfield", "Ashenmere", "Pinecross", "Stonebridge", "Highthorn", "Wychfield",
+        "Barrowton", "Deepwell", "Goldcrest", "Larchford", "Mudhollow", "Rookhurst", "Salthaven", "Thistledown", "Vinterton", "Westmarch", "Elmbury", "Falstead"
+    )),
+    LocTemplate("city", "\uD83C\uDFDB\uFE0F", listOf(
+        "Silverhold", "Highport", "Stormgate", "Goldharbor", "Crownspire", "Emberwatch",
+        "Vaultshore", "Ironspire", "Sunharbor", "Ashenmount", "Thronefall", "Starreach", "Blackhaven", "Frostholm", "Whitecliff", "Dawnkeep",
+        "Shadowport", "Flamecrest", "Tidemark", "Crystalgate", "Copperport", "Northhold", "Grandveil", "Silkshore", "Forgepeak", "Kingsridge",
+        "Nightwall", "Thornhall", "Serpentine", "Wardenmere"
+    )),
+    LocTemplate("dungeon", "\uD83D\uDD73\uFE0F", listOf(
+        "The Blackroot Depths", "Shadowmire Crypt", "Sunken Halls", "Crimson Keep", "The Hollow Pit", "Tomb of Kings",
+        "The Wailing Caverns", "Bonemarrow Pit", "Ashvault", "The Drowning Halls", "Ironfang Labyrinth", "Sepulcher of Chains",
+        "The Rotwood Cellar", "Voidmaw Chasm", "Scorchdeep", "The Blighted Crypt", "Grimstone Mine", "The Sundered Vault",
+        "Plaguewell", "Duskspore Caves", "The Maw of Thirst", "The Forgotten Ossuary", "Nethercoil", "Windless Depths",
+        "The Carrion Pit", "Bloodstone Sanctum", "The Husk", "Thornroot Burrow", "The Shackled Deep", "Cinderhollow"
+    )),
+    LocTemplate("forest", "\uD83C\uDF32", listOf(
+        "Whispering Woods", "Thornvale", "Moonlit Forest", "Emerald Glade", "Duskwood", "Wildroot",
+        "Briartangle", "Ashen Canopy", "Silverleaf Wood", "The Rotwood", "Misthollow", "Fernwatch",
+        "Nightbriar", "Tangle Reach", "Mossdeep", "Spore Hollow", "The Verdant Maze", "Ironbark Forest",
+        "Crowwood", "Dewshroud", "Gloomfern", "Wolfswood", "The Petrified Grove", "Whitebirch",
+        "Thornmarsh", "Shadowfen", "Oldgrowth", "Lichenveil", "Rootdeep", "Hemlockwood"
+    )),
+    LocTemplate("mountain", "\u26F0\uFE0F", listOf(
+        "Stormpeak", "Grimspire", "Dragon's Tooth", "Frostfang", "Ashridge",
+        "Ironjaw Peak", "Thunderhelm", "The Shattered Horn", "Bonecrag", "Cindercone", "Gloomspire", "Whitecap",
+        "Razorback Ridge", "The Weeping Summit", "Stonefather", "Windshear", "Hollowpeak", "Dreadhorn",
+        "Cloudpiercer", "The Giant's Tooth", "Obsidian Crest", "Frostmantle", "Serpent's Spine", "Ashfall Summit",
+        "The Iron Crown", "Bleakridge", "Skullcap", "Thundertop", "Gorecrag", "Splinterpeak"
+    )),
+    LocTemplate("ruins", "\uD83D\uDDFF", listOf(
+        "Eldarian Ruins", "Fallen Spire", "Shattered Temple", "Sunken Altar",
+        "The Crumbled Citadel", "Dusthaven", "Ghostwall", "The Broken Spire", "Voidheart Shrine", "Ashfall Temple",
+        "The Hollow Court", "Moonwane Priory", "Blightstone", "The Forsaken Altar", "Dawnfall", "Ironwreck",
+        "The Shattered Crown", "Rotstone Abbey", "Grimwatch", "The Bone Nave", "Tideswept Fort", "Ember Basilica",
+        "The Sinking Throne", "Deadlight Tower", "Riftmark", "Bleached Hall", "The Mournfield", "Cindertemple",
+        "Wraithstone", "Starveil"
+    )),
+    LocTemplate("castle", "\uD83C\uDFF0", listOf(
+        "Stonewatch Keep", "Grimhold", "Redthorn Castle",
+        "Blackthorn Citadel", "Ironveil Fortress", "Stormhold", "The Crimson Bastion", "Dreadfort", "Wyvernrest",
+        "Shadowmere Keep", "Frosthammer Hall", "The Bone Fortress", "Ashcrown Castle", "Thornwall", "Nightspire",
+        "The Gilded Keep", "Wraithguard", "Oathstone", "Grimwatch Castle", "Hellgate Fortress", "The Sunken Bastion",
+        "Wolfsgate", "Siegeholm", "The Pale Fortress", "Blackiron Keep"
+    )),
+    LocTemplate("camp", "\u26FA", listOf(
+        "Hunter's Rest", "Outrider Camp", "Bandit Roost",
+        "Wayward Camp", "Trapper's Hollow", "Driftwood Rest", "The Burned Clearing", "Thornbrake Camp", "Ridgeline Watch",
+        "Windbreak", "The Old Bivouac", "Smokepine Rest", "Frostfire Camp", "Mudflat Stop", "The Vagrant's Eye",
+        "Deadfall Camp", "Creekside Rest", "Wolftooth Camp", "The Broken Wagon", "Ashpit", "Sentinel's Rest",
+        "Dew Hollow", "The Lean-To", "Moorwatch", "Heather Camp"
+    ))
 )
 
 object WorldGen {

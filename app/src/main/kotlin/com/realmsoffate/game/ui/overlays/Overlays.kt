@@ -10,8 +10,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.realmsoffate.game.game.Feats
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,15 +39,13 @@ import kotlinx.coroutines.delay
  * level number.
  */
 @Composable
-fun LevelUpOverlay(level: Int, onDismiss: () -> Unit) {
+fun LevelUpOverlay(level: Int, statPoints: Int, onAssignStat: (String) -> Unit, onDismiss: () -> Unit) {
     val realms = RealmsTheme.colors
     val scale = remember { Animatable(0.4f) }
 
     LaunchedEffect(level) {
         scale.animateTo(1.12f, tween(280))
         scale.animateTo(1f, tween(180))
-        delay(2200)
-        onDismiss()
     }
 
     Dialog(
@@ -107,9 +108,33 @@ fun LevelUpOverlay(level: Int, onDismiss: () -> Unit) {
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White.copy(alpha = 0.6f)
                 )
-                Spacer(Modifier.height(24.dp))
-                TextButton(onClick = onDismiss) {
-                    Text("CONTINUE", color = realms.goldAccent, style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(16.dp))
+                if (statPoints > 0) {
+                    Text(
+                        "$statPoints POINTS TO ASSIGN",
+                        style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 3.sp),
+                        color = Color.White
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    val stats = listOf("STR", "DEX", "CON", "INT", "WIS", "CHA")
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        stats.chunked(3).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                row.forEach { stat ->
+                                    FilledTonalButton(
+                                        onClick = { onAssignStat(stat) },
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text(stat, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                } else {
+                    // Auto-dismiss when no points left
+                    LaunchedEffect(Unit) { delay(1500); onDismiss() }
                 }
             }
         }
@@ -418,4 +443,76 @@ private fun lerpColor(a: Color, b: Color, t: Float): Color {
         blue = a.blue + (b.blue - a.blue) * tt,
         alpha = a.alpha + (b.alpha - a.alpha) * tt
     )
+}
+
+/**
+ * Feat selection overlay — shown at levels 4, 8, 12, 16, 20 instead of stat points.
+ * Full-screen dialog with scrollable feat cards.
+ */
+@Composable
+fun FeatSelectionOverlay(
+    currentFeats: List<String>,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val realms = RealmsTheme.colors
+    val available = Feats.list.filter { it.name !in currentFeats }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .fillMaxHeight(0.8f)
+        ) {
+            Column(Modifier.padding(20.dp)) {
+                Text(
+                    "CHOOSE A FEAT",
+                    style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 3.sp),
+                    color = realms.goldAccent,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "A reward for reaching a milestone level.",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(available) { feat ->
+                        Surface(
+                            onClick = { onSelect(feat.name) },
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(feat.icon, fontSize = 28.sp)
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        feat.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        feat.description,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
