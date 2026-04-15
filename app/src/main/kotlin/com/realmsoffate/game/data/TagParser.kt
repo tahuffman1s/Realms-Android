@@ -78,15 +78,27 @@ data class ParsedReply(
     val partyLeaves: List<String> = emptyList(),
     /** [ENEMY:Name|HP|MaxHP] tags — enemy combatants visible in the scene. */
     val enemies: List<Triple<String, Int, Int>> = emptyList(),
-    /** [FACTION_UPDATE:Name|field|value] — changes to faction state. */
+    /**
+     * [FACTION_UPDATE:ref|field|value] — changes to faction state.
+     * ref is either a faction id (slug) or display name; resolve via ViewModel lookup.
+     */
     val factionUpdates: List<Triple<String, String, String>> = emptyList(),
-    /** [NPC_DIED:Name] — NPCs killed this turn. */
+    /**
+     * [NPC_DIED:ref] — NPCs killed this turn.
+     * ref is either a stable NPC id (slug) or display name; resolve via ViewModel lookup.
+     */
     val npcDeaths: List<String> = emptyList(),
-    /** [NPC_UPDATE:Name|field|value] — NPC field changes. */
+    /**
+     * [NPC_UPDATE:ref|field|value] — NPC field changes.
+     * ref is either a stable NPC id (slug) or display name; resolve via ViewModel lookup.
+     */
     val npcUpdates: List<Triple<String, String, String>> = emptyList(),
     /** [LORE:text] — new lore/history entries. */
     val loreEntries: List<String> = emptyList(),
-    /** [NPC_QUOTE:Name|quote] — AI-flagged memorable lines for the NPC journal. */
+    /**
+     * [NPC_QUOTE:ref|quote] — AI-flagged memorable lines for the NPC journal.
+     * ref is either a stable NPC id (slug) or display name; resolve via ViewModel lookup.
+     */
     val npcQuotes: List<Pair<String, String>> = emptyList(),
     /** [NARRATOR_PROSE]...[/NARRATOR_PROSE] blocks — narrator description text. */
     val narratorProse: List<String> = emptyList(),
@@ -94,11 +106,17 @@ data class ParsedReply(
     val narratorAsides: List<String> = emptyList(),
     /** [PLAYER_DIALOG]...[/PLAYER_DIALOG] blocks — player character's spoken lines. */
     val playerDialogs: List<String> = emptyList(),
-    /** [NPC_DIALOG:Name]...[/NPC_DIALOG] blocks — NPC spoken lines keyed by name. */
+    /**
+     * [NPC_DIALOG:ref]...[/NPC_DIALOG] blocks — NPC spoken lines.
+     * ref is either a stable NPC id (slug) or display name; resolve via ViewModel lookup.
+     */
     val npcDialogs: List<Pair<String, String>> = emptyList(),
     /** [PLAYER_ACTION]...[/PLAYER_ACTION] — player character's physical actions. */
     val playerActions: List<String> = emptyList(),
-    /** [NPC_ACTION:Name]...[/NPC_ACTION] — NPC physical actions keyed by name. */
+    /**
+     * [NPC_ACTION:ref]...[/NPC_ACTION] — NPC physical actions.
+     * ref is either a stable NPC id (slug) or display name; resolve via ViewModel lookup.
+     */
     val npcActions: List<Pair<String, String>> = emptyList(),
     /** Ordered content segments for structured UI rendering. */
     val segments: List<NarrationSegmentData> = emptyList()
@@ -242,6 +260,13 @@ object TagParser {
     /** Cleans aside / prose content — strips wrapping markdown emphasis. */
     private fun cleanAsideContent(raw: String): String = stripWrappingEmphasis(raw)
 
+    /**
+     * A slug-style ID: lowercase letters, digits, dashes. No spaces, no capitals.
+     * Used to distinguish ID-first tag formats from legacy name-first formats.
+     */
+    private fun isSlugId(s: String): Boolean =
+        s.isNotBlank() && s.matches(Regex("^[a-z0-9]+(?:-[a-z0-9]+)*$"))
+
     // New structured dialog/prose block tags.
     private val narratorProsePattern = Regex("""\[NARRATOR_PROSE]([\s\S]*?)\[/NARRATOR_PROSE]""", RegexOption.IGNORE_CASE)
     private val narratorAsidePattern = Regex("""\[NARRATOR_ASIDE]([\s\S]*?)\[/NARRATOR_ASIDE]""", RegexOption.IGNORE_CASE)
@@ -367,17 +392,37 @@ object TagParser {
                 }
                 "NPC_MET" -> {
                     val p = body.split("|").map { it.trim() }
-                    if (p.isNotEmpty()) npcs += LogNpc(
-                        name = p[0],
-                        race = p.getOrNull(1) ?: "",
-                        role = p.getOrNull(2) ?: "",
-                        age = p.getOrNull(3) ?: "",
-                        relationship = p.getOrNull(4) ?: "neutral",
-                        appearance = p.getOrNull(5) ?: "",
-                        personality = p.getOrNull(6) ?: "",
-                        thoughts = p.getOrNull(7) ?: "",
-                        metTurn = currentTurn, lastSeenTurn = currentTurn
-                    )
+                    if (p.isNotEmpty()) {
+                        // New ID-first format: [NPC_MET:slug-id|Display Name|Race|Role|Age|...]
+                        // Legacy format:       [NPC_MET:Display Name|Race|Role|Age|...]
+                        if (p.size >= 2 && isSlugId(p[0])) {
+                            npcs += LogNpc(
+                                id = p[0],
+                                name = p[1],
+                                race = p.getOrNull(2) ?: "",
+                                role = p.getOrNull(3) ?: "",
+                                age = p.getOrNull(4) ?: "",
+                                relationship = p.getOrNull(5) ?: "neutral",
+                                appearance = p.getOrNull(6) ?: "",
+                                personality = p.getOrNull(7) ?: "",
+                                thoughts = p.getOrNull(8) ?: "",
+                                metTurn = currentTurn, lastSeenTurn = currentTurn
+                            )
+                        } else {
+                            npcs += LogNpc(
+                                id = "",
+                                name = p[0],
+                                race = p.getOrNull(1) ?: "",
+                                role = p.getOrNull(2) ?: "",
+                                age = p.getOrNull(3) ?: "",
+                                relationship = p.getOrNull(4) ?: "neutral",
+                                appearance = p.getOrNull(5) ?: "",
+                                personality = p.getOrNull(6) ?: "",
+                                thoughts = p.getOrNull(7) ?: "",
+                                metTurn = currentTurn, lastSeenTurn = currentTurn
+                            )
+                        }
+                    }
                 }
                 "QUEST_START" -> {
                     val p = body.split("|").map { it.trim() }

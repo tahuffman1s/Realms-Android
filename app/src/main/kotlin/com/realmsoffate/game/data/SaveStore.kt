@@ -107,7 +107,7 @@ object SaveStore {
     suspend fun read(slot: String): SaveData? = withContext(Dispatchers.IO) {
         val f = slotFile(slot)
         if (!f.exists()) return@withContext null
-        runCatching { json.decodeFromString<SaveData>(f.readText()) }.getOrNull()
+        runCatching { json.decodeFromString<SaveData>(f.readText()) }.getOrNull()?.let { migrateIds(it) }
     }
 
     /** Remove a save slot (also clears autosave if the slot names match). */
@@ -181,5 +181,72 @@ object SaveStore {
 
     /** Parses a JSON string into a SaveData; null on parse failure. */
     fun fromJson(s: String): SaveData? =
-        runCatching { json.decodeFromString<SaveData>(s) }.getOrNull()
+        runCatching { json.decodeFromString<SaveData>(s) }.getOrNull()?.let { migrateIds(it) }
+
+    /**
+     * Assigns stable IDs to any [Faction], [LoreNpc], or [LogNpc] whose id is blank.
+     * Idempotent: entries that already have an ID are left untouched.
+     * Collision-safe: uses separate namespaces for factions and NPCs.
+     * Name-matching: npcLog entries whose name matches a worldLore.npcs entry
+     * (case-insensitive) reuse that entry's ID instead of generating a new one.
+     */
+    private fun migrateIds(data: SaveData): SaveData {
+        val lore = data.worldLore
+
+        // --- 1. Factions (separate namespace) ---
+        val factionIds = mutableSetOf<String>()
+        val migratedFactions = lore?.factions?.map { faction ->
+            if (faction.id.isNotBlank()) {
+                factionIds += faction.id
+                faction
+            } else {
+                val newId = IdGen.forName(faction.name, factionIds)
+                factionIds += newId
+                faction.copy(id = newId)
+            }
+        }
+
+        // --- 2. LoreNpcs (separate namespace) ---
+        val loreNpcIds = mutableSetOf<String>()
+        // Map from lowercase name -> assigned ID, for log matching below
+        val loreNpcNameToId = mutableMapOf<String, String>()
+        val migratedLoreNpcs = lore?.npcs?.map { npc ->
+            if (npc.id.isNotBlank()) {
+                loreNpcIds += npc.id
+                loreNpcNameToId[npc.name.lowercase()] = npc.id
+                npc
+            } else {
+                val newId = IdGen.forName(npc.name, loreNpcIds)
+                loreNpcIds += newId
+                loreNpcNameToId[npc.name.lowercase()] = newId
+                npc.copy(id = newId)
+            }
+        }
+
+        // --- 3. LogNpcs (namespace shared with loreNpcIds for dedup) ---
+        val logNpcIds = mutableSetOf<String>()
+        val migratedLogNpcs = data.npcLog.map { logNpc ->
+            if (logNpc.id.isNotBlank()) {
+                logNpcIds += logNpc.id
+                logNpc
+            } else {
+                // Reuse the lore NPC id if names match (case-insensitive)
+                val existingLoreId = loreNpcNameToId[logNpc.name.lowercase()]
+                val newId = existingLoreId
+                    ?: IdGen.forName(logNpc.name, loreNpcIds + logNpcIds)
+                logNpcIds += newId
+                logNpc.copy(id = newId)
+            }
+        }
+
+        val migratedLore = lore?.copy(
+            factions = migratedFactions ?: lore.factions,
+            npcs = migratedLoreNpcs ?: lore.npcs
+        )
+
+        return data.copy(
+            worldLore = migratedLore,
+            npcLog = migratedLogNpcs
+        )
+    }
 }

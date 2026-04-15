@@ -179,6 +179,7 @@ data class EconomyInfo(
 
 @Serializable
 data class Faction(
+    val id: String = "",   // stable identifier; empty = legacy entry awaiting migration
     val name: String,
     val type: String,
     val description: String,
@@ -197,6 +198,7 @@ data class Faction(
 
 @Serializable
 data class LoreNpc(
+    val id: String = "",   // stable identifier; empty = legacy entry awaiting migration
     val name: String,
     val race: String,
     val role: String,
@@ -246,6 +248,7 @@ data class WorldEvent(
 
 @Serializable
 data class LogNpc(
+    val id: String = "",   // stable identifier; empty = legacy entry awaiting migration
     val name: String,
     val race: String = "",
     val role: String = "",
@@ -360,3 +363,29 @@ data class SerializedBuyback(val item: Item, val price: Int)
 
 @Serializable
 data class Choice(val n: Int, val text: String, val skill: String)
+
+/**
+ * Generates stable slug-style IDs for NPCs and factions.
+ * - slug(name) = lowercase ASCII, spaces -> dashes, punctuation stripped
+ * - If the slug collides with an existing ID in `existingIds`, appends -2,
+ *   -3, etc. until unique.
+ * - If the name is blank, falls back to a short timestamp-based suffix.
+ */
+object IdGen {
+    fun forName(name: String, existingIds: Set<String>): String {
+        val base = slug(name).ifBlank { "entity-${(System.currentTimeMillis() % 100000)}" }
+        if (base !in existingIds) return base
+        var n = 2
+        while ("$base-$n" in existingIds) n++
+        return "$base-$n"
+    }
+
+    private fun slug(name: String): String {
+        return name.lowercase()
+            .replace(Regex("[^a-z0-9\\s-]"), "")     // drop non-alphanumeric except space/dash
+            .replace(Regex("\\s+"), "-")              // spaces -> dashes
+            .replace(Regex("-+"), "-")                // collapse multiple dashes
+            .trim('-')
+            .take(60)                                  // cap length
+    }
+}
