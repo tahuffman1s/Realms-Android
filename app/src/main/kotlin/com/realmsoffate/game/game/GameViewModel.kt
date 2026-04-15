@@ -1308,7 +1308,7 @@ class GameViewModel(
         return "$cs\n\nACTION: $action$diceLine"
     }
 
-    private fun applyParsed(
+    internal fun applyParsed(
         state: GameUiState, ch: Character, parsed: ParsedReply,
         playerAction: String, roll: Int, mod: Int, prof: Int,
         suppressCheck: Boolean = false
