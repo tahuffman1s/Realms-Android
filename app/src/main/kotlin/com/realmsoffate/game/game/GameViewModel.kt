@@ -296,6 +296,7 @@ class GameViewModel(
             parsed.npcQuotes.forEach { (n, q) -> appendLine("NPC_QUOTE:$n:${q.take(80)}") }
             parsed.playerDialogs.forEach { appendLine("PLAYER_DIALOG:${it.take(80)}") }
             if (parsed.segments.isNotEmpty()) appendLine("SEGMENTS:${parsed.segments.size} blocks")
+            appendLine("SOURCE:${parsed.source}")
             appendLine("CACHE_HIT:${ai.lastCacheHit}/${ai.lastPromptTokens} tokens")
         }
         _debugLog.add(DebugTurn(

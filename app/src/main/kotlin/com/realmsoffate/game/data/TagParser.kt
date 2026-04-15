@@ -1,6 +1,17 @@
 package com.realmsoffate.game.data
 
 /**
+ * Indicates which parse path was taken for a given turn response.
+ * Exposed on [ParsedReply] so downstream consumers (e.g. debug logging) can report it.
+ */
+enum class ParseSource {
+    /** [METADATA]{...}[/METADATA] JSON block parsed successfully. */
+    JSON,
+    /** No JSON block, or block was malformed/unreadable; used regex tag extraction. */
+    REGEX_FALLBACK
+}
+
+/**
  * Ordered content segments extracted from the LLM response.
  * The UI renders each type as a distinct visual element (bubble, pill, etc.).
  * When this list is non-empty it replaces the old regex-based splitNarration() heuristic.
@@ -119,7 +130,9 @@ data class ParsedReply(
      */
     val npcActions: List<Pair<String, String>> = emptyList(),
     /** Ordered content segments for structured UI rendering. */
-    val segments: List<NarrationSegmentData> = emptyList()
+    val segments: List<NarrationSegmentData> = emptyList(),
+    /** Which parse path produced this reply — JSON block or regex fallback. */
+    val source: ParseSource = ParseSource.REGEX_FALLBACK
 )
 
 data class CheckResult(
@@ -132,6 +145,14 @@ object TagParser {
     private val scenePattern = Regex("\\[SCENE:([^|\\]]+)\\|([^\\]]+)\\]")
     private val choicesPattern = Regex("\\[CHOICES\\]([\\s\\S]*?)\\[/CHOICES\\]")
     private val choiceLinePattern = Regex("^\\s*\\d+\\.\\s*(.+?)\\s*\\[([^\\]]+)\\]\\s*$")
+    private val metadataBlockPattern = Regex("""\[METADATA]([\s\S]*?)\[/METADATA]""", RegexOption.IGNORE_CASE)
+
+    /** Lenient JSON decoder for [METADATA] blocks — tolerates unknown keys and coerces values. */
+    private val metadataJson: kotlinx.serialization.json.Json = kotlinx.serialization.json.Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+        coerceInputValues = true
+    }
 
     /**
      * Cleans NPC dialog tag content — strips body-language prefix, emoji+name prefix,
@@ -317,6 +338,15 @@ object TagParser {
         setOf(RegexOption.MULTILINE)
     )
     fun parse(raw: String, currentTurn: Int): ParsedReply {
+        // ---- Attempt JSON metadata extraction (Path A) ----
+        val metadataMatch = metadataBlockPattern.find(raw)
+        val metadata: TurnMetadata? = metadataMatch?.let {
+            val jsonBody = it.groupValues[1].trim()
+            runCatching {
+                metadataJson.decodeFromString<TurnMetadata>(jsonBody)
+            }.getOrNull()
+        }
+
         var scene = "default"
         var sceneDesc = ""
         scenePattern.find(raw)?.let {
@@ -363,167 +393,278 @@ object TagParser {
         val loreEntries = mutableListOf<String>()
         val npcQuotes = mutableListOf<Pair<String, String>>()
 
-        for (m in tagPattern.findAll(raw)) {
-            val type = m.groupValues[1]
-            val body = m.groupValues[2]
-            when (type) {
-                "DAMAGE" -> damage += body.trim().toIntOrNull() ?: 0
-                "HEAL" -> heal += body.trim().toIntOrNull() ?: 0
-                "XP" -> xp += body.trim().toIntOrNull() ?: 0
-                "GOLD" -> goldGained += body.trim().toIntOrNull() ?: 0
-                "GOLD_LOST" -> goldLost += body.trim().toIntOrNull() ?: 0
-                "ITEM" -> {
-                    val p = body.split("|").map { it.trim() }
-                    if (p.isNotEmpty()) items += Item(
-                        name = p[0],
-                        desc = p.getOrNull(1) ?: "",
-                        type = p.getOrNull(2) ?: "item",
-                        rarity = p.getOrNull(3) ?: "common"
-                    )
-                }
-                "CHECK" -> {
-                    val p = body.split("|").map { it.trim() }
-                    if (p.size >= 5) checks += CheckResult(
-                        skill = p[0], ability = p[1],
-                        dc = p[2].toIntOrNull() ?: 10,
-                        passed = p[3].equals("PASS", ignoreCase = true),
-                        total = p[4].toIntOrNull() ?: 0
-                    )
-                }
-                "NPC_MET" -> {
-                    val p = body.split("|").map { it.trim() }
-                    if (p.isNotEmpty()) {
-                        // New ID-first format: [NPC_MET:slug-id|Display Name|Race|Role|Age|...]
-                        // Legacy format:       [NPC_MET:Display Name|Race|Role|Age|...]
-                        if (p.size >= 2 && isSlugId(p[0])) {
-                            npcs += LogNpc(
-                                id = p[0],
-                                name = p[1],
-                                race = p.getOrNull(2) ?: "",
-                                role = p.getOrNull(3) ?: "",
-                                age = p.getOrNull(4) ?: "",
-                                relationship = p.getOrNull(5) ?: "neutral",
-                                appearance = p.getOrNull(6) ?: "",
-                                personality = p.getOrNull(7) ?: "",
-                                thoughts = p.getOrNull(8) ?: "",
-                                metTurn = currentTurn, lastSeenTurn = currentTurn
-                            )
-                        } else {
-                            npcs += LogNpc(
-                                id = "",
-                                name = p[0],
-                                race = p.getOrNull(1) ?: "",
-                                role = p.getOrNull(2) ?: "",
-                                age = p.getOrNull(3) ?: "",
-                                relationship = p.getOrNull(4) ?: "neutral",
-                                appearance = p.getOrNull(5) ?: "",
-                                personality = p.getOrNull(6) ?: "",
-                                thoughts = p.getOrNull(7) ?: "",
-                                metTurn = currentTurn, lastSeenTurn = currentTurn
+        val parseSource: ParseSource
+
+        if (metadata != null) {
+            // ---- Path A: JSON metadata block found and decoded ----
+            parseSource = ParseSource.JSON
+
+            damage = metadata.damage
+            heal = metadata.heal
+            xp = metadata.xp
+            goldGained = metadata.goldGained
+            goldLost = metadata.goldLost
+            moral = metadata.moralDelta
+            travelTo = metadata.travelTo
+            tod = metadata.timeOfDay
+
+            metadata.itemsGained.forEach { spec ->
+                items += Item(name = spec.name, desc = spec.desc, type = spec.type, rarity = spec.rarity)
+            }
+            metadata.itemsRemoved.forEach { name -> if (name.isNotBlank()) itemsRemoved += name }
+
+            metadata.conditionsAdded.forEach { c -> if (c.isNotBlank()) conditionsAdded += c }
+            metadata.conditionsRemoved.forEach { c -> if (c.isNotBlank()) conditionsRemoved += c }
+
+            metadata.npcsMet.forEach { spec ->
+                npcs += LogNpc(
+                    id = spec.id,
+                    name = spec.name,
+                    race = spec.race,
+                    role = spec.role,
+                    age = spec.age,
+                    relationship = spec.relationship,
+                    appearance = spec.appearance,
+                    personality = spec.personality,
+                    thoughts = spec.thoughts,
+                    metTurn = currentTurn,
+                    lastSeenTurn = currentTurn
+                )
+            }
+            metadata.npcUpdates.forEach { spec ->
+                npcUpdates += Triple(spec.id, spec.field, spec.value)
+            }
+            metadata.npcDeaths.forEach { ref -> if (ref.isNotBlank()) npcDeaths += ref }
+            metadata.npcQuotes.forEach { spec ->
+                if (spec.id.isNotBlank() && spec.quote.isNotBlank()) npcQuotes += spec.id to spec.quote
+            }
+
+            metadata.questStarts.forEachIndexed { idx, spec ->
+                qStarts += Quest(
+                    id = "q_${System.currentTimeMillis()}_$idx",
+                    title = spec.title,
+                    type = spec.type,
+                    desc = spec.desc,
+                    giver = spec.giver,
+                    location = "",
+                    objectives = spec.objectives.toMutableList(),
+                    reward = spec.reward,
+                    turnStarted = currentTurn
+                )
+            }
+            metadata.questUpdates.forEach { spec ->
+                if (spec.title.isNotBlank()) qUpdates += spec.title to spec.objective
+            }
+            metadata.questCompletes.forEach { ref -> if (ref.isNotBlank()) qComplete += ref }
+            metadata.questFails.forEach { ref -> if (ref.isNotBlank()) qFails += ref }
+
+            metadata.enemies.forEach { spec ->
+                enemies += Triple(spec.name, spec.hp, spec.maxHp)
+            }
+
+            metadata.factionUpdates.forEach { spec ->
+                factionUpdates += Triple(spec.id, spec.field, spec.value)
+            }
+            metadata.repDeltas.forEach { spec ->
+                reps += spec.faction to spec.delta
+            }
+            metadata.loreEntries.forEach { entry -> if (entry.isNotBlank()) loreEntries += entry }
+
+            metadata.check?.let { spec ->
+                checks += CheckResult(
+                    skill = spec.skill,
+                    ability = spec.ability,
+                    dc = spec.dc,
+                    passed = spec.passed,
+                    total = spec.total
+                )
+            }
+
+            metadata.shops.forEach { spec ->
+                shops += spec.merchant to spec.items
+            }
+
+            metadata.partyJoins.forEach { spec ->
+                parties += PartyCompanion(
+                    name = spec.name,
+                    race = spec.race,
+                    role = spec.role,
+                    level = spec.level,
+                    maxHp = spec.maxHp,
+                    hp = spec.maxHp,
+                    appearance = spec.appearance,
+                    personality = spec.personality,
+                    joinedTurn = currentTurn
+                )
+            }
+            metadata.partyLeaves.forEach { name -> if (name.isNotBlank()) partyLeaves += name }
+
+        } else {
+            // ---- Path B: No valid JSON block — regex tag extraction (legacy) ----
+            parseSource = ParseSource.REGEX_FALLBACK
+
+            for (m in tagPattern.findAll(raw)) {
+                val type = m.groupValues[1]
+                val body = m.groupValues[2]
+                when (type) {
+                    "DAMAGE" -> damage += body.trim().toIntOrNull() ?: 0
+                    "HEAL" -> heal += body.trim().toIntOrNull() ?: 0
+                    "XP" -> xp += body.trim().toIntOrNull() ?: 0
+                    "GOLD" -> goldGained += body.trim().toIntOrNull() ?: 0
+                    "GOLD_LOST" -> goldLost += body.trim().toIntOrNull() ?: 0
+                    "ITEM" -> {
+                        val p = body.split("|").map { it.trim() }
+                        if (p.isNotEmpty()) items += Item(
+                            name = p[0],
+                            desc = p.getOrNull(1) ?: "",
+                            type = p.getOrNull(2) ?: "item",
+                            rarity = p.getOrNull(3) ?: "common"
+                        )
+                    }
+                    "CHECK" -> {
+                        val p = body.split("|").map { it.trim() }
+                        if (p.size >= 5) checks += CheckResult(
+                            skill = p[0], ability = p[1],
+                            dc = p[2].toIntOrNull() ?: 10,
+                            passed = p[3].equals("PASS", ignoreCase = true),
+                            total = p[4].toIntOrNull() ?: 0
+                        )
+                    }
+                    "NPC_MET" -> {
+                        val p = body.split("|").map { it.trim() }
+                        if (p.isNotEmpty()) {
+                            // New ID-first format: [NPC_MET:slug-id|Display Name|Race|Role|Age|...]
+                            // Legacy format:       [NPC_MET:Display Name|Race|Role|Age|...]
+                            if (p.size >= 2 && isSlugId(p[0])) {
+                                npcs += LogNpc(
+                                    id = p[0],
+                                    name = p[1],
+                                    race = p.getOrNull(2) ?: "",
+                                    role = p.getOrNull(3) ?: "",
+                                    age = p.getOrNull(4) ?: "",
+                                    relationship = p.getOrNull(5) ?: "neutral",
+                                    appearance = p.getOrNull(6) ?: "",
+                                    personality = p.getOrNull(7) ?: "",
+                                    thoughts = p.getOrNull(8) ?: "",
+                                    metTurn = currentTurn, lastSeenTurn = currentTurn
+                                )
+                            } else {
+                                npcs += LogNpc(
+                                    id = "",
+                                    name = p[0],
+                                    race = p.getOrNull(1) ?: "",
+                                    role = p.getOrNull(2) ?: "",
+                                    age = p.getOrNull(3) ?: "",
+                                    relationship = p.getOrNull(4) ?: "neutral",
+                                    appearance = p.getOrNull(5) ?: "",
+                                    personality = p.getOrNull(6) ?: "",
+                                    thoughts = p.getOrNull(7) ?: "",
+                                    metTurn = currentTurn, lastSeenTurn = currentTurn
+                                )
+                            }
+                        }
+                    }
+                    "QUEST_START" -> {
+                        val p = body.split("|").map { it.trim() }
+                        if (p.size >= 6) {
+                            val objs = p[4].split(";").map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
+                            qStarts += Quest(
+                                id = "q_${System.currentTimeMillis()}_${qStarts.size}",
+                                title = p[0], type = p[1], desc = p[2], giver = p[3],
+                                location = "", objectives = objs, reward = p.getOrNull(5) ?: "",
+                                turnStarted = currentTurn
                             )
                         }
                     }
-                }
-                "QUEST_START" -> {
-                    val p = body.split("|").map { it.trim() }
-                    if (p.size >= 6) {
-                        val objs = p[4].split(";").map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
-                        qStarts += Quest(
-                            id = "q_${System.currentTimeMillis()}_${qStarts.size}",
-                            title = p[0], type = p[1], desc = p[2], giver = p[3],
-                            location = "", objectives = objs, reward = p.getOrNull(5) ?: "",
-                            turnStarted = currentTurn
+                    "QUEST_UPDATE" -> {
+                        val p = body.split("|").map { it.trim() }
+                        if (p.size >= 2) qUpdates += p[0] to p[1]
+                    }
+                    "QUEST_COMPLETE" -> qComplete += body.trim()
+                    "QUEST_FAIL" -> qFails += body.trim()
+                    "SHOP" -> {
+                        val p = body.split("|").map { it.trim() }
+                        if (p.size >= 2) {
+                            val items2 = p[1].split(",").mapNotNull {
+                                val pp = it.split(":").map { s -> s.trim() }
+                                if (pp.size == 2) pp[0] to (pp[1].toIntOrNull() ?: 0) else null
+                            }.toMap()
+                            shops += p[0] to items2
+                        }
+                    }
+                    "TRAVEL" -> travelTo = body.trim()
+                    "PARTY_LEAVE" -> {
+                        val name = body.trim()
+                        if (name.isNotBlank()) partyLeaves += name
+                    }
+                    "PARTY_JOIN" -> {
+                        val p = body.split("|").map { it.trim() }
+                        if (p.size >= 5) parties += PartyCompanion(
+                            name = p[0], race = p[1], role = p[2],
+                            level = p[3].toIntOrNull() ?: 1,
+                            maxHp = p[4].toIntOrNull() ?: 10,
+                            hp = p[4].toIntOrNull() ?: 10,
+                            appearance = p.getOrNull(5) ?: "",
+                            personality = p.getOrNull(6) ?: "",
+                            joinedTurn = currentTurn
                         )
                     }
-                }
-                "QUEST_UPDATE" -> {
-                    val p = body.split("|").map { it.trim() }
-                    if (p.size >= 2) qUpdates += p[0] to p[1]
-                }
-                "QUEST_COMPLETE" -> qComplete += body.trim()
-                "QUEST_FAIL" -> qFails += body.trim()
-                "SHOP" -> {
-                    val p = body.split("|").map { it.trim() }
-                    if (p.size >= 2) {
-                        val items2 = p[1].split(",").mapNotNull {
-                            val pp = it.split(":").map { s -> s.trim() }
-                            if (pp.size == 2) pp[0] to (pp[1].toIntOrNull() ?: 0) else null
-                        }.toMap()
-                        shops += p[0] to items2
+                    "TIME" -> tod = body.trim()
+                    "MORAL" -> moral += body.trim().toIntOrNull() ?: 0
+                    "REP" -> {
+                        val p = body.split("|").map { it.trim() }
+                        if (p.size == 2) reps += p[0] to (p[1].toIntOrNull() ?: 0)
                     }
-                }
-                "TRAVEL" -> travelTo = body.trim()
-                "PARTY_LEAVE" -> {
-                    val name = body.trim()
-                    if (name.isNotBlank()) partyLeaves += name
-                }
-                "PARTY_JOIN" -> {
-                    val p = body.split("|").map { it.trim() }
-                    if (p.size >= 5) parties += PartyCompanion(
-                        name = p[0], race = p[1], role = p[2],
-                        level = p[3].toIntOrNull() ?: 1,
-                        maxHp = p[4].toIntOrNull() ?: 10,
-                        hp = p[4].toIntOrNull() ?: 10,
-                        appearance = p.getOrNull(5) ?: "",
-                        personality = p.getOrNull(6) ?: "",
-                        joinedTurn = currentTurn
-                    )
-                }
-                "TIME" -> tod = body.trim()
-                "MORAL" -> moral += body.trim().toIntOrNull() ?: 0
-                "REP" -> {
-                    val p = body.split("|").map { it.trim() }
-                    if (p.size == 2) reps += p[0] to (p[1].toIntOrNull() ?: 0)
-                }
-                "CONDITION" -> {
-                    val c = body.trim()
-                    if (c.isNotBlank()) conditionsAdded += c
-                }
-                "REMOVE_CONDITION" -> {
-                    val c = body.trim()
-                    if (c.isNotBlank()) conditionsRemoved += c
-                }
-                "REMOVE_ITEM" -> {
-                    val c = body.trim()
-                    if (c.isNotBlank()) itemsRemoved += c
-                }
-                "ENEMY" -> {
-                    val p = body.split("|").map { it.trim() }
-                    if (p.isNotEmpty()) {
-                        val name = p[0]
-                        val hp = p.getOrNull(1)?.toIntOrNull() ?: 10
-                        val maxHp = p.getOrNull(2)?.toIntOrNull() ?: hp
-                        enemies += Triple(name, hp, maxHp)
+                    "CONDITION" -> {
+                        val c = body.trim()
+                        if (c.isNotBlank()) conditionsAdded += c
                     }
-                }
-                "FACTION_UPDATE" -> {
-                    val p = body.split("|").map { it.trim() }
-                    if (p.size >= 3) factionUpdates += Triple(p[0], p[1], p[2])
-                }
-                "NPC_DIED" -> {
-                    val name = body.trim()
-                    if (name.isNotBlank()) npcDeaths += name
-                }
-                "NPC_UPDATE" -> {
-                    val p = body.split("|").map { it.trim() }
-                    if (p.size >= 3) npcUpdates += Triple(p[0], p[1], p[2])
-                }
-                "LORE" -> {
-                    val t = body.trim()
-                    if (t.isNotBlank()) loreEntries += t
-                }
-                "NPC_QUOTE" -> {
-                    // [NPC_QUOTE:Name|the memorable line] — split once so quotes
-                    // containing '|' survive.
-                    val sep = body.indexOf('|')
-                    if (sep > 0) {
-                        val name = body.substring(0, sep).trim()
-                        val quote = body.substring(sep + 1).trim()
-                            .removeSurrounding("\"").removeSurrounding("\u201C", "\u201D")
-                            .removeSurrounding("'").removeSurrounding("\u2018", "\u2019")
-                            .trim()
-                        if (name.isNotBlank() && quote.isNotBlank()) {
-                            npcQuotes += name to quote
+                    "REMOVE_CONDITION" -> {
+                        val c = body.trim()
+                        if (c.isNotBlank()) conditionsRemoved += c
+                    }
+                    "REMOVE_ITEM" -> {
+                        val c = body.trim()
+                        if (c.isNotBlank()) itemsRemoved += c
+                    }
+                    "ENEMY" -> {
+                        val p = body.split("|").map { it.trim() }
+                        if (p.isNotEmpty()) {
+                            val name = p[0]
+                            val hp = p.getOrNull(1)?.toIntOrNull() ?: 10
+                            val maxHp = p.getOrNull(2)?.toIntOrNull() ?: hp
+                            enemies += Triple(name, hp, maxHp)
+                        }
+                    }
+                    "FACTION_UPDATE" -> {
+                        val p = body.split("|").map { it.trim() }
+                        if (p.size >= 3) factionUpdates += Triple(p[0], p[1], p[2])
+                    }
+                    "NPC_DIED" -> {
+                        val name = body.trim()
+                        if (name.isNotBlank()) npcDeaths += name
+                    }
+                    "NPC_UPDATE" -> {
+                        val p = body.split("|").map { it.trim() }
+                        if (p.size >= 3) npcUpdates += Triple(p[0], p[1], p[2])
+                    }
+                    "LORE" -> {
+                        val t = body.trim()
+                        if (t.isNotBlank()) loreEntries += t
+                    }
+                    "NPC_QUOTE" -> {
+                        // [NPC_QUOTE:Name|the memorable line] — split once so quotes
+                        // containing '|' survive.
+                        val sep = body.indexOf('|')
+                        if (sep > 0) {
+                            val name = body.substring(0, sep).trim()
+                            val quote = body.substring(sep + 1).trim()
+                                .removeSurrounding("\"").removeSurrounding("\u201C", "\u201D")
+                                .removeSurrounding("'").removeSurrounding("\u2018", "\u2019")
+                                .trim()
+                            if (name.isNotBlank() && quote.isNotBlank()) {
+                                npcQuotes += name to quote
+                            }
                         }
                     }
                 }
@@ -565,6 +706,7 @@ object TagParser {
         var narration = raw
         narration = scenePattern.replace(narration, "")
         narration = choicesPattern.replace(narration, "")
+        narration = metadataBlockPattern.replace(narration, "")
         narration = narratorProsePattern.replace(narration, "$1")
         narration = narratorAsidePattern.replace(narration, "$1")
         narration = playerDialogPattern.replace(narration, "$1")
@@ -574,38 +716,40 @@ object TagParser {
         narration = tagPattern.replace(narration, "")
         narration = narration.trim().replace(Regex("\\n{3,}"), "\n\n")
 
-        // ---- Contextual prose fallbacks ----
-        // Only apply when the narrator forgot the explicit tag. Caps each bucket
-        // so a vivid description doesn't nuke HP twice.
-        if (damage == 0) {
-            damage = proseDamage.findAll(narration)
-                .mapNotNull { it.groupValues[1].toIntOrNull() }
-                .sum()
-                .coerceAtMost(50)
-        }
-        if (heal == 0) {
-            heal = proseHeal.findAll(narration)
-                .mapNotNull { it.groupValues[1].toIntOrNull() }
-                .sum()
-                .coerceAtMost(50)
-        }
-        if (goldGained == 0) {
-            goldGained = proseGoldGain.findAll(narration)
-                .mapNotNull { it.groupValues[1].toIntOrNull() }
-                .sum()
-                .coerceAtMost(500)
-        }
-        if (goldLost == 0) {
-            goldLost = proseGoldLost.findAll(narration)
-                .mapNotNull { it.groupValues[1].toIntOrNull() }
-                .sum()
-                .coerceAtMost(500)
-        }
-        if (xp == 0) {
-            xp = proseXp.findAll(narration)
-                .mapNotNull { it.groupValues[1].toIntOrNull() }
-                .sum()
-                .coerceAtMost(1000)
+        // ---- Contextual prose fallbacks (regex path only) ----
+        // Only apply when no JSON block was parsed. AI is expected to put numbers
+        // in the metadata JSON; these fallbacks catch legacy responses.
+        if (metadata == null) {
+            if (damage == 0) {
+                damage = proseDamage.findAll(narration)
+                    .mapNotNull { it.groupValues[1].toIntOrNull() }
+                    .sum()
+                    .coerceAtMost(50)
+            }
+            if (heal == 0) {
+                heal = proseHeal.findAll(narration)
+                    .mapNotNull { it.groupValues[1].toIntOrNull() }
+                    .sum()
+                    .coerceAtMost(50)
+            }
+            if (goldGained == 0) {
+                goldGained = proseGoldGain.findAll(narration)
+                    .mapNotNull { it.groupValues[1].toIntOrNull() }
+                    .sum()
+                    .coerceAtMost(500)
+            }
+            if (goldLost == 0) {
+                goldLost = proseGoldLost.findAll(narration)
+                    .mapNotNull { it.groupValues[1].toIntOrNull() }
+                    .sum()
+                    .coerceAtMost(500)
+            }
+            if (xp == 0) {
+                xp = proseXp.findAll(narration)
+                    .mapNotNull { it.groupValues[1].toIntOrNull() }
+                    .sum()
+                    .coerceAtMost(1000)
+            }
         }
 
         // ---- Dialogue extraction for the NPC journal ----
@@ -677,6 +821,7 @@ object TagParser {
             val gap = raw.substring(lastBlockEnd, block.start)
             val gapCleaned = scenePattern.replace(gap, "")
                 .let { choicesPattern.replace(it, "") }
+                .let { metadataBlockPattern.replace(it, "") }
                 .let { tagPattern.replace(it, "") }
                 .trim()
                 .replace(Regex("\\n{3,}"), "\n\n")
@@ -689,6 +834,7 @@ object TagParser {
             val trailing = raw.substring(lastBlockEnd)
             val trailingCleaned = scenePattern.replace(trailing, "")
                 .let { choicesPattern.replace(it, "") }
+                .let { metadataBlockPattern.replace(it, "") }
                 .let { tagPattern.replace(it, "") }
                 .let { narratorProsePattern.replace(it, "") }
                 .let { narratorAsidePattern.replace(it, "") }
@@ -739,7 +885,8 @@ object TagParser {
             npcDialogs = npcDialogs,
             playerActions = playerActionsExtracted,
             npcActions = npcActionsExtracted,
-            segments = segments
+            segments = segments,
+            source = parseSource
         )
     }
 }

@@ -1,5 +1,6 @@
 package com.realmsoffate.game.data
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -389,3 +390,125 @@ object IdGen {
             .take(60)                                  // cap length
     }
 }
+
+// ============================================================================
+//  Turn metadata JSON schema — Phase 3
+// ============================================================================
+// The AI emits a single [METADATA]{...}[/METADATA] block at the end of each
+// response containing ALL mechanical side effects for the turn. Tagged prose
+// ([NARRATOR_PROSE], [NPC_DIALOG:id], etc.) remains the narrative format; this
+// schema is strictly for the state mutations that used to ride in inline tags
+// like [DAMAGE:N], [ITEM:Name|...], [NPC_MET:...], etc.
+//
+// All fields have defaults so the AI can omit any section that doesn't apply
+// this turn. snake_case JSON keys because DeepSeek generates them more
+// reliably than camelCase (both work via @SerialName mapping).
+//
+// Missing / malformed / omitted JSON block -> parser falls back to the legacy
+// inline-tag regex extraction. Old saves and ongoing games keep working.
+
+@Serializable
+data class TurnMetadata(
+    val damage: Int = 0,
+    val heal: Int = 0,
+    val xp: Int = 0,
+    @SerialName("gold_gained") val goldGained: Int = 0,
+    @SerialName("gold_lost") val goldLost: Int = 0,
+    @SerialName("moral_delta") val moralDelta: Int = 0,
+    @SerialName("items_gained") val itemsGained: List<ItemSpec> = emptyList(),
+    @SerialName("items_removed") val itemsRemoved: List<String> = emptyList(),
+    @SerialName("conditions_added") val conditionsAdded: List<String> = emptyList(),
+    @SerialName("conditions_removed") val conditionsRemoved: List<String> = emptyList(),
+    @SerialName("npcs_met") val npcsMet: List<NpcMetSpec> = emptyList(),
+    @SerialName("npc_updates") val npcUpdates: List<FieldUpdateSpec> = emptyList(),
+    @SerialName("npc_deaths") val npcDeaths: List<String> = emptyList(),
+    @SerialName("npc_quotes") val npcQuotes: List<NpcQuoteSpec> = emptyList(),
+    @SerialName("quest_starts") val questStarts: List<QuestSpec> = emptyList(),
+    @SerialName("quest_updates") val questUpdates: List<QuestUpdateSpec> = emptyList(),
+    @SerialName("quest_completes") val questCompletes: List<String> = emptyList(),
+    @SerialName("quest_fails") val questFails: List<String> = emptyList(),
+    val enemies: List<EnemySpec> = emptyList(),
+    @SerialName("faction_updates") val factionUpdates: List<FieldUpdateSpec> = emptyList(),
+    @SerialName("rep_deltas") val repDeltas: List<RepDeltaSpec> = emptyList(),
+    @SerialName("lore_entries") val loreEntries: List<String> = emptyList(),
+    val check: CheckSpec? = null,
+    @SerialName("travel_to") val travelTo: String? = null,
+    @SerialName("time_of_day") val timeOfDay: String? = null,
+    val shops: List<ShopSpec> = emptyList(),
+    @SerialName("party_joins") val partyJoins: List<PartyJoinSpec> = emptyList(),
+    @SerialName("party_leaves") val partyLeaves: List<String> = emptyList()
+)
+
+@Serializable
+data class ItemSpec(
+    val name: String,
+    val desc: String = "",
+    val type: String = "item",
+    val rarity: String = "common"
+)
+
+@Serializable
+data class NpcMetSpec(
+    val id: String,
+    val name: String,
+    val race: String = "",
+    val role: String = "",
+    val age: String = "",
+    val relationship: String = "neutral",
+    val appearance: String = "",
+    val personality: String = "",
+    val thoughts: String = ""
+)
+
+/** Generic field update for [NPC_UPDATE] / [FACTION_UPDATE] style operations. */
+@Serializable
+data class FieldUpdateSpec(val id: String, val field: String, val value: String)
+
+@Serializable
+data class NpcQuoteSpec(val id: String, val quote: String)
+
+@Serializable
+data class QuestSpec(
+    val title: String,
+    val type: String = "side",
+    val desc: String,
+    val giver: String = "",
+    val objectives: List<String> = emptyList(),
+    val reward: String = ""
+)
+
+@Serializable
+data class QuestUpdateSpec(val title: String, val objective: String)
+
+@Serializable
+data class EnemySpec(
+    val name: String,
+    val hp: Int,
+    @SerialName("max_hp") val maxHp: Int
+)
+
+@Serializable
+data class RepDeltaSpec(val faction: String, val delta: Int)
+
+@Serializable
+data class CheckSpec(
+    val skill: String,
+    val ability: String,
+    val dc: Int,
+    val passed: Boolean,
+    val total: Int
+)
+
+@Serializable
+data class ShopSpec(val merchant: String, val items: Map<String, Int>)
+
+@Serializable
+data class PartyJoinSpec(
+    val name: String,
+    val race: String,
+    val role: String,
+    val level: Int = 1,
+    @SerialName("max_hp") val maxHp: Int = 10,
+    val appearance: String = "",
+    val personality: String = ""
+)
