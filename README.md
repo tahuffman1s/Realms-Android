@@ -14,7 +14,7 @@ The narrator is modeled after the Baldur's Gate 3 narrator: sardonic, omniscient
 
 | Layer | Choice |
 |-------|--------|
-| Language | Kotlin 2.0 |
+| Language | Kotlin 2.2 |
 | UI | Jetpack Compose, Material 3 with Material You dynamic color |
 | Architecture | Single `ComponentActivity`, `GameViewModel` (StateFlow), pure reducers |
 | AI | DeepSeek V3 via OkHttp (Gemini + Claude supported but dormant) |
@@ -51,7 +51,7 @@ The AI integration is the core of the game. Key design decisions:
 
 ## Building
 
-**Requirements:** Android Studio Koala+ (AGP 8.5, Kotlin 2.0), Android SDK 34, JDK 17.
+**Requirements:** Gradle 9.4+, AGP 9.0, Kotlin 2.2, Android SDK 34, JDK 17+.
 
 ```bash
 # First time — set your SDK path
@@ -59,17 +59,17 @@ cp local.properties.sample local.properties
 # Edit local.properties: sdk.dir=/path/to/Android/Sdk
 
 # Debug APK
-./gradlew assembleDebug
+gradle assembleDebug
 # -> app/build/outputs/apk/debug/app-debug.apk
 
 # Release APK (needs signing config)
-./gradlew assembleRelease
+gradle assembleRelease
 
 # Lint
-./gradlew lint
+gradle lint
 
 # Tests
-./gradlew test
+gradle test
 ```
 
 ## First run
@@ -129,7 +129,7 @@ Integration tests cover the per-turn state-mutation pipeline via Robolectric:
 - `ApplyParsedIntegrationTest` — 20 tests across all reducer domains
 - `GameStateFixture` + `ParsedReplyBuilder` — test harness for constructing game state and AI responses
 
-Run with `./gradlew test`.
+Run with `gradle test`.
 
 ## Roadmap
 
@@ -137,8 +137,7 @@ See [ROADMAP.md](ROADMAP.md) for shipped phases, pending work, and strategic con
 
 - **AI Reliability** (Phases 1-4 shipped) — prompt caching, stable NPC IDs, JSON metadata, few-shot polish
 - **Parser** (Phases A-B shipped) — tokenizer + stack parser replacing regex
-- **GameViewModel Refactor** (Phases I-II shipped) — reducer extraction, `applyParsed` down from 528 to ~140 lines
-- **Phase III pending** — extract MerchantHandler, RestHandler, SaveService, ProgressionHandler
+- **GameViewModel Refactor** (Phases I-III shipped) — reducer extraction, handler extraction, `applyParsed` down from 528 to ~140 lines, GameViewModel from 2131 to 1389 lines
 
 ## License
 

@@ -1,6 +1,5 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
@@ -8,6 +7,7 @@ plugins {
 android {
     namespace = "com.realmsoffate.game"
     compileSdk = 34
+    buildToolsVersion = "37.0.0"
 
     defaultConfig {
         applicationId = "com.realmsoffate.game"

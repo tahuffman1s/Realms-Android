@@ -113,41 +113,30 @@ becomes after Phase II) needs material changes for another feature.
 | II.3 | `WorldReducer` (faction updates / leader cascade / lore entries) | ✅ Shipped |
 | II.4 | `QuestReducer` + `PartyReducer` | ✅ Shipped |
 | II.5 | `CombatReducer` (extracted from `submitAction` tail) | ✅ Shipped |
-| III | Extract VM-level domain handlers (Merchant / Rest / Save / Progression) | 🟡 Pending |
+| III | Extract VM-level domain handlers (Merchant / Rest / Save / Progression) | ✅ Shipped |
 | IV | Split `GameViewModel` into multiple ViewModels | 🔴 Don't do |
 
-**Result so far:** `GameViewModel.kt` 2131 → 1741 lines (−18.3%). `applyParsed`
+**Result:** `GameViewModel.kt` 2131 → 1389 lines (−34.8%). `applyParsed`
 is ~140 lines (down from 528). 5 reducers totaling 817 lines, each pure with
-typed results. 20/0/0/0 tests still green.
+typed results. 4 handlers totaling 484 lines. 48 tests across 6 test classes,
+all green.
 
-### Phase III — extract VM-level domain handlers
+### Phase III — extract VM-level domain handlers ✅
 
-The other dense region of `GameViewModel` is the ~40 UI-action methods
-(`shortRest`, `buyItem`, `saveToSlot`, etc.). Group into handlers; the VM
-keeps its public API and becomes a thin delegator.
+Shipped in `7629c37`. Four handlers extracted:
 
-- [ ] **III.1. `MerchantHandler`** — `openShop`, `buyItem`, `sellItem`,
-  `buybackItem`, `exchange`, `haggle`. Self-contained; only depends on
-  `Character.gold` + `Character.inventory`.
-- [ ] **III.2. `RestHandler`** — `shortRest`, `longRest`, `rollDeathSave`,
-  `die`. Clean boundary.
-- [ ] **III.3. `SaveService`** — `snapshotSaveData`, `loadSlot`, `importSave`,
-  `exportCurrentJson`, `exportFilename`, `debugDumpFilename`, `refreshSlots`,
-  `deleteSlot`, `exhumeGrave`. Persistence concerns belong together.
-- [ ] **III.4. `ProgressionHandler`** — `assignStatPoint`, `selectFeat`,
-  `dismissLevelUp`, `dismissFeat`. Level-up state lifecycle.
+- [x] **III.1. `MerchantHandler`** (130 lines, 9 tests) — `openShop`,
+  `buyItem`, `sellItem`, `buybackItem`, `exchange`, `haggle`.
+- [x] **III.2. `RestHandler`** (115 lines, 7 tests) — `shortRest`, `longRest`,
+  `rollDeathSave`, `die`.
+- [x] **III.3. `SaveService`** (182 lines, 5 tests) — `snapshotSaveData`,
+  `loadSlot`, `importSave`, `exportCurrentJson`, `exportFilename`,
+  `debugDumpFilename`, `refreshSlots`, `deleteSlot`, `exhumeGrave`.
+- [x] **III.4. `ProgressionHandler`** (57 lines, 7 tests) — `assignStatPoint`,
+  `selectFeat`, `dismissLevelUp`, `dismissFeat`.
 
-VM method signatures don't change — they become one-liner delegates:
-
-```kotlin
-fun shortRest() = restHandler.shortRest(_ui)
-fun buyItem(merchant: String, name: String, price: Int) = merchantHandler.buy(_ui, merchant, name, price)
-```
-
-Compose call sites untouched.
-
-**Risk:** low-medium. Each handler is self-contained. Only risk is getting
-state-flow threading wrong. Mitigated by the existing 20-test safety net.
+VM method signatures unchanged — one-liner delegates. Compose call sites
+untouched.
 
 ### Phase IV — DON'T
 
@@ -161,7 +150,8 @@ but:
   already being pure functions.
 
 **Reconsider only if** `GameViewModel.kt` creeps back up past ~1500 lines
-after Phase III lands, OR a second VM consumer appears (companion app, etc.).
+(currently 1389 after Phase III), OR a second VM consumer appears
+(companion app, etc.).
 
 ---
 
@@ -214,17 +204,16 @@ the wall, then size the fix to actual usage patterns.
 
 ### No true integration test coverage outside `applyParsed`
 
-The 8 integration tests cover the per-turn state-mutation path. They don't
-cover:
+The 8 integration tests cover the per-turn state-mutation path. Phase III
+added 28 handler-level tests (merchant, rest, save, progression), bringing
+the total to 48. Still not covered:
 - `submitAction` end-to-end (with mocked `AiRepository`)
 - Save/load round-trip
-- Death save flow
 - Travel state lifecycle
-- Merchant transactions
 
-**Likely intervention:** add a second test class per domain as Phase III
-extracts the handlers. Each handler is unit-testable in isolation; add 2–3
-tests per handler at extraction time.
+**Likely intervention:** add end-to-end tests when `submitAction` or the
+save pipeline next gets material changes. The handler-level tests from
+Phase III cover the domain logic; the gap is now orchestration, not logic.
 
 ### Save format discipline is soft
 

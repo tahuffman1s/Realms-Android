@@ -65,7 +65,7 @@ When all tasks are done, print the final checklist so the user sees the full sum
 Run the full test suite after all tasks are complete:
 
 ```bash
-./gradlew test
+gradle test
 ```
 
 **If tests pass:** proceed to Step 5.
@@ -74,14 +74,14 @@ Run the full test suite after all tasks are complete:
 - Read the failure output. Diagnose whether the failure is caused by your changes or was pre-existing.
 - Fix broken tests. If your changes altered behavior that existing tests assert, update the tests to match the new correct behavior — do not delete tests to make them pass.
 - If you added new game mechanics, reducers, or parser logic, **write new tests** for them (see Testing section below).
-- Re-run `./gradlew test` after fixes. Cap at 3 retry cycles; if still failing, stop and present the remaining failures to the user.
+- Re-run `gradle test` after fixes. Cap at 3 retry cycles; if still failing, stop and present the remaining failures to the user.
 
 ### Step 5 — Build and Deploy
 
 After tests pass, build and install to the phone in one step:
 
 ```bash
-./gradlew installDebug && adb shell am start -n com.realmsoffate.game/.MainActivity
+gradle installDebug && adb shell am start -n com.realmsoffate.game/.MainActivity
 ```
 
 This builds the debug APK, pushes it to the connected Galaxy S23, and launches the app. If no device is connected, run `phone` (the fish function) which handles ADB reconnection automatically.
@@ -125,19 +125,19 @@ First-time setup on Arch Linux (installs JDK 17/21, Android SDK, Node.js):
 
 ```bash
 # Debug APK
-./gradlew assembleDebug
+gradle assembleDebug
 
 # Release APK
-./gradlew assembleRelease
+gradle assembleRelease
 
 # Run lint
-./gradlew lint
+gradle lint
 
 # Run tests
-./gradlew test
+gradle test
 
 # Clean
-./gradlew clean
+gradle clean
 ```
 
 ## Testing
@@ -150,8 +150,8 @@ app/src/test/kotlin/com/realmsoffate/game/
 │   └── TagParserTest.kt              12 tests — tokenizer + segment parser
 └── game/
     ├── ApplyParsedIntegrationTest.kt  8 tests — full turn pipeline via reducers
-    ├── MerchantHandlerTest.kt         8 tests — buy/sell/buyback/exchange/haggle
-    ├── RestHandlerTest.kt             6 tests — short rest, long rest, death saves
+    ├── MerchantHandlerTest.kt         9 tests — buy/sell/buyback/exchange/haggle
+    ├── RestHandlerTest.kt             7 tests — short rest, long rest, death saves
     ├── SaveServiceTest.kt             5 tests — export, filenames, snapshots
     ├── ProgressionHandlerTest.kt      7 tests — stat points, feats, level-up
     ├── GameStateFixture.kt            Test helpers: character(), baseState(), viewModelWithState()
@@ -206,11 +206,11 @@ Tests run on Robolectric (SDK 34) with JUnit 4. No instrumented tests — everyt
 
 ```bash
 # All tests
-./gradlew test
+gradle test
 
 # Specific test class
-./gradlew test --tests "com.realmsoffate.game.data.TagParserTest"
-./gradlew test --tests "com.realmsoffate.game.game.ApplyParsedIntegrationTest"
+gradle test --tests "com.realmsoffate.game.data.TagParserTest"
+gradle test --tests "com.realmsoffate.game.game.ApplyParsedIntegrationTest"
 ```
 
 ## Plugin Skills — When to Use What
@@ -299,7 +299,7 @@ Context7 is an MCP server that fetches current documentation. Use it when you ne
 
 ## Deploying to the phone
 
-The paired Android target is a Galaxy S23 (`SM-S916U`) on the local LAN. A fish function `phone` is installed at `~/.config/fish/functions/phone.fish` that wraps the full cycle: reconnect if needed → `./gradlew installDebug` → launch `MainActivity`. Run it from the repo root:
+The paired Android target is a Galaxy S23 (`SM-S916U`) on the local LAN. A fish function `phone` is installed at `~/.config/fish/functions/phone.fish` that wraps the full cycle: reconnect if needed → `gradle installDebug` → launch `MainActivity`. Run it from the repo root:
 
 ```
 phone
@@ -311,7 +311,7 @@ The function:
 1. Checks `adb devices` for at least one entry in `device` state.
 2. If none, runs `adb connect 192.168.68.64:44547` (the last-known ADB port).
 3. If still no device, prints reconnection instructions and exits non-zero.
-4. Runs `./gradlew installDebug`.
+4. Runs `gradle installDebug`.
 5. Runs `adb shell am start -n com.realmsoffate.game/.MainActivity`.
 
 ### When the port rotates
