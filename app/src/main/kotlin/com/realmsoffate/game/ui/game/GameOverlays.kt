@@ -4,9 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -387,72 +384,3 @@ internal fun ChoicesSheet(
     }
 }
 
-// ============================================================
-// MORE MENU SHEET — grid of quick-action tiles
-// ============================================================
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun MoreMenuSheet(
-    onClose: () -> Unit,
-    onAction: (String) -> Unit
-) {
-    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val items = listOf(
-        Icons.Filled.Save to ("Save" to "save"),
-        Icons.Filled.Download to ("Download" to "download"),
-        Icons.Filled.FolderOpen to ("Load" to "menu"),
-        Icons.Filled.Home to ("Main Menu" to "menu"),
-        Icons.Filled.AutoAwesome to ("Spells" to "spells"),
-        Icons.AutoMirrored.Filled.MenuBook to ("Lore" to "lore"),
-        Icons.Filled.Book to ("Journal" to "journal"),
-        Icons.Filled.BookmarkBorder to ("Memories" to "memories"),
-        Icons.Filled.CurrencyExchange to ("Currency" to "currency"),
-        Icons.Filled.Groups to ("Party" to "party"),
-        @Suppress("DEPRECATION") Icons.Filled.Assignment to ("Quests" to "quests"),
-        Icons.Filled.HotelClass to ("Short Rest" to "shortrest"),
-        Icons.Filled.NightsStay to ("Long Rest" to "longrest"),
-        Icons.Filled.Tune to ("Settings" to "settings"),
-        Icons.Filled.BugReport to ("Debug Dump" to "debug"),
-        Icons.Filled.Settings to ("Setup" to "setup")
-    )
-    ModalBottomSheet(
-        onDismissRequest = onClose,
-        sheetState = sheet,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-    ) {
-        Column(Modifier.padding(horizontal = 14.dp, vertical = RealmsSpacing.s)) {
-            Text("MORE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(10.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s),
-                horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s),
-                modifier = Modifier.heightIn(max = 420.dp)
-            ) {
-                items(items) { (icon, pair) ->
-                    val (label, action) = pair
-                    MoreTile(icon = icon, label = label, onClick = { onAction(action) })
-                }
-            }
-            Spacer(Modifier.navigationBarsPadding().height(RealmsSpacing.m))
-        }
-    }
-}
-
-@Composable
-internal fun MoreTile(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    Column(
-        Modifier
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp)
-            .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(icon, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.height(2.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall)
-    }
-}

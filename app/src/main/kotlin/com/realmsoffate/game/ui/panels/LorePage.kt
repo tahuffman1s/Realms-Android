@@ -47,11 +47,11 @@ internal fun LorePanel(state: GameUiState, onClose: () -> Unit) {
             return@PanelSheet
         }
         var tab by remember { mutableStateOf(LoreTab.World) }
-        val loreTabs = LoreTab.values().map { it.label to it.icon }
+        val loreTabs = LoreTab.entries.map { it.label to it.icon }
         FilterTabRow(
             tabs = loreTabs,
-            selectedIndex = LoreTab.values().indexOf(tab),
-            onSelect = { tab = LoreTab.values()[it] }
+            selectedIndex = LoreTab.entries.indexOf(tab),
+            onSelect = { tab = LoreTab.entries[it] }
         )
         Spacer(Modifier.height(RealmsSpacing.xs))
         when (tab) {

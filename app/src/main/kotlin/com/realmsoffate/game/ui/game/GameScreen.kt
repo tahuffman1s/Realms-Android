@@ -125,7 +125,13 @@ fun GameScreen(vm: GameViewModel) {
     ) {
 
     Scaffold(
-        topBar = { GameTopBar(state, onSettingsClick = { panel = Panel.Settings }) },
+        topBar = {
+            GameTopBar(
+                state,
+                onSettingsClick = { panel = Panel.Settings },
+                onMemoriesClick = { panel = Panel.Memories }
+            )
+        },
         bottomBar = {
             // imePadding keeps the input + hotbar visible above the soft keyboard.
             Column(Modifier.imePadding()) {

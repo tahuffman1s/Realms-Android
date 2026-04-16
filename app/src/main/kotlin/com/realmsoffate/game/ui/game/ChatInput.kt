@@ -1,10 +1,8 @@
 package com.realmsoffate.game.ui.game
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -13,10 +11,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.ui.overlays.TargetPromptSpec
@@ -169,45 +165,6 @@ internal fun isSelfCastable(spell: com.realmsoffate.game.game.Spell): Boolean {
     return "yourself" in desc || "you gain" in desc || "you heal" in desc
 }
 
-@Composable
-private fun SpellChip(slot: Int, name: String, icon: String, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.height(46.dp)
-    ) {
-        Row(
-            Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.s),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)
-        ) {
-            Box(
-                Modifier
-                    .size(20.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "$slot",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Text(icon, fontSize = 16.sp)
-            Text(
-                name,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1
-            )
-        }
-    }
-}
-
 /**
  * Handles /commands. Returns true if the input was consumed.
  */
@@ -222,7 +179,7 @@ internal fun handleSlashCommand(
     val root = tokens.firstOrNull() ?: return true
     when (root) {
         "help" -> vm.postSystemMessage(
-            "Commands: /save /map /inv /stats /spells /lore /journal /currency /party /quest /rest /shortrest /menu /help"
+            "Commands: /save /map /inv /stats /spells /lore /journal /currency /party /quest /rest /shortrest /memories /menu /help"
         )
         "save" -> { vm.saveToSlot(); vm.postSystemMessage("Saved.") }
         "map" -> openPanel(Panel.Map)
@@ -236,6 +193,7 @@ internal fun handleSlashCommand(
         "quest", "quests" -> openPanel(Panel.Quests)
         "rest", "longrest" -> vm.longRest()
         "shortrest" -> vm.shortRest()
+        "memories", "bookmarks" -> openPanel(Panel.Memories)
         "menu", "title" -> vm.returnToTitle()
         else -> vm.postSystemMessage("Unknown command: /$root. Type /help.")
     }

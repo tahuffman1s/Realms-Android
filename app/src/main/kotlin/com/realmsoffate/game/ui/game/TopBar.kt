@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.ui.components.RealmsProgressBar
@@ -37,7 +38,8 @@ import com.realmsoffate.game.ui.theme.RealmsTheme
 @Composable
 internal fun GameTopBar(
     state: GameUiState,
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    onMemoriesClick: () -> Unit = {}
 ) {
     val ch = state.character ?: return
     val realms = RealmsTheme.colors
@@ -67,6 +69,9 @@ internal fun GameTopBar(
                 Spacer(Modifier.weight(1f))
                 if (state.party.isNotEmpty()) {
                     PartyIcons(state.party.map { it.name })
+                }
+                IconButton(onClick = onMemoriesClick) {
+                    Icon(Icons.Outlined.BookmarkBorder, contentDescription = "Memories")
                 }
                 IconButton(onClick = onSettingsClick) {
                     Icon(Icons.Default.Settings, contentDescription = "Settings")
