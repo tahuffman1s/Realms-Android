@@ -40,6 +40,9 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -217,17 +220,14 @@ internal fun PlayerBubble(
                         Text(initial, style = MaterialTheme.typography.labelSmall, color = realms.goldAccent, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.height(4.dp))
-                    Surface(
+                    IconButton(
                         onClick = onToggleBookmark,
-                        color = if (isBookmarked) realms.goldAccent.copy(alpha = 0.22f)
-                                else Color.Transparent,
-                        shape = CircleShape,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                            contentDescription = "Bookmark",
-                            modifier = Modifier.padding(3.dp),
+                            contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
+                            modifier = Modifier.size(20.dp),
                             tint = if (isBookmarked) realms.goldAccent
                                    else realms.goldAccent.copy(alpha = 0.35f)
                         )
@@ -444,17 +444,14 @@ internal fun NpcDialogueBubble(
                         )
                     }
                     Spacer(Modifier.width(4.dp))
-                    Surface(
+                    IconButton(
                         onClick = onToggleBookmark,
-                        color = if (isBookmarked) RealmsTheme.colors.goldAccent.copy(alpha = 0.22f)
-                                else Color.Transparent,
-                        shape = CircleShape,
-                        modifier = Modifier.size(28.dp).align(Alignment.CenterVertically)
+                        modifier = Modifier.size(48.dp).align(Alignment.CenterVertically)
                     ) {
                         Icon(
                             if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                            contentDescription = "Bookmark",
-                            modifier = Modifier.padding(4.dp),
+                            contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
+                            modifier = Modifier.size(20.dp),
                             tint = if (isBookmarked) RealmsTheme.colors.goldAccent
                                    else accent.copy(alpha = 0.4f)
                         )
@@ -622,9 +619,14 @@ internal fun SwipeableMessage(
             }
         }
         // The actual message content — draggable
+        val a11yActions = buildList {
+            add(CustomAccessibilityAction(leftLabel ?: "Action") { onSwipeLeft(); true })
+            add(CustomAccessibilityAction(rightLabel ?: "Info") { onSwipeRight(); true })
+        }
         Box(
             Modifier
                 .offset { IntOffset(offsetX.toInt(), 0) }
+                .semantics { customActions = a11yActions }
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
                         onDragEnd = {
