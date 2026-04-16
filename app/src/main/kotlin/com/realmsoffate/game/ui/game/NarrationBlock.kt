@@ -16,10 +16,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.data.LogNpc
 import com.realmsoffate.game.data.NarrationSegmentData
 import com.realmsoffate.game.game.DisplayMessage
@@ -62,12 +67,7 @@ internal fun NarrationBlock(
                         )
                     }
                     is NarrationSegmentData.Aside -> {
-                        val asideKey = seg.text.take(300)
-                        NarratorQuipBubble(
-                            text = seg.text,
-                            isBookmarked = bookmarks.any { it.take(300) == asideKey },
-                            onToggleBookmark = { onToggleBookmark(asideKey) }
-                        )
+                        NarratorAsideLine(text = seg.text)
                     }
                     is NarrationSegmentData.NpcDialog -> {
                         val displayName = resolveNpcDisplayName(seg.name, npcLog)
@@ -100,10 +100,11 @@ internal fun NarrationBlock(
                         } else {
                             seg.text
                         }
-                        NarratorQuipBubble(text = actionText)
+                        val (accent, _) = npcColor(seg.name, RealmsTheme.colors.npcPalette)
+                        NpcActionLine(text = actionText, accentColor = accent)
                     }
                     is NarrationSegmentData.PlayerAction -> {
-                        NarratorQuipBubble(text = seg.text)
+                        PlayerActionLine(text = seg.text)
                     }
                     is NarrationSegmentData.PlayerDialog -> {
                         SwipeableMessage(
@@ -215,10 +216,19 @@ internal fun NarratorProseBubble(
     Column(modifier = Modifier.fillMaxWidth()) {
         if (isLatestTurn || expanded) {
             // Full prose — render with markdown
+            val asideAccent = realms.asideOnBubble.copy(alpha = 0.3f)
             Surface(
                 color = realms.narratorBubble,
                 shape = MaterialTheme.shapes.medium,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .drawBehind {
+                        drawRect(
+                            color = asideAccent,
+                            topLeft = Offset.Zero,
+                            size = Size(3.dp.toPx(), size.height)
+                        )
+                    }
             ) {
                 Column(Modifier.padding(RealmsSpacing.m)) {
                     NarrationMarkdown(
@@ -492,6 +502,77 @@ private fun splitNarration(text: String, characterName: String? = null): List<Na
     }
     flushProse()
     return segments
+}
+
+// ============================================================
+// SEGMENT COMPOSABLES — distinct visual treatment per type
+// ============================================================
+
+@Composable
+private fun NpcActionLine(text: String, accentColor: Color) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xs),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            Modifier
+                .width(2.dp)
+                .defaultMinSize(minHeight = 16.dp)
+                .background(accentColor.copy(alpha = 0.3f))
+        )
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontStyle = FontStyle.Italic,
+                fontSize = (13f * LocalFontScale.current).sp
+            ),
+            color = accentColor.copy(alpha = 0.8f),
+            modifier = Modifier.padding(start = RealmsSpacing.s)
+        )
+    }
+}
+
+@Composable
+private fun NarratorAsideLine(text: String) {
+    Text(
+        "~ $text ~",
+        style = MaterialTheme.typography.bodySmall.copy(
+            fontStyle = FontStyle.Italic,
+            fontSize = (13f * LocalFontScale.current).sp
+        ),
+        color = RealmsTheme.colors.asideOnBubble.copy(alpha = 0.7f),
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = RealmsSpacing.xxl, vertical = RealmsSpacing.xs)
+    )
+}
+
+@Composable
+private fun PlayerActionLine(text: String) {
+    val realms = RealmsTheme.colors
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xs),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontStyle = FontStyle.Italic,
+                fontSize = (13f * LocalFontScale.current).sp
+            ),
+            color = realms.goldAccent.copy(alpha = 0.8f),
+            modifier = Modifier.padding(end = RealmsSpacing.s),
+            textAlign = TextAlign.End
+        )
+        Box(
+            Modifier
+                .width(2.dp)
+                .defaultMinSize(minHeight = 16.dp)
+                .background(realms.goldAccent.copy(alpha = 0.3f))
+        )
+    }
 }
 
 /** Extracts a 1-3 sentence summary from the full prose text. */

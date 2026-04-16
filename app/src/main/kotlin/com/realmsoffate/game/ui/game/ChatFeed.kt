@@ -1,5 +1,6 @@
 package com.realmsoffate.game.ui.game
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -12,9 +13,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.game.DisplayMessage
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.ui.theme.RealmsSpacing
@@ -71,25 +75,32 @@ internal fun ChatFeed(
         }
 
         itemsIndexed(state.messages) { idx, msg ->
-            when (msg) {
-                is DisplayMessage.Player -> PlayerBubble(msg.text, state.character?.name)
-                is DisplayMessage.Narration -> {
-                    NarrationBlock(
-                        msg.text, state.character?.name, msg, msg.segments,
-                        npcLog = state.npcLog,
-                        isLatestTurn = idx == state.messages.lastIndex || (idx == state.messages.size - 2 && state.messages.lastOrNull() is DisplayMessage.System),
-                        bookmarks = state.bookmarks,
-                        onToggleBookmark = onToggleBookmark,
-                        onNpcTap = { /* future use */ },
-                        onNpcReply = onNpcReply,
-                        onNpcReaction = onNpcReaction,
-                        onAttackNpc = onAttackNpc,
-                        onOpenJournal = onOpenJournal,
-                        onOpenStats = onOpenStats
-                    )
+            Column {
+                // Turn divider before each narration block (except the very first message)
+                if (msg is DisplayMessage.Narration && idx > 0) {
+                    val turnNumber = state.messages.take(idx).count { it is DisplayMessage.Narration } + 1
+                    TurnDivider(turnNumber)
                 }
-                is DisplayMessage.Event -> EventCard(msg.icon, msg.title, msg.text)
-                is DisplayMessage.System -> SystemLine(msg.text)
+                when (msg) {
+                    is DisplayMessage.Player -> PlayerBubble(msg.text, state.character?.name)
+                    is DisplayMessage.Narration -> {
+                        NarrationBlock(
+                            msg.text, state.character?.name, msg, msg.segments,
+                            npcLog = state.npcLog,
+                            isLatestTurn = idx == state.messages.lastIndex || (idx == state.messages.size - 2 && state.messages.lastOrNull() is DisplayMessage.System),
+                            bookmarks = state.bookmarks,
+                            onToggleBookmark = onToggleBookmark,
+                            onNpcTap = { /* future use */ },
+                            onNpcReply = onNpcReply,
+                            onNpcReaction = onNpcReaction,
+                            onAttackNpc = onAttackNpc,
+                            onOpenJournal = onOpenJournal,
+                            onOpenStats = onOpenStats
+                        )
+                    }
+                    is DisplayMessage.Event -> EventCard(msg.icon, msg.title, msg.text)
+                    is DisplayMessage.System -> SystemLine(msg.text)
+                }
             }
         }
 
@@ -146,5 +157,30 @@ internal fun ChatFeed(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TurnDivider(turnNumber: Int) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.s),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier.weight(1f).height(1.dp).background(
+                Brush.horizontalGradient(listOf(Color.Transparent, MaterialTheme.colorScheme.outlineVariant))
+            )
+        )
+        Text(
+            "TURN $turnNumber",
+            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 2.sp),
+            color = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.padding(horizontal = RealmsSpacing.s)
+        )
+        Box(
+            Modifier.weight(1f).height(1.dp).background(
+                Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.outlineVariant, Color.Transparent))
+            )
+        )
     }
 }

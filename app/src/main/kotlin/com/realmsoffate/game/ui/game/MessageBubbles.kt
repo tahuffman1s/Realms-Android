@@ -16,11 +16,15 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material.icons.Icons
@@ -32,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -105,11 +110,31 @@ internal fun SceneBanner(scene: String, desc: String) {
         animationSpec = tween(220),
         label = "scene-chevron-rotation"
     )
+    val secondary = MaterialTheme.colorScheme.secondary
     Surface(
         onClick = { if (isLong) expanded = !expanded },
         enabled = isLong,
-        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
-        modifier = Modifier.fillMaxWidth()
+        color = Color.Transparent,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = RealmsSpacing.m)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                    )
+                ),
+                MaterialTheme.shapes.medium
+            )
+            .drawBehind {
+                drawRect(
+                    color = secondary,
+                    topLeft = Offset.Zero,
+                    size = Size(3.dp.toPx(), size.height)
+                )
+            }
     ) {
         Row(
             Modifier
@@ -159,22 +184,19 @@ internal fun PlayerBubble(
     val displayName = characterName ?: "You"
     val initial = displayName.take(1).uppercase()
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-        Surface(
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-            shape = MaterialTheme.shapes.medium,
-            modifier = Modifier.fillMaxWidth(0.85f).border(
-                1.dp, realms.goldAccent.copy(alpha = 0.45f), MaterialTheme.shapes.medium
-            )
+        Row(
+            Modifier.fillMaxWidth(0.85f),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Top
         ) {
-            Row(Modifier.padding(start = RealmsSpacing.l, end = RealmsSpacing.xs, top = RealmsSpacing.s, bottom = RealmsSpacing.s)) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        "$displayName:",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = realms.goldAccent,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(4.dp))
+            // Left: bubble with mirrored asymmetric corners (tail points right)
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(14.dp, 4.dp, 14.dp, 14.dp),
+                border = BorderStroke(1.dp, realms.goldAccent.copy(alpha = 0.3f)),
+                modifier = Modifier.weight(1f)
+            ) {
+                Column(Modifier.padding(12.dp)) {
                     val cleanText = text
                         .removeSurrounding("\"")
                         .removeSurrounding("\u201C", "\u201D")
@@ -192,33 +214,45 @@ internal fun PlayerBubble(
                             fontSize = (15f * LocalFontScale.current).sp
                         )
                     )
-                }
-                Spacer(Modifier.width(4.dp))
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(realms.goldAccent.copy(alpha = 0.25f))
-                            .border(1.dp, realms.goldAccent, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(initial, style = MaterialTheme.typography.labelSmall, color = realms.goldAccent, fontWeight = FontWeight.Bold)
+                    // Bookmark icon inside bubble
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        IconButton(
+                            onClick = onToggleBookmark,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
+                                modifier = Modifier.size(18.dp),
+                                tint = if (isBookmarked) realms.goldAccent
+                                       else realms.goldAccent.copy(alpha = 0.35f)
+                            )
+                        }
                     }
-                    Spacer(Modifier.height(4.dp))
-                    IconButton(
-                        onClick = onToggleBookmark,
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                            contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
-                            modifier = Modifier.size(20.dp),
-                            tint = if (isBookmarked) realms.goldAccent
-                                   else realms.goldAccent.copy(alpha = 0.35f)
+                }
+            }
+            // Right: 32dp gold avatar
+            Box(
+                Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                realms.goldAccent.copy(alpha = 0.4f),
+                                realms.goldAccent.copy(alpha = 0.15f)
+                            )
                         )
-                    }
-                }
+                    )
+                    .border(1.dp, realms.goldAccent.copy(alpha = 0.5f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    initial,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = realms.goldAccent,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
@@ -234,7 +268,7 @@ internal fun StatChangePills(msg: DisplayMessage.Narration) {
         val hpDiff = msg.hpAfter - msg.hpBefore
         val lost = hpDiff < 0
         pills.add(Triple(
-            "${if (hpDiff > 0) "+" else ""}$hpDiff HP",
+            "♥ ${if (hpDiff > 0) "+" else ""}$hpDiff HP",
             if (lost) realms.fumbleRed.copy(alpha = 0.2f) else realms.success.copy(alpha = 0.2f),
             if (lost) realms.fumbleRed else realms.success
         ))
@@ -242,14 +276,14 @@ internal fun StatChangePills(msg: DisplayMessage.Narration) {
     if (msg.goldBefore != msg.goldAfter) {
         val diff = msg.goldAfter - msg.goldBefore
         pills.add(Triple(
-            "${if (diff > 0) "+" else ""}${diff}g",
+            "💰 ${if (diff > 0) "+" else ""}${diff}g",
             realms.goldAccent.copy(alpha = 0.2f),
             realms.goldAccent
         ))
     }
     if (msg.xpGained > 0) {
         pills.add(Triple(
-            "+${msg.xpGained} XP",
+            "★ +${msg.xpGained} XP",
             MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
             MaterialTheme.colorScheme.secondary
         ))
@@ -290,7 +324,7 @@ internal fun StatChangePills(msg: DisplayMessage.Narration) {
     if (msg.moralDelta != 0) {
         val good = msg.moralDelta > 0
         pills.add(Triple(
-            "${if (good) "+" else ""}${msg.moralDelta} Moral",
+            "⚖ ${if (good) "+" else ""}${msg.moralDelta} Moral",
             if (good) realms.success.copy(alpha = 0.2f) else realms.fumbleRed.copy(alpha = 0.2f),
             if (good) realms.success else realms.fumbleRed
         ))
@@ -299,7 +333,7 @@ internal fun StatChangePills(msg: DisplayMessage.Narration) {
     msg.repDeltas.forEach { (faction, delta) ->
         val positive = delta > 0
         pills.add(Triple(
-            "${if (positive) "+" else ""}$delta $faction",
+            "💡 ${if (positive) "+" else ""}$delta $faction",
             if (positive) realms.info.copy(alpha = 0.2f) else realms.warning.copy(alpha = 0.2f),
             if (positive) realms.info else realms.warning
         ))
@@ -371,43 +405,57 @@ internal fun NpcDialogueBubble(
     Column {
         // Bubble + overlapping reaction pill
         Box(Modifier.padding(bottom = if (appliedReaction != null) 8.dp else 0.dp)) {
-            Surface(
-                color = bgTint.copy(alpha = 0.75f),
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier
+            Row(
+                Modifier
                     .fillMaxWidth(0.92f)
                     .combinedClickable(
                         onClick = { if (isInteractive) onTap() },
                         onLongClick = { if (isInteractive) showReactions = !showReactions }
-                    )
+                    ),
+                verticalAlignment = Alignment.Top
             ) {
-                Row(Modifier.padding(start = RealmsSpacing.l, end = RealmsSpacing.xs, top = RealmsSpacing.s, bottom = RealmsSpacing.s)) {
-                    if (name.isNotBlank()) {
-                        Box(
-                            Modifier.size(24.dp).clip(CircleShape)
-                                .background(accent.copy(alpha = 0.3f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                name.take(1).uppercase(),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = accent,
-                                fontWeight = FontWeight.Bold
+                // Left: 32dp avatar circle with gradient background
+                if (name.isNotBlank()) {
+                    Box(
+                        Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(accent.copy(alpha = 0.4f), accent.copy(alpha = 0.15f))
+                                )
                             )
-                        }
-                        Spacer(Modifier.width(8.dp))
+                            .border(1.dp, accent.copy(alpha = 0.5f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            name.take(1).uppercase(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = accent,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
-                    Column(Modifier.weight(1f)) {
+                    Spacer(Modifier.width(8.dp))
+                }
+                // Right: bubble with asymmetric corners (small top-left = speech tail)
+                Surface(
+                    color = bgTint.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(4.dp, 14.dp, 14.dp, 14.dp),
+                    border = BorderStroke(1.dp, accent.copy(alpha = 0.2f)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(Modifier.padding(12.dp)) {
                         if (name.isNotBlank()) {
                             Text(
-                                "$name:",
-                                style = MaterialTheme.typography.titleSmall,
+                                name.uppercase(),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    letterSpacing = 0.5.sp
+                                ),
                                 color = accent,
-                                fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            Spacer(Modifier.height(2.dp))
+                            Spacer(Modifier.height(4.dp))
                         }
                         val cleanQuote = quote
                             .removeSurrounding("\"")
@@ -428,19 +476,21 @@ internal fun NpcDialogueBubble(
                                 fontSize = (15f * LocalFontScale.current).sp
                             )
                         )
-                    }
-                    Spacer(Modifier.width(4.dp))
-                    IconButton(
-                        onClick = onToggleBookmark,
-                        modifier = Modifier.size(48.dp).align(Alignment.CenterVertically)
-                    ) {
-                        Icon(
-                            if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                            contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
-                            modifier = Modifier.size(20.dp),
-                            tint = if (isBookmarked) RealmsTheme.colors.goldAccent
-                                   else accent.copy(alpha = 0.4f)
-                        )
+                        // Bookmark icon inside bubble
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            IconButton(
+                                onClick = onToggleBookmark,
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                    contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = if (isBookmarked) RealmsTheme.colors.goldAccent
+                                           else accent.copy(alpha = 0.4f)
+                                )
+                            }
+                        }
                     }
                 }
             }
