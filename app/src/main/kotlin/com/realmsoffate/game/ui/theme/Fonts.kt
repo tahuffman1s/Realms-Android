@@ -33,6 +33,5 @@ val CinzelFontFamily: FontFamily = FontFamily(
 val CrimsonTextFontFamily: FontFamily = FontFamily(
     Font(googleFont = crimsonText, fontProvider = googleFontProvider, weight = FontWeight.Normal),
     Font(googleFont = crimsonText, fontProvider = googleFontProvider, weight = FontWeight.Normal, style = FontStyle.Italic),
-    Font(googleFont = crimsonText, fontProvider = googleFontProvider, weight = FontWeight.SemiBold),
     Font(googleFont = crimsonText, fontProvider = googleFontProvider, weight = FontWeight.Bold)
 )

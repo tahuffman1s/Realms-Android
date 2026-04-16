@@ -28,7 +28,7 @@ val RealmsTypography = Typography(
     displaySmall = TextStyle(fontFamily = TitleSerif, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 32.sp, letterSpacing = 1.sp),
     headlineLarge = TextStyle(fontFamily = TitleSerif, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 34.sp, letterSpacing = 1.sp),
     headlineMedium = TextStyle(fontFamily = TitleSerif, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = 0.8.sp),
-    headlineSmall = TextStyle(fontFamily = TitleSerif, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 24.sp, letterSpacing = 0.5.sp),
+    headlineSmall = TextStyle(fontFamily = TitleSerif, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp, letterSpacing = 0.5.sp),
     titleLarge = TextStyle(fontFamily = TitleSerif, fontWeight = FontWeight.Bold, fontSize = 18.sp, lineHeight = 24.sp, letterSpacing = 0.3.sp),
     titleMedium = TextStyle(fontFamily = TitleSerif, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 20.sp, letterSpacing = 0.3.sp),
     titleSmall = TextStyle(fontFamily = TitleSerif, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = 0.4.sp),
