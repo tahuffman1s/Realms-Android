@@ -1,5 +1,8 @@
 package com.realmsoffate.game.ui.game
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -36,6 +39,7 @@ import com.realmsoffate.game.ui.theme.RealmsTheme
 @Composable
 internal fun GameTopBar(
     state: GameUiState,
+    collapsed: Boolean = false,
     onSettingsClick: () -> Unit = {}
 ) {
     val ch = state.character ?: return
@@ -71,17 +75,25 @@ internal fun GameTopBar(
                     Icon(Icons.Default.Settings, contentDescription = "Settings")
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            // ----- Row 2: HP text + bar | XP text + bar | gold | location chip
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                HpInline(ch.hp, ch.maxHp, Modifier.weight(1.2f))
-                Spacer(Modifier.width(10.dp))
-                XpInline(ch.xp, ch.level, Modifier.weight(1.1f))
-                Spacer(Modifier.width(10.dp))
-                GoldInline("${ch.gold}", realms.goldAccent)
-                if (location != null) {
-                    Spacer(Modifier.width(8.dp))
-                    LocationInline(location.icon, location.name)
+            AnimatedVisibility(
+                visible = !collapsed,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column {
+                    Spacer(Modifier.height(8.dp))
+                    // ----- Row 2: HP text + bar | XP text + bar | gold | location chip
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        HpInline(ch.hp, ch.maxHp, Modifier.weight(1.2f))
+                        Spacer(Modifier.width(10.dp))
+                        XpInline(ch.xp, ch.level, Modifier.weight(1.1f))
+                        Spacer(Modifier.width(10.dp))
+                        GoldInline("${ch.gold}", realms.goldAccent)
+                        if (location != null) {
+                            Spacer(Modifier.width(8.dp))
+                            LocationInline(location.icon, location.name)
+                        }
+                    }
                 }
             }
             // ----- Row 3 (only when present): active conditions strip -----
@@ -285,8 +297,7 @@ private fun LocationInline(icon: String, name: String) {
             name,
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.widthIn(max = 110.dp)
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -51,6 +52,11 @@ fun GameScreen(vm: GameViewModel) {
     var input by remember { mutableStateOf("") }
     val focus = LocalFocusManager.current
     val listState = rememberLazyListState()
+    val topBarCollapsed by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 100
+        }
+    }
     val context = LocalContext.current
     val fontScale by vm.fontScale.collectAsState()
 
@@ -132,7 +138,7 @@ fun GameScreen(vm: GameViewModel) {
     ) {
 
     Scaffold(
-        topBar = { GameTopBar(state, onSettingsClick = { panel = Panel.Settings }) },
+        topBar = { GameTopBar(state, collapsed = topBarCollapsed, onSettingsClick = { panel = Panel.Settings }) },
         bottomBar = {
             // imePadding keeps the input + hotbar visible above the soft keyboard.
             Column(Modifier.imePadding()) {
