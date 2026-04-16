@@ -134,13 +134,13 @@ private fun ActionChip(icon: androidx.compose.ui.graphics.vector.ImageVector, la
     Surface(
         onClick = onClick,
         color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier.height(46.dp)  // bigger touch target
     ) {
         Row(
             Modifier.padding(horizontal = RealmsSpacing.m, vertical = RealmsSpacing.s),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)
         ) {
             Icon(icon, null, Modifier.size(20.dp))
             Text(
@@ -174,11 +174,11 @@ private fun SpellChip(slot: Int, name: String, icon: String, onClick: () -> Unit
     Surface(
         onClick = onClick,
         color = MaterialTheme.colorScheme.secondaryContainer,
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier.height(46.dp)
     ) {
         Row(
-            Modifier.padding(horizontal = 10.dp, vertical = RealmsSpacing.s),
+            Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.s),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)
         ) {

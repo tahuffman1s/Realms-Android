@@ -107,7 +107,7 @@ internal fun ChatFeed(
                         Surface(
                             onClick = { onOpenShop(merchant) },
                             color = MaterialTheme.colorScheme.tertiaryContainer,
-                            shape = RoundedCornerShape(12.dp)
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Row(
                                 Modifier.padding(horizontal = RealmsSpacing.m, vertical = RealmsSpacing.s),

@@ -161,7 +161,7 @@ internal fun SettingsPanel(
             // Preview text at current scale
             Surface(
                 color = realms.asideBubble.copy(alpha = 0.7f),
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
@@ -348,7 +348,7 @@ internal fun TutorialOverlay(step: Int, onNext: () -> Unit, onDismiss: () -> Uni
                     Button(
                         onClick = if (isLast) onDismiss else onNext,
                         modifier = Modifier.weight(1.5f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Text(
                             if (isLast) "Begin!" else "Next",

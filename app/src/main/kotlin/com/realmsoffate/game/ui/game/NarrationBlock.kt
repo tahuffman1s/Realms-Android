@@ -217,10 +217,10 @@ internal fun NarratorProseBubble(
             // Full prose — render with markdown
             Surface(
                 color = realms.narratorBubble,
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(Modifier.padding(14.dp)) {
+                Column(Modifier.padding(RealmsSpacing.m)) {
                     NarrationMarkdown(
                         text = text,
                         modifier = Modifier.fillMaxWidth()
@@ -256,10 +256,10 @@ internal fun NarratorProseBubble(
             Surface(
                 onClick = { expanded = true },
                 color = realms.narratorBubble.copy(alpha = 0.7f),
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(Modifier.padding(14.dp)) {
+                Column(Modifier.padding(RealmsSpacing.m)) {
                     Text(
                         text = summarizeProse(text),
                         style = MaterialTheme.typography.bodyMedium,

@@ -246,7 +246,7 @@ private fun ShopRow(
             Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             Surface(
                 color = realms.goldAccent.copy(alpha = if (canAfford) 0.14f else 0.06f),
-                shape = RoundedCornerShape(8.dp)
+                shape = MaterialTheme.shapes.extraSmall
             ) {
                 Text(
                     "${price}g",
