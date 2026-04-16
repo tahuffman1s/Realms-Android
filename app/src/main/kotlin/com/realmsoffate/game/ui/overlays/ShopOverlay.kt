@@ -46,6 +46,10 @@ fun ShopOverlay(
     var discount by remember(merchant) { mutableFloatStateOf(1f) }
     var haggleResult by remember(merchant) { mutableStateOf<String?>(null) }
 
+    // Bug fix: if all buyback items have been repurchased, the "back" tab no longer
+    // renders a tab button — reset to "buy" so the user isn't stuck on a blank view.
+    if (tab == "back" && buybackStock.isEmpty()) tab = "buy"
+
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onClose,
@@ -138,7 +142,9 @@ fun ShopOverlay(
                             modifier = Modifier.heightIn(max = 420.dp)
                         ) {
                             items(sellable) { item ->
-                                val price = sellValue(item)
+                                // Bug fix: multiply per-unit value by stack quantity so
+                                // selling 10 arrows correctly shows and transacts 10x the price.
+                                val price = sellValue(item) * item.qty
                                 ShopRow(
                                     label = "${item.name} (${item.rarity})",
                                     price = price,
