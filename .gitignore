@@ -14,6 +14,9 @@ gradle-app.setting
 # Cache of project
 .gradletasknamecache
 
+# Machine-specific SDK path
+local.properties
+
 # Eclipse Gradle plugin generated files
 # Eclipse Core
 .project
