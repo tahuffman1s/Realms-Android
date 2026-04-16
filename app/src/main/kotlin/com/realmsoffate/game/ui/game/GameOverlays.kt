@@ -118,7 +118,12 @@ internal fun MemoriesPanel(state: GameUiState, onClose: () -> Unit, onDelete: (S
 internal fun SettingsPanel(
     fontScale: Float,
     onFontScaleChange: (Float) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onExportSave: () -> Unit = {},
+    onShortRest: () -> Unit = {},
+    onLongRest: () -> Unit = {},
+    onDebugDump: () -> Unit = {},
+    onReturnToTitle: () -> Unit = {}
 ) {
     val realms = RealmsTheme.colors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -205,6 +210,45 @@ internal fun SettingsPanel(
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )
+
+            HorizontalDivider(Modifier.padding(vertical = 12.dp))
+
+            // Utility actions
+            Text("Actions", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(bottom = 8.dp))
+
+            OutlinedButton(
+                onClick = { onExportSave(); onClose() },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Export Save") }
+
+            Spacer(Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = { onShortRest() },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Short Rest") }
+
+            Spacer(Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = { onLongRest() },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Long Rest") }
+
+            Spacer(Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = { onDebugDump(); onClose() },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Debug Dump") }
+
+            Spacer(Modifier.height(16.dp))
+
+            OutlinedButton(
+                onClick = { onReturnToTitle() },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) { Text("Return to Title") }
 
             Spacer(Modifier.navigationBarsPadding().height(12.dp))
         }

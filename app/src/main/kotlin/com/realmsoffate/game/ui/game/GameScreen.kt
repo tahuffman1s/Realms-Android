@@ -11,6 +11,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -124,7 +125,7 @@ fun GameScreen(vm: GameViewModel) {
     ) {
 
     Scaffold(
-        topBar = { GameTopBar(state) },
+        topBar = { GameTopBar(state, onSettingsClick = { panel = Panel.Settings }) },
         bottomBar = {
             // imePadding keeps the input + hotbar visible above the soft keyboard.
             Column(Modifier.imePadding()) {
@@ -155,15 +156,33 @@ fun GameScreen(vm: GameViewModel) {
             }
         },
         floatingActionButton = {
-            AnimatedVisibility(
-                visible = state.currentChoices.isNotEmpty() && !state.isGenerating && panel == Panel.None && tab == GameTab.Chat,
-                enter = scaleIn() + fadeIn(),
-                exit = scaleOut() + fadeOut()
-            ) {
-                ChoicesFab(
-                    count = state.currentChoices.size,
-                    onClick = { choicesOpen = true }
-                )
+            if (tab == GameTab.Chat && !state.isGenerating) {
+                when {
+                    state.currentChoices.isNotEmpty() -> {
+                        ExtendedFloatingActionButton(
+                            onClick = { choicesOpen = true },
+                            icon = { Icon(Icons.AutoMirrored.Filled.List, "Choices") },
+                            text = { Text("${state.currentChoices.size} choices") },
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    state.combat != null -> {
+                        FloatingActionButton(
+                            onClick = {
+                                vm.requestTargetPrompt(TargetPromptSpec(
+                                    title = "Attack",
+                                    verb = "I attack",
+                                    recentTargets = state.combat!!.order.filter { !it.isPlayer }.map { it.name }
+                                ))
+                            },
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        ) {
+                            Icon(Icons.Default.GpsFixed, "Attack")
+                        }
+                    }
+                }
             }
         },
         floatingActionButtonPosition = androidx.compose.material3.FabPosition.End,
@@ -362,7 +381,20 @@ fun GameScreen(vm: GameViewModel) {
         Panel.Settings -> SettingsPanel(
             fontScale = fontScale,
             onFontScaleChange = { vm.setFontScale(it) },
-            onClose = { panel = Panel.None; tab = GameTab.Chat }
+            onClose = { panel = Panel.None; tab = GameTab.Chat },
+            onExportSave = {
+                val json = vm.exportCurrentJson()
+                if (json != null) {
+                    val filename = "realms_save_${System.currentTimeMillis()}.json"
+                    exportLauncher.launch(filename)
+                } else {
+                    vm.postSystemMessage("Nothing to export yet.")
+                }
+            },
+            onShortRest = { vm.shortRest() },
+            onLongRest = { vm.longRest() },
+            onDebugDump = { dumpDebugToFile() },
+            onReturnToTitle = { vm.returnToTitle() }
         )
         else -> {}
     }
@@ -377,22 +409,6 @@ fun GameScreen(vm: GameViewModel) {
     }
 
     } // end CompositionLocalProvider
-}
-
-// ============================================================
-// FLOATING CHOICES FAB
-// ============================================================
-
-@Composable
-private fun ChoicesFab(count: Int, onClick: () -> Unit) {
-    FloatingActionButton(
-        onClick = onClick,
-        containerColor = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary,
-        modifier = Modifier.padding(end = 4.dp, bottom = 4.dp)
-    ) {
-        Icon(Icons.Filled.Checklist, contentDescription = "Choices")
-    }
 }
 
 

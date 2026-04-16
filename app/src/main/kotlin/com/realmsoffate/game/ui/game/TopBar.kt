@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.ui.theme.RealmsTheme
@@ -32,7 +34,10 @@ import com.realmsoffate.game.ui.theme.RealmsTheme
 // ============================================================
 
 @Composable
-internal fun GameTopBar(state: GameUiState) {
+internal fun GameTopBar(
+    state: GameUiState,
+    onSettingsClick: () -> Unit = {}
+) {
     val ch = state.character ?: return
     val realms = RealmsTheme.colors
     val location = state.worldMap?.locations?.getOrNull(state.currentLoc)
@@ -43,7 +48,7 @@ internal fun GameTopBar(state: GameUiState) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp)) {
-            // ----- Row 1: name | level badge | combat indicator | party icons
+            // ----- Row 1: name | level badge | combat indicator | party icons | settings gear
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     ch.name,
@@ -61,6 +66,9 @@ internal fun GameTopBar(state: GameUiState) {
                 Spacer(Modifier.weight(1f))
                 if (state.party.isNotEmpty()) {
                     PartyIcons(state.party.map { it.name })
+                }
+                IconButton(onClick = onSettingsClick) {
+                    Icon(Icons.Default.Settings, contentDescription = "Settings")
                 }
             }
             Spacer(Modifier.height(8.dp))
