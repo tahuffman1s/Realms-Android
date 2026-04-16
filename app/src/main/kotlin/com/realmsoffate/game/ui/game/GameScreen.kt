@@ -49,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -176,8 +177,9 @@ fun GameScreen(vm: GameViewModel) {
         return
     }
 
+    val systemFontScale = LocalConfiguration.current.fontScale
     CompositionLocalProvider(
-        LocalFontScale provides fontScale
+        LocalFontScale provides fontScale * systemFontScale
     ) {
 
     Scaffold(
