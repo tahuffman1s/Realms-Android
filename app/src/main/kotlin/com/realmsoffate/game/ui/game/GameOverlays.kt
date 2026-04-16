@@ -214,41 +214,51 @@ internal fun SettingsPanel(
             HorizontalDivider(Modifier.padding(vertical = 12.dp))
 
             // Utility actions
-            Text("Actions", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(bottom = 8.dp))
+            Text(
+                "ACTIONS",
+                style = MaterialTheme.typography.labelLarge,
+                color = realms.goldAccent,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
 
-            OutlinedButton(
-                onClick = { onExportSave(); onClose() },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Export Save") }
+            ListItem(
+                headlineContent = { Text("Export Save") },
+                leadingContent = { Icon(Icons.Default.Download, null) },
+                modifier = Modifier.clickable { onExportSave(); onClose() }
+            )
 
-            Spacer(Modifier.height(8.dp))
+            ListItem(
+                headlineContent = { Text("Short Rest") },
+                supportingContent = { Text("Recover some HP without ending the day") },
+                leadingContent = { Icon(Icons.Default.Bedtime, null) },
+                modifier = Modifier.clickable { onShortRest(); onClose() }
+            )
 
-            OutlinedButton(
-                onClick = { onShortRest() },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Short Rest") }
+            ListItem(
+                headlineContent = { Text("Long Rest") },
+                supportingContent = { Text("Full recovery — advances time and resets resources") },
+                leadingContent = { Icon(Icons.Default.NightShelter, null) },
+                modifier = Modifier.clickable { onLongRest(); onClose() }
+            )
 
-            Spacer(Modifier.height(8.dp))
+            ListItem(
+                headlineContent = { Text("Debug Dump") },
+                leadingContent = { Icon(Icons.Default.BugReport, null) },
+                modifier = Modifier.clickable { onDebugDump(); onClose() }
+            )
 
-            OutlinedButton(
-                onClick = { onLongRest() },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Long Rest") }
+            HorizontalDivider(Modifier.padding(vertical = 4.dp))
 
-            Spacer(Modifier.height(8.dp))
-
-            OutlinedButton(
-                onClick = { onDebugDump(); onClose() },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Debug Dump") }
-
-            Spacer(Modifier.height(16.dp))
-
-            OutlinedButton(
-                onClick = { onReturnToTitle() },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-            ) { Text("Return to Title") }
+            ListItem(
+                headlineContent = {
+                    Text("Return to Title", color = MaterialTheme.colorScheme.error)
+                },
+                leadingContent = {
+                    Icon(Icons.Default.Home, null, tint = MaterialTheme.colorScheme.error)
+                },
+                modifier = Modifier.clickable { onReturnToTitle() }
+            )
 
             Spacer(Modifier.navigationBarsPadding().height(12.dp))
         }

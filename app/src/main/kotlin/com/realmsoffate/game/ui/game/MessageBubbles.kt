@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontStyle
@@ -105,6 +106,147 @@ internal fun resolveNpcDisplayName(
 internal fun formatSignedRoll(n: Int) = if (n >= 0) "+$n" else n.toString()
 
 // ============================================================
+// CHAT BUBBLE — shared base for all message bubble types
+// ============================================================
+
+/** Controls whether a bubble is left-aligned, right-aligned, or centered. */
+internal enum class BubbleAlignment { Start, End, Center }
+
+/**
+ * Shared base composable for all chat bubbles in the game feed.
+ *
+ * Handles:
+ *  - Row alignment (Start = NPC/narrator left, End = player right, Center = quip)
+ *  - Optional avatar circle on the leading side
+ *  - Surface with configurable background, shape, and optional border
+ *  - Consistent bookmark toggle (small icon, 48dp touch target, gold tint)
+ *  - Arbitrary content slot for bubble-specific body
+ */
+@Composable
+internal fun ChatBubble(
+    alignment: BubbleAlignment = BubbleAlignment.Start,
+    backgroundColor: Color,
+    contentColor: Color,
+    shape: Shape = RoundedCornerShape(16.dp),
+    border: BorderStroke? = null,
+    avatarInitial: String? = null,
+    avatarColor: Color = Color.Unspecified,
+    isBookmarked: Boolean = false,
+    onToggleBookmark: (() -> Unit)? = null,
+    maxWidthFraction: Float = 0.85f,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val realms = RealmsTheme.colors
+
+    val rowArrangement = when (alignment) {
+        BubbleAlignment.Start -> Arrangement.Start
+        BubbleAlignment.End -> Arrangement.End
+        BubbleAlignment.Center -> Arrangement.Center
+    }
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = rowArrangement,
+        verticalAlignment = Alignment.Top
+    ) {
+        // Left avatar (only for Start-aligned bubbles)
+        if (alignment == BubbleAlignment.Start && avatarInitial != null) {
+            Box(
+                Modifier
+                    .padding(top = 8.dp, end = 6.dp)
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (avatarColor != Color.Unspecified) avatarColor.copy(alpha = 0.25f)
+                        else backgroundColor
+                    )
+                    .border(
+                        1.dp,
+                        if (avatarColor != Color.Unspecified) avatarColor else contentColor,
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    avatarInitial,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (avatarColor != Color.Unspecified) avatarColor else contentColor,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        val surfaceModifier = if (maxWidthFraction < 1f) {
+            Modifier.fillMaxWidth(maxWidthFraction)
+        } else {
+            Modifier.fillMaxWidth()
+        }.let { m ->
+            if (border != null) m.border(border.width, border.brush, shape) else m
+        }
+
+        Surface(
+            color = backgroundColor,
+            shape = shape,
+            modifier = surfaceModifier
+        ) {
+            Column(Modifier.padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 6.dp)) {
+                // Bubble-specific content
+                content()
+
+                // Bookmark row — always at the bottom-end of the surface
+                if (onToggleBookmark != null) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        IconButton(
+                            onClick = onToggleBookmark,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
+                                modifier = Modifier.size(20.dp),
+                                tint = if (isBookmarked) realms.goldAccent
+                                       else realms.goldAccent.copy(alpha = 0.35f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Right avatar (only for End-aligned bubbles)
+        if (alignment == BubbleAlignment.End && avatarInitial != null) {
+            Box(
+                Modifier
+                    .padding(top = 8.dp, start = 6.dp)
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (avatarColor != Color.Unspecified) avatarColor.copy(alpha = 0.25f)
+                        else backgroundColor
+                    )
+                    .border(
+                        1.dp,
+                        if (avatarColor != Color.Unspecified) avatarColor else contentColor,
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    avatarInitial,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (avatarColor != Color.Unspecified) avatarColor else contentColor,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+// ============================================================
 // COMPOSABLES
 // ============================================================
 
@@ -171,70 +313,42 @@ internal fun PlayerBubble(
 ) {
     val realms = RealmsTheme.colors
     val displayName = characterName ?: "You"
-    val initial = displayName.take(1).uppercase()
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-        Surface(
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier.fillMaxWidth(0.85f).border(
-                1.dp, realms.goldAccent.copy(alpha = 0.45f), RoundedCornerShape(14.dp)
+    ChatBubble(
+        alignment = BubbleAlignment.End,
+        backgroundColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, realms.goldAccent.copy(alpha = 0.45f)),
+        avatarInitial = displayName.take(1).uppercase(),
+        avatarColor = realms.goldAccent,
+        isBookmarked = isBookmarked,
+        onToggleBookmark = onToggleBookmark,
+        maxWidthFraction = 0.85f
+    ) {
+        Text(
+            "$displayName:",
+            style = MaterialTheme.typography.titleSmall,
+            color = realms.goldAccent,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(4.dp))
+        val cleanText = text
+            .removeSurrounding("\"")
+            .removeSurrounding("\u201C", "\u201D")
+            .trim()
+        Text(
+            text = com.realmsoffate.game.util.parseInline(
+                "\u201C$cleanText\u201D",
+                boldColor = realms.goldAccent,
+                codeBackground = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                codeText = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontStyle = FontStyle.Italic,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = (15f * LocalFontScale.current).sp
             )
-        ) {
-            Row(Modifier.padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp)) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        "$displayName:",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = realms.goldAccent,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    val cleanText = text
-                        .removeSurrounding("\"")
-                        .removeSurrounding("\u201C", "\u201D")
-                        .trim()
-                    Text(
-                        text = com.realmsoffate.game.util.parseInline(
-                            "\u201C$cleanText\u201D",
-                            boldColor = realms.goldAccent,
-                            codeBackground = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            codeText = MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontStyle = FontStyle.Italic,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = (15f * LocalFontScale.current).sp
-                        )
-                    )
-                }
-                Spacer(Modifier.width(4.dp))
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(realms.goldAccent.copy(alpha = 0.25f))
-                            .border(1.dp, realms.goldAccent, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(initial, style = MaterialTheme.typography.labelSmall, color = realms.goldAccent, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    IconButton(
-                        onClick = onToggleBookmark,
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                            contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
-                            modifier = Modifier.size(20.dp),
-                            tint = if (isBookmarked) realms.goldAccent
-                                   else realms.goldAccent.copy(alpha = 0.35f)
-                        )
-                    }
-                }
-            }
-        }
+        )
     }
 }
 
@@ -349,11 +463,16 @@ internal fun NarratorQuipBubble(
     isBookmarked: Boolean = false,
     onToggleBookmark: () -> Unit = {}
 ) {
-    // Rendered as plain, smaller, centered gray italic text — no surface, no border, no header.
-    // Extra vertical padding gives breathing room between the quip and neighboring bubbles.
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.Center
+    val realms = RealmsTheme.colors
+    // Center-aligned pill — italic aside, slightly inset from full width.
+    ChatBubble(
+        alignment = BubbleAlignment.Center,
+        backgroundColor = realms.asideBubble,
+        contentColor = realms.asideOnBubble,
+        shape = RoundedCornerShape(24.dp),
+        isBookmarked = isBookmarked,
+        onToggleBookmark = onToggleBookmark,
+        maxWidthFraction = 0.8f
     ) {
         Text(
             text,
@@ -361,8 +480,9 @@ internal fun NarratorQuipBubble(
                 fontStyle = FontStyle.Italic,
                 fontSize = (13f * LocalFontScale.current).sp
             ),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            color = realms.asideOnBubble,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
@@ -385,77 +505,58 @@ internal fun NpcDialogueBubble(
     Column {
         // Bubble + overlapping reaction pill
         Box(Modifier.padding(bottom = if (appliedReaction != null) 8.dp else 0.dp)) {
-            Surface(
-                color = bgTint.copy(alpha = 0.75f),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier
+            // Wrap ChatBubble in a combinedClickable modifier applied via a Box so
+            // long-press still triggers the reaction picker while the base surface
+            // handles background, shape, avatar, and bookmark consistently.
+            Box(
+                Modifier
                     .fillMaxWidth(0.92f)
                     .combinedClickable(
                         onClick = { if (isInteractive) onTap() },
                         onLongClick = { if (isInteractive) showReactions = !showReactions }
                     )
             ) {
-                Row(Modifier.padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp)) {
+                ChatBubble(
+                    alignment = BubbleAlignment.Start,
+                    backgroundColor = bgTint.copy(alpha = 0.75f),
+                    contentColor = Color.White.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(14.dp),
+                    avatarInitial = if (name.isNotBlank()) name.take(1).uppercase() else null,
+                    avatarColor = accent,
+                    isBookmarked = isBookmarked,
+                    onToggleBookmark = onToggleBookmark,
+                    maxWidthFraction = 1f
+                ) {
                     if (name.isNotBlank()) {
-                        Box(
-                            Modifier.size(24.dp).clip(CircleShape)
-                                .background(accent.copy(alpha = 0.3f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                name.take(1).uppercase(),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = accent,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    Column(Modifier.weight(1f)) {
-                        if (name.isNotBlank()) {
-                            Text(
-                                "$name:",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = accent,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(Modifier.height(2.dp))
-                        }
-                        val cleanQuote = quote
-                            .removeSurrounding("\"")
-                            .removeSurrounding("\u201C", "\u201D")
-                            .removeSurrounding("'")
-                            .removeSurrounding("\u2018", "\u2019")
-                            .trim()
                         Text(
-                            text = com.realmsoffate.game.util.parseInline(
-                                "\u201C$cleanQuote\u201D",
-                                boldColor = accent,
-                                codeBackground = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                codeText = MaterialTheme.colorScheme.onSurfaceVariant
-                            ),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontStyle = FontStyle.Italic,
-                                color = Color.White.copy(alpha = 0.9f),
-                                fontSize = (15f * LocalFontScale.current).sp
-                            )
+                            "$name:",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = accent,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
+                        Spacer(Modifier.height(2.dp))
                     }
-                    Spacer(Modifier.width(4.dp))
-                    IconButton(
-                        onClick = onToggleBookmark,
-                        modifier = Modifier.size(48.dp).align(Alignment.CenterVertically)
-                    ) {
-                        Icon(
-                            if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                            contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
-                            modifier = Modifier.size(20.dp),
-                            tint = if (isBookmarked) RealmsTheme.colors.goldAccent
-                                   else accent.copy(alpha = 0.4f)
+                    val cleanQuote = quote
+                        .removeSurrounding("\"")
+                        .removeSurrounding("\u201C", "\u201D")
+                        .removeSurrounding("'")
+                        .removeSurrounding("\u2018", "\u2019")
+                        .trim()
+                    Text(
+                        text = com.realmsoffate.game.util.parseInline(
+                            "\u201C$cleanQuote\u201D",
+                            boldColor = accent,
+                            codeBackground = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            codeText = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontStyle = FontStyle.Italic,
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontSize = (15f * LocalFontScale.current).sp
                         )
-                    }
+                    )
                 }
             }
             // Applied reaction pill — overlapping bottom-right

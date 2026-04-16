@@ -11,7 +11,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -47,6 +46,8 @@ fun GameScreen(vm: GameViewModel) {
     var journalFocusNpc by remember { mutableStateOf<String?>(null) }
     var tab by remember { mutableStateOf(GameTab.Chat) }
     var choicesOpen by remember { mutableStateOf(false) }
+    var showCharacterChooser by remember { mutableStateOf(false) }
+    var showJournalChooser by remember { mutableStateOf(false) }
     var input by remember { mutableStateOf("") }
     val focus = LocalFocusManager.current
     val listState = rememberLazyListState()
@@ -149,7 +150,8 @@ fun GameScreen(vm: GameViewModel) {
                             }
                         },
                         onTargetPrompt = { vm.requestTargetPrompt(it) },
-                        onSpellsOpen = { panel = Panel.Spells }
+                        onSpellsOpen = { panel = Panel.Spells },
+                        onChoicesOpen = { choicesOpen = true }
                     )
                 }
                 GameBottomNav(
@@ -161,17 +163,15 @@ fun GameScreen(vm: GameViewModel) {
                                 panel = Panel.None
                                 tab = newTab
                             }
-                            // Re-tapping the same tab cycles to the next sub-panel.
-                            newTab == tab -> when (newTab) {
-                                GameTab.Character -> {
-                                    val idx = characterPanels.indexOf(panel)
-                                    panel = characterPanels[(idx + 1) % characterPanels.size]
-                                }
-                                GameTab.Journal -> {
-                                    val idx = journalPanels.indexOf(panel)
-                                    panel = journalPanels[(idx + 1) % journalPanels.size]
-                                }
-                                else -> {}
+                            // Tapping Character (whether already selected or not) shows the chooser.
+                            newTab == GameTab.Character -> {
+                                tab = newTab
+                                showCharacterChooser = true
+                            }
+                            // Tapping Journal (whether already selected or not) shows the chooser.
+                            newTab == GameTab.Journal -> {
+                                tab = newTab
+                                showJournalChooser = true
                             }
                             // Switching to a new tab — LaunchedEffect handles opening the default sub-panel.
                             else -> tab = newTab
@@ -181,32 +181,19 @@ fun GameScreen(vm: GameViewModel) {
             }
         },
         floatingActionButton = {
-            if (tab == GameTab.Chat && !state.isGenerating) {
-                when {
-                    state.currentChoices.isNotEmpty() -> {
-                        ExtendedFloatingActionButton(
-                            onClick = { choicesOpen = true },
-                            icon = { Icon(Icons.AutoMirrored.Filled.List, "Choices") },
-                            text = { Text("${state.currentChoices.size} choices") },
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                    state.combat != null -> {
-                        FloatingActionButton(
-                            onClick = {
-                                vm.requestTargetPrompt(TargetPromptSpec(
-                                    title = "Attack",
-                                    verb = "I attack",
-                                    recentTargets = state.combat!!.order.filter { !it.isPlayer }.map { it.name }
-                                ))
-                            },
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        ) {
-                            Icon(Icons.Default.GpsFixed, "Attack")
-                        }
-                    }
+            if (tab == GameTab.Chat && !state.isGenerating && state.combat != null) {
+                FloatingActionButton(
+                    onClick = {
+                        vm.requestTargetPrompt(TargetPromptSpec(
+                            title = "Attack",
+                            verb = "I attack",
+                            recentTargets = state.combat!!.order.filter { !it.isPlayer }.map { it.name }
+                        ))
+                    },
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                ) {
+                    Icon(Icons.Default.GpsFixed, "Attack")
                 }
             }
         },
@@ -352,6 +339,94 @@ fun GameScreen(vm: GameViewModel) {
         )
     }
 
+    // Character sub-panel chooser
+    if (showCharacterChooser) {
+        AlertDialog(
+            onDismissRequest = { showCharacterChooser = false },
+            title = { Text("Character") },
+            text = {
+                Column {
+                    listOf(
+                        Triple("📊", "Stats", Panel.Stats),
+                        Triple("🎒", "Inventory", Panel.Inventory),
+                        Triple("✨", "Spells", Panel.Spells),
+                        Triple("💰", "Currency", Panel.Currency)
+                    ).forEach { (icon, label, dest) ->
+                        TextButton(
+                            onClick = { panel = dest; showCharacterChooser = false },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                "$icon  $label",
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    Text(
+                        "Rest",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+                    )
+                    TextButton(
+                        onClick = { vm.shortRest(); showCharacterChooser = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "🌤  Short Rest",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    TextButton(
+                        onClick = { vm.longRest(); showCharacterChooser = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "🌙  Long Rest",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    // Journal sub-panel chooser
+    if (showJournalChooser) {
+        AlertDialog(
+            onDismissRequest = { showJournalChooser = false },
+            title = { Text("Journal") },
+            text = {
+                Column {
+                    listOf(
+                        Triple("📋", "Quests", Panel.Quests),
+                        Triple("📖", "NPCs", Panel.Journal),
+                        Triple("📚", "Lore", Panel.Lore),
+                        Triple("⚔️", "Party", Panel.Party),
+                        Triple("🔖", "Memories", Panel.Memories)
+                    ).forEach { (icon, label, dest) ->
+                        TextButton(
+                            onClick = { panel = dest; showJournalChooser = false },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                "$icon  $label",
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
     when (panel) {
         Panel.Inventory -> InventoryPanel(state, onClose = { panel = Panel.None; tab = GameTab.Chat }, onEquip = vm::equipToggle)
         Panel.Quests -> QuestsPanel(state, onClose = { panel = Panel.None; tab = GameTab.Chat }, onAbandon = vm::abandonQuest)
@@ -416,8 +491,6 @@ fun GameScreen(vm: GameViewModel) {
                     vm.postSystemMessage("Nothing to export yet.")
                 }
             },
-            onShortRest = { vm.shortRest() },
-            onLongRest = { vm.longRest() },
             onDebugDump = { dumpDebugToFile() },
             onReturnToTitle = { vm.returnToTitle() }
         )

@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -28,7 +29,8 @@ internal fun GameInputBar(
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
     onTargetPrompt: (TargetPromptSpec) -> Unit,
-    onSpellsOpen: () -> Unit = {}
+    onSpellsOpen: () -> Unit = {},
+    onChoicesOpen: () -> Unit = {}
 ) {
     Column(Modifier.fillMaxWidth()) {
         // ---- Action bar — attack/heavy/spells chips, visible during combat ----
@@ -110,7 +112,16 @@ internal fun GameInputBar(
                     singleLine = false,
                     maxLines = 5
                 )
-                Spacer(Modifier.width(8.dp))
+                if (state.currentChoices.isNotEmpty() && !state.isGenerating) {
+                    IconButton(onClick = onChoicesOpen) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.List,
+                            contentDescription = "Choices",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                Spacer(Modifier.width(4.dp))
                 FilledIconButton(
                     onClick = onSend,
                     enabled = input.isNotBlank() && !state.isGenerating,

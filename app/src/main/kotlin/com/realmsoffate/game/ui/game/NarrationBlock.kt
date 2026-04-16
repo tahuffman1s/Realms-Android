@@ -1,5 +1,6 @@
 package com.realmsoffate.game.ui.game
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.data.LogNpc
 import com.realmsoffate.game.data.NarrationSegmentData
 import com.realmsoffate.game.game.DisplayMessage
+import com.realmsoffate.game.ui.theme.NarrationBodyStyle
 import com.realmsoffate.game.ui.theme.RealmsTheme
 import com.realmsoffate.game.util.NarrationMarkdown
 
@@ -213,29 +215,24 @@ internal fun NarratorProseBubble(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         if (isLatestTurn || expanded) {
-            // Full prose — render with markdown
-            Surface(
-                color = realms.narratorBubble,
+            // Full prose — render with markdown, rich book-page styling.
+            // ChatBubble takes full width (narrator prose spans the whole feed column).
+            // A subtle gold left border + the narratorBubble token make it feel like
+            // a page excerpt rather than a plain chat card.
+            ChatBubble(
+                alignment = BubbleAlignment.Start,
+                backgroundColor = realms.narratorBubble,
+                contentColor = realms.narratorOnBubble,
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
+                border = BorderStroke(2.dp, realms.goldAccent.copy(alpha = 0.30f)),
+                isBookmarked = isBookmarked,
+                onToggleBookmark = onToggleBookmark,
+                maxWidthFraction = 1f
             ) {
-                Column(Modifier.padding(14.dp)) {
-                    NarrationMarkdown(
-                        text = text,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    // Bookmark icon
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        IconButton(onClick = onToggleBookmark, modifier = Modifier.size(48.dp)) {
-                            Icon(
-                                if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                                contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
-                                tint = realms.goldAccent.copy(alpha = 0.6f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
+                NarrationMarkdown(
+                    text = text,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
             // Collapse affordance for older turns when expanded
             if (!isLatestTurn) {
@@ -251,18 +248,20 @@ internal fun NarratorProseBubble(
                 )
             }
         } else {
-            // Collapsed preview for older turns
+            // Collapsed preview for older turns — same border treatment, dimmed
             Surface(
                 onClick = { expanded = true },
                 color = realms.narratorBubble.copy(alpha = 0.7f),
                 shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, realms.goldAccent.copy(alpha = 0.18f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(Modifier.padding(14.dp)) {
                     Text(
                         text = summarizeProse(text),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = realms.narratorOnBubble.copy(alpha = 0.7f),
+                        style = NarrationBodyStyle.copy(
+                            color = realms.narratorOnBubble.copy(alpha = 0.7f)
+                        ),
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
