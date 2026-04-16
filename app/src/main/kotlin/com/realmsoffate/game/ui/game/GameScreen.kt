@@ -37,14 +37,6 @@ val LocalFontScale = compositionLocalOf { 1.0f }
 /** Which panel (or fullscreen page) is active. */
 enum class Panel { None, Inventory, Quests, Party, Lore, Journal, Currency, Spells, Stats, Map, Memories, Settings }
 
-/** Main bottom-nav tab — mirrors the web's 5-tab model. */
-private enum class Tab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    Chat("Chat", Icons.Filled.ChatBubble),
-    Items("Items", Icons.Filled.Backpack),
-    Stats("Stats", Icons.Filled.QueryStats),
-    Map("Map", Icons.Filled.Map),
-    More("More", Icons.Filled.MoreHoriz)
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,8 +44,7 @@ fun GameScreen(vm: GameViewModel) {
     val state by vm.ui.collectAsState()
     var panel by remember { mutableStateOf(Panel.None) }
     var journalFocusNpc by remember { mutableStateOf<String?>(null) }
-    var tab by remember { mutableStateOf(Tab.Chat) }
-    var moreOpen by remember { mutableStateOf(false) }
+    var tab by remember { mutableStateOf(GameTab.Chat) }
     var choicesOpen by remember { mutableStateOf(false) }
     var input by remember { mutableStateOf("") }
     val focus = LocalFocusManager.current
@@ -108,11 +99,10 @@ fun GameScreen(vm: GameViewModel) {
     // When a tab maps to a panel, open it. Chat is the main game view (no panel).
     LaunchedEffect(tab) {
         when (tab) {
-            Tab.Chat -> Unit // stay on main
-            Tab.Items -> panel = Panel.Inventory
-            Tab.Stats -> panel = Panel.Stats
-            Tab.Map -> panel = Panel.Map
-            Tab.More -> moreOpen = true
+            GameTab.Chat -> panel = Panel.None
+            GameTab.Map -> panel = Panel.Map
+            GameTab.Character -> panel = Panel.Inventory
+            GameTab.Journal -> panel = Panel.Quests
         }
     }
 
@@ -120,8 +110,8 @@ fun GameScreen(vm: GameViewModel) {
     if (panel == Panel.Map) {
         WorldMapScreen(
             state = state,
-            onClose = { panel = Panel.None; tab = Tab.Chat },
-            onTravel = { loc -> vm.startTravel(loc.id); panel = Panel.None; tab = Tab.Chat },
+            onClose = { panel = Panel.None; tab = GameTab.Chat },
+            onTravel = { loc -> vm.startTravel(loc.id); panel = Panel.None; tab = GameTab.Chat },
             onCancelTravel = { vm.cancelTravel() },
             isTraveling = state.travelState != null
         )
@@ -138,35 +128,35 @@ fun GameScreen(vm: GameViewModel) {
         bottomBar = {
             // imePadding keeps the input + hotbar visible above the soft keyboard.
             Column(Modifier.imePadding()) {
-                GameInputBar(
-                    state = state,
-                    input = input,
-                    onInputChange = { input = it },
-                    onSend = {
-                        if (input.isNotBlank() && !state.isGenerating) {
-                            val handled = handleSlashCommand(input, vm) { panel = it }
-                            if (!handled) vm.submitAction(input)
-                            input = ""
-                            focus.clearFocus()
-                        }
-                    },
-                    onTargetPrompt = { vm.requestTargetPrompt(it) },
-                    onSpellsOpen = { panel = Panel.Spells }
-                )
-                BottomNav(
+                if (tab == GameTab.Chat) {
+                    GameInputBar(
+                        state = state,
+                        input = input,
+                        onInputChange = { input = it },
+                        onSend = {
+                            if (input.isNotBlank() && !state.isGenerating) {
+                                val handled = handleSlashCommand(input, vm) { panel = it }
+                                if (!handled) vm.submitAction(input)
+                                input = ""
+                                focus.clearFocus()
+                            }
+                        },
+                        onTargetPrompt = { vm.requestTargetPrompt(it) },
+                        onSpellsOpen = { panel = Panel.Spells }
+                    )
+                }
+                GameBottomNav(
                     selected = tab,
-                    hasChoices = state.currentChoices.isNotEmpty(),
-                    onSelect = { t ->
-                        // Allow selecting Chat to collapse any open panel.
-                        if (t == Tab.Chat) { panel = Panel.None; moreOpen = false }
-                        tab = t
+                    onSelect = { newTab ->
+                        if (newTab == GameTab.Chat) panel = Panel.None
+                        tab = newTab
                     }
                 )
             }
         },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = state.currentChoices.isNotEmpty() && !state.isGenerating && panel == Panel.None && tab == Tab.Chat,
+                visible = state.currentChoices.isNotEmpty() && !state.isGenerating && panel == Panel.None && tab == GameTab.Chat,
                 enter = scaleIn() + fadeIn(),
                 exit = scaleOut() + fadeOut()
             ) {
@@ -318,50 +308,20 @@ fun GameScreen(vm: GameViewModel) {
         )
     }
 
-    if (moreOpen) {
-        MoreMenuSheet(
-            onClose = { moreOpen = false; tab = Tab.Chat },
-            onAction = { action ->
-                moreOpen = false
-                tab = Tab.Chat
-                when (action) {
-                    "save" -> { vm.saveToSlot(); vm.postSystemMessage("Saved.") }
-                    "download" -> exportLauncher.launch(vm.exportFilename())
-                    "debug" -> dumpDebugToFile()
-                    "shortrest" -> vm.shortRest()
-                    "longrest" -> vm.longRest()
-                    "menu" -> vm.returnToTitle()
-                    "setup" -> vm.backToApiSetup()
-                    "settings" -> panel = Panel.Settings
-                    else -> panel = when (action) {
-                        "spells" -> Panel.Spells
-                        "lore" -> Panel.Lore
-                        "journal" -> Panel.Journal
-                        "memories" -> Panel.Memories
-                        "currency" -> Panel.Currency
-                        "party" -> Panel.Party
-                        "quests" -> Panel.Quests
-                        else -> Panel.None
-                    }
-                }
-            }
-        )
-    }
-
     when (panel) {
-        Panel.Inventory -> InventoryPanel(state, onClose = { panel = Panel.None; tab = Tab.Chat }, onEquip = vm::equipToggle)
-        Panel.Quests -> QuestsPanel(state, onClose = { panel = Panel.None; tab = Tab.Chat }, onAbandon = vm::abandonQuest)
-        Panel.Party -> PartyPanel(state, onClose = { panel = Panel.None; tab = Tab.Chat }, onDismiss = vm::dismissCompanion)
-        Panel.Lore -> LorePanel(state, onClose = { panel = Panel.None; tab = Tab.Chat })
-        Panel.Journal -> JournalPanel(state, focusNpc = journalFocusNpc, onClose = { journalFocusNpc = null; panel = Panel.None; tab = Tab.Chat })
+        Panel.Inventory -> InventoryPanel(state, onClose = { panel = Panel.None; tab = GameTab.Chat }, onEquip = vm::equipToggle)
+        Panel.Quests -> QuestsPanel(state, onClose = { panel = Panel.None; tab = GameTab.Chat }, onAbandon = vm::abandonQuest)
+        Panel.Party -> PartyPanel(state, onClose = { panel = Panel.None; tab = GameTab.Chat }, onDismiss = vm::dismissCompanion)
+        Panel.Lore -> LorePanel(state, onClose = { panel = Panel.None; tab = GameTab.Chat })
+        Panel.Journal -> JournalPanel(state, focusNpc = journalFocusNpc, onClose = { journalFocusNpc = null; panel = Panel.None; tab = GameTab.Chat })
         Panel.Currency -> CurrencyPanel(
             state = state,
-            onClose = { panel = Panel.None; tab = Tab.Chat },
+            onClose = { panel = Panel.None; tab = GameTab.Chat },
             onExchange = vm::exchange
         )
         Panel.Spells -> SpellsPanel(
             state = state,
-            onClose = { panel = Panel.None; tab = Tab.Chat },
+            onClose = { panel = Panel.None; tab = GameTab.Chat },
             onHotbar = vm::updateHotbar,
             onCast = { spell ->
                 val currentLocName = state.worldMap?.locations?.getOrNull(state.currentLoc)?.name.orEmpty()
@@ -382,7 +342,7 @@ fun GameScreen(vm: GameViewModel) {
                     (nearbyNpcs + state.party.map { it.name }).distinct().take(8)
                 }
                 panel = Panel.None
-                tab = Tab.Chat
+                tab = GameTab.Chat
                 vm.requestTargetPrompt(
                     TargetPromptSpec(
                         title = "Cast ${spell.name}",
@@ -393,16 +353,16 @@ fun GameScreen(vm: GameViewModel) {
                 )
             }
         )
-        Panel.Stats -> StatsPanel(state, onClose = { panel = Panel.None; tab = Tab.Chat })
+        Panel.Stats -> StatsPanel(state, onClose = { panel = Panel.None; tab = GameTab.Chat })
         Panel.Memories -> MemoriesPanel(
             state,
-            onClose = { panel = Panel.None; tab = Tab.Chat },
+            onClose = { panel = Panel.None; tab = GameTab.Chat },
             onDelete = { vm.removeBookmark(it) }
         )
         Panel.Settings -> SettingsPanel(
             fontScale = fontScale,
             onFontScaleChange = { vm.setFontScale(it) },
-            onClose = { panel = Panel.None; tab = Tab.Chat }
+            onClose = { panel = Panel.None; tab = GameTab.Chat }
         )
         else -> {}
     }
@@ -420,45 +380,8 @@ fun GameScreen(vm: GameViewModel) {
 }
 
 // ============================================================
-// INPUT BAR + BOTTOM NAV + FLOATING CHOICES FAB
+// FLOATING CHOICES FAB
 // ============================================================
-
-@Composable
-private fun BottomNav(
-    selected: Tab,
-    hasChoices: Boolean,
-    onSelect: (Tab) -> Unit
-) {
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 6.dp,
-        modifier = Modifier.navigationBarsPadding()
-    ) {
-        Tab.values().forEach { t ->
-            NavigationBarItem(
-                selected = t == selected,
-                onClick = { onSelect(t) },
-                icon = {
-                    BadgedBox(
-                        badge = {
-                            if (t == Tab.Chat && hasChoices) Badge()
-                        }
-                    ) {
-                        Icon(t.icon, contentDescription = t.label)
-                    }
-                },
-                label = {
-                    Text(
-                        t.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Medium
-                    )
-                },
-                alwaysShowLabel = true
-            )
-        }
-    }
-}
 
 @Composable
 private fun ChoicesFab(count: Int, onClick: () -> Unit) {
