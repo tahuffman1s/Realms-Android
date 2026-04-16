@@ -28,7 +28,17 @@ data class RealmsExtendedColors(
     val rarityUncommon: Color,
     val rarityRare: Color,
     val rarityEpic: Color,
-    val rarityLegendary: Color
+    val rarityLegendary: Color,
+    val narratorBubble: Color,
+    val narratorOnBubble: Color,
+    val npcBubble: Color,
+    val npcOnBubble: Color,
+    val playerBubble: Color,
+    val playerOnBubble: Color,
+    val asideBubble: Color,
+    val asideOnBubble: Color,
+    val systemBubble: Color,
+    val systemOnBubble: Color
 )
 
 private val DarkExtended = RealmsExtendedColors(
@@ -46,7 +56,17 @@ private val DarkExtended = RealmsExtendedColors(
     rarityUncommon = Color(0xFF7DD892),
     rarityRare = Color(0xFF82B6E8),
     rarityEpic = Color(0xFFC79DFF),
-    rarityLegendary = Color(0xFFFFD76A)
+    rarityLegendary = Color(0xFFFFD76A),
+    narratorBubble = Color(0xFF2A262F),
+    narratorOnBubble = Color(0xFFE8E1F0),
+    npcBubble = Color(0xFF1E2A3A),
+    npcOnBubble = Color(0xFFD0E0F0),
+    playerBubble = Color(0xFF3A2C55),
+    playerOnBubble = Color(0xFFE4D7FF),
+    asideBubble = Color(0xFF1A1030),
+    asideOnBubble = Color(0xFFB197FF),
+    systemBubble = Color(0x1AFFFFFF),
+    systemOnBubble = Color(0xFF9E9AA8)
 )
 
 private val LightExtended = RealmsExtendedColors(
@@ -64,7 +84,17 @@ private val LightExtended = RealmsExtendedColors(
     rarityUncommon = Color(0xFF2E7D42),
     rarityRare = Color(0xFF1A73E8),
     rarityEpic = Color(0xFF7B3DAA),
-    rarityLegendary = Color(0xFFB8891A)
+    rarityLegendary = Color(0xFFB8891A),
+    narratorBubble = Color(0xFFF0EDE6),
+    narratorOnBubble = Color(0xFF1C1B1F),
+    npcBubble = Color(0xFFE3ECF5),
+    npcOnBubble = Color(0xFF1A2533),
+    playerBubble = Color(0xFFEADDFF),
+    playerOnBubble = Color(0xFF21005D),
+    asideBubble = Color(0xFFE8E1F0),
+    asideOnBubble = Color(0xFF6750A4),
+    systemBubble = Color(0x1A000000),
+    systemOnBubble = Color(0xFF49454F)
 )
 
 val LocalRealmsColors = staticCompositionLocalOf { DarkExtended }
