@@ -69,6 +69,12 @@ fun WorldMapScreen(
     isTraveling: Boolean = false
 ) {
     val wm = state.worldMap ?: return
+    if (wm.locations.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Generating world...", style = MaterialTheme.typography.bodyLarge)
+        }
+        return
+    }
     val cur = wm.locations.getOrNull(state.currentLoc)
     val density = LocalDensity.current
     val dark = isSystemInDarkTheme()
@@ -177,8 +183,13 @@ fun WorldMapScreen(
                         }
                         Spacer(Modifier.height(2.dp))
                         Surface(color = chipBg, shape = RoundedCornerShape(4.dp)) {
+                            // The scale bar spans `scalePx` pixels. That represents
+                            // 100 world units at the current zoom. Each world unit
+                            // is 1/15 of a league (15 units ≈ 1 league), so the
+                            // displayed distance = 100 / (15 * zoom).
+                            val scaleLeagues = (100f / (15f * zoom)).coerceAtLeast(1f).toInt()
                             Text(
-                                "${(100f / 15f).toInt()} leagues",
+                                "$scaleLeagues leagues",
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                                 color = chipFg
@@ -186,29 +197,32 @@ fun WorldMapScreen(
                         }
                     }
                 }
-                // Distance pills row
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    WorldGen.connected(wm, state.currentLoc).forEach { (dest, dist) ->
-                        Surface(
-                            color = chipBg,
-                            shape = RoundedCornerShape(18.dp),
-                            shadowElevation = 3.dp
-                        ) {
-                            Row(
-                                Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                // Distance pills row — hidden while the travel banner is visible
+                // to avoid overlapping content at the bottom edge.
+                if (!isTraveling && state.travelState == null) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        WorldGen.connected(wm, state.currentLoc).forEach { (dest, dist) ->
+                            Surface(
+                                color = chipBg,
+                                shape = RoundedCornerShape(18.dp),
+                                shadowElevation = 3.dp
                             ) {
-                                Text(dest.icon, style = MaterialTheme.typography.bodySmall)
-                                Spacer(Modifier.width(4.dp))
-                                Text(dest.name, style = MaterialTheme.typography.labelMedium, color = chipFg)
-                                Spacer(Modifier.width(4.dp))
-                                Text("(${dist}lg)", style = MaterialTheme.typography.labelSmall, color = extended.fumbleRed, fontWeight = FontWeight.SemiBold)
+                                Row(
+                                    Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(dest.icon, style = MaterialTheme.typography.bodySmall)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(dest.name, style = MaterialTheme.typography.labelMedium, color = chipFg)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("(${dist}lg)", style = MaterialTheme.typography.labelSmall, color = extended.fumbleRed, fontWeight = FontWeight.SemiBold)
+                                }
                             }
                         }
                     }
@@ -243,6 +257,12 @@ fun WorldMapScreen(
                                 Text("Distance: ${road.dist} leagues by road", style = MaterialTheme.typography.bodyMedium)
                             } else {
                                 Text("No direct road from ${currentLocObj?.name ?: "here"}.", style = MaterialTheme.typography.bodyMedium)
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "No road connects here. Travel to a neighboring location first.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     },
