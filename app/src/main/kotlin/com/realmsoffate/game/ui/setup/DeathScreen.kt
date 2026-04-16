@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,7 +19,10 @@ import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.data.GraveyardEntry
 import com.realmsoffate.game.data.TimelineEntry
 import com.realmsoffate.game.game.GameViewModel
+import com.realmsoffate.game.ui.components.SectionHeader
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
+import com.realmsoffate.game.util.formatSigned
 
 /**
  * BitLife-style death screen — REST IN PEACE header, character summary, then
@@ -49,18 +51,18 @@ fun DeathScreen(vm: GameViewModel) {
                 Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(RealmsSpacing.l),
+                horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.m)
             ) {
                 OutlinedButton(
                     onClick = { vm.returnToTitle() },
                     modifier = Modifier.weight(1f).height(52.dp),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) { Text("MAIN MENU", style = MaterialTheme.typography.labelLarge) }
                 Button(
                     onClick = { vm.goToCharacterCreation() },
                     modifier = Modifier.weight(1f).height(52.dp),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) { Text("NEW HERO", style = MaterialTheme.typography.labelLarge) }
             }
         }
@@ -70,7 +72,7 @@ fun DeathScreen(vm: GameViewModel) {
                 .fillMaxSize()
                 .padding(pad)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = RealmsSpacing.xl),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.statusBarsPadding().height(28.dp))
@@ -113,11 +115,11 @@ fun DeathScreen(vm: GameViewModel) {
                 Spacer(Modifier.height(16.dp))
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text("WORLD CONDITIONS", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Column(Modifier.padding(RealmsSpacing.m)) {
+                        SectionHeader("WORLD CONDITIONS")
                         entry.mutations.forEach {
                             Text("• $it", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
                         }
@@ -145,11 +147,7 @@ fun DeathScreen(vm: GameViewModel) {
 
             if (entry.companions.isNotEmpty()) {
                 Spacer(Modifier.height(18.dp))
-                Text(
-                    "FELLOW TRAVELLERS",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                SectionHeader("FELLOW TRAVELLERS")
                 entry.companions.forEach {
                     Text("· $it", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
                 }
@@ -157,7 +155,7 @@ fun DeathScreen(vm: GameViewModel) {
 
             entry.backstoryText?.let {
                 Spacer(Modifier.height(18.dp))
-                Text("UNFINISHED STORY", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                SectionHeader("UNFINISHED STORY")
                 Spacer(Modifier.height(4.dp))
                 Text(
                     it,
@@ -175,7 +173,7 @@ fun DeathScreen(vm: GameViewModel) {
 private fun StatPill(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
     Surface(
         color = color.copy(alpha = 0.14f),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = modifier
     ) {
         Column(
@@ -242,4 +240,3 @@ private fun moralityColor(n: Int, r: com.realmsoffate.game.ui.theme.RealmsExtend
     else -> r.info
 }
 
-private fun formatSigned(n: Int) = if (n >= 0) "+$n" else n.toString()

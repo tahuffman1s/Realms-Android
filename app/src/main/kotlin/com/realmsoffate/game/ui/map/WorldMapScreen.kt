@@ -10,7 +10,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -36,6 +35,8 @@ import com.realmsoffate.game.data.MapLocation
 import com.realmsoffate.game.data.WorldMap
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.game.WorldGen
+import com.realmsoffate.game.ui.theme.RealmsElevation
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 import kotlin.math.hypot
 import kotlin.math.max
@@ -182,7 +183,7 @@ fun WorldMapScreen(
                             Box(Modifier.align(Alignment.BottomEnd).width(2.dp).height(8.dp).background(chipFg))
                         }
                         Spacer(Modifier.height(2.dp))
-                        Surface(color = chipBg, shape = RoundedCornerShape(4.dp)) {
+                        Surface(color = chipBg, shape = MaterialTheme.shapes.extraSmall) {
                             // The scale bar spans `scalePx` pixels. That represents
                             // 100 world units at the current zoom. Each world unit
                             // is 1/15 of a league (15 units ≈ 1 league), so the
@@ -210,11 +211,11 @@ fun WorldMapScreen(
                         WorldGen.connected(wm, state.currentLoc).forEach { (dest, dist) ->
                             Surface(
                                 color = chipBg,
-                                shape = RoundedCornerShape(18.dp),
-                                shadowElevation = 3.dp
+                                shape = MaterialTheme.shapes.medium,
+                                shadowElevation = RealmsElevation.low
                             ) {
                                 Row(
-                                    Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    Modifier.padding(horizontal = RealmsSpacing.m, vertical = RealmsSpacing.s),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(dest.icon, style = MaterialTheme.typography.bodySmall)
@@ -299,11 +300,11 @@ fun WorldMapScreen(
                     cur?.let {
                         Surface(
                             color = chipBg,
-                            shape = RoundedCornerShape(22.dp),
-                            shadowElevation = 4.dp
+                            shape = MaterialTheme.shapes.large,
+                            shadowElevation = RealmsElevation.low
                         ) {
                             Row(
-                                Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                Modifier.padding(horizontal = RealmsSpacing.m, vertical = RealmsSpacing.s),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(it.icon, style = MaterialTheme.typography.titleMedium)
@@ -336,11 +337,11 @@ fun WorldMapScreen(
                         .navigationBarsPadding()
                         .padding(12.dp),
                     color = chipBg,
-                    shape = RoundedCornerShape(16.dp),
-                    tonalElevation = 6.dp
+                    shape = MaterialTheme.shapes.medium,
+                    tonalElevation = RealmsElevation.medium
                 ) {
                     Row(
-                        Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.m),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -364,7 +365,7 @@ fun WorldMapScreen(
                                 containerColor = MaterialTheme.colorScheme.error,
                                 contentColor = MaterialTheme.colorScheme.onError
                             ),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = MaterialTheme.shapes.small
                         ) { Text("Cancel") }
                     }
                 }

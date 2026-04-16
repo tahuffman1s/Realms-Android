@@ -3,7 +3,6 @@ package com.realmsoffate.game.ui.setup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -15,7 +14,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -23,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.game.GameViewModel
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
 /**
@@ -46,7 +45,7 @@ fun ApiSetupScreen(vm: GameViewModel) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(pad)
-                .padding(horizontal = 22.dp)
+                .padding(horizontal = RealmsSpacing.xxl)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -69,14 +68,14 @@ fun ApiSetupScreen(vm: GameViewModel) {
             Spacer(Modifier.height(14.dp))
             Surface(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(14.dp),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(Modifier.padding(14.dp)) {
+                Column(Modifier.padding(RealmsSpacing.m)) {
                     Text(
                         "DEEPSEEK",
                         style = MaterialTheme.typography.titleSmall,
-                        color = Color(0xFFB197FF)
+                        color = MaterialTheme.colorScheme.secondary
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
@@ -102,12 +101,12 @@ fun ApiSetupScreen(vm: GameViewModel) {
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text(provider.placeholder, style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)) },
                 singleLine = true,
-                leadingIcon = { Icon(Icons.Default.Key, null, tint = Color(0xFFB197FF)) },
+                leadingIcon = { Icon(Icons.Default.Key, null, tint = MaterialTheme.colorScheme.secondary) },
                 trailingIcon = {
                     if (valid) Icon(Icons.Default.Lock, null, tint = realms.success)
                 },
                 supportingText = { Text("DeepSeek keys start with sk-") },
-                shape = RoundedCornerShape(14.dp),
+                shape = MaterialTheme.shapes.medium,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
             )
@@ -144,7 +143,7 @@ private fun StartButton(valid: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         enabled = valid,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         color = if (valid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
         contentColor = if (valid) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.fillMaxWidth().height(56.dp)

@@ -7,7 +7,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -32,6 +31,8 @@ import com.realmsoffate.game.data.CharacterAppearance
 import com.realmsoffate.game.game.Classes
 import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.game.Races
+import com.realmsoffate.game.ui.components.SectionHeader
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
 /**
@@ -81,7 +82,7 @@ fun CharacterCreationScreen(vm: GameViewModel) {
     Scaffold(
         topBar = {
             Surface(tonalElevation = 1.dp) {
-                Column(Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                Column(Modifier.statusBarsPadding().padding(horizontal = RealmsSpacing.l, vertical = 10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Spacer(Modifier.width(48.dp))
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -102,7 +103,7 @@ fun CharacterCreationScreen(vm: GameViewModel) {
                 Row(
                     Modifier
                         .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.m)
                         .fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -110,7 +111,7 @@ fun CharacterCreationScreen(vm: GameViewModel) {
                         OutlinedButton(
                             onClick = { step-- },
                             modifier = Modifier.weight(1f).height(52.dp),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
@@ -122,7 +123,7 @@ fun CharacterCreationScreen(vm: GameViewModel) {
                             onClick = { step++ },
                             enabled = stepValid,
                             modifier = Modifier.weight(1f).height(52.dp),
-                            shape = RoundedCornerShape(14.dp)
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Text("Next", fontWeight = FontWeight.Bold)
                             Spacer(Modifier.width(6.dp))
@@ -151,7 +152,7 @@ fun CharacterCreationScreen(vm: GameViewModel) {
                 .fillMaxSize()
                 .padding(pad)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = RealmsSpacing.l, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             when (step) {
@@ -215,7 +216,7 @@ private fun IdentityStep(
         label = { Text("Name") },
         placeholder = { Text("Kaelis, Vara, Thorn…") },
         singleLine = true,
-        shape = RoundedCornerShape(14.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth()
     )
     SectionHeader("GENDER")
@@ -463,10 +464,10 @@ private fun ConfirmStep(
     SectionHeader("\uD83D\uDD0D  CONFIRM")
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(RealmsSpacing.l)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Avatar — monogram over skin tone swatch, colored by hair
                 Box(
@@ -484,7 +485,7 @@ private fun ConfirmStep(
                         color = Color.Black.copy(alpha = 0.65f)
                     )
                 }
-                Spacer(Modifier.width(14.dp))
+                Spacer(Modifier.width(RealmsSpacing.m))
                 Column {
                     Text(name.ifBlank { "Adventurer" }, style = MaterialTheme.typography.titleLarge)
                     Text(
@@ -499,13 +500,13 @@ private fun ConfirmStep(
                     )
                 }
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(RealmsSpacing.m))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 InfoPill("HP", "$hp", realms.success, Modifier.weight(1f))
                 InfoPill("AC", "${10 + mod(finalStats[1])}", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
                 InfoPill("BUILD", build, MaterialTheme.colorScheme.secondary, Modifier.weight(1f))
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(RealmsSpacing.m))
             Text("ABILITIES", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -515,7 +516,7 @@ private fun ConfirmStep(
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 for (i in 3..5) FinalAbility(labels[i], finalStats[i], Modifier.weight(1f))
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(RealmsSpacing.m))
             Text("APPEARANCE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Text(
                 "$hairStyle $hairColor hair · skin $skinTone",
@@ -527,11 +528,6 @@ private fun ConfirmStep(
 }
 
 // ---------- Helpers / shared UI ----------
-
-@Composable
-private fun SectionHeader(text: String) {
-    Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-}
 
 @Composable
 private fun ProgressDots(step: Int, total: Int) {
@@ -606,9 +602,9 @@ private fun GridCard(
              else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     Column(
         Modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(bg)
-            .border(1.dp, color, RoundedCornerShape(12.dp))
+            .border(1.dp, color, MaterialTheme.shapes.medium)
             .clickable(onClick = onClick)
             .padding(horizontal = 6.dp, vertical = 10.dp)
             .fillMaxWidth()
@@ -654,10 +650,10 @@ private fun GridCard(
 private fun DetailCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(14.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp), content = content)
+        Column(Modifier.padding(RealmsSpacing.m), verticalArrangement = Arrangement.spacedBy(4.dp), content = content)
     }
 }
 
@@ -671,11 +667,11 @@ private fun StatRow(
     val modLabel = if (mod >= 0) "+$mod" else mod.toString()
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            Modifier.padding(horizontal = 14.dp, vertical = 6.dp).fillMaxWidth(),
+            Modifier.padding(horizontal = RealmsSpacing.m, vertical = 6.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(label, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(44.dp))
@@ -713,7 +709,7 @@ private fun BonusSelector(labels: List<String>, selected: Int, onSelect: (Int) -
                 onClick = { if (enabled) onSelect(i) },
                 enabled = enabled,
                 color = if (sel) RealmsTheme.colors.goldAccent.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(8.dp)
+                shape = MaterialTheme.shapes.extraSmall
             ) {
                 Text(
                     l,
@@ -735,7 +731,7 @@ private fun BonusSelector(labels: List<String>, selected: Int, onSelect: (Int) -
 private fun InfoPill(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
     Surface(
         color = color.copy(alpha = 0.14f),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = modifier
     ) {
         Column(
@@ -754,11 +750,11 @@ private fun FinalAbility(label: String, score: Int, modifier: Modifier = Modifie
     val modLabel = if (mod >= 0) "+$mod" else mod.toString()
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = modifier
     ) {
         Column(
-            Modifier.padding(vertical = 8.dp).fillMaxWidth(),
+            Modifier.padding(vertical = RealmsSpacing.s).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
@@ -774,7 +770,7 @@ private fun GradientBeginButton(enabled: Boolean, onClick: () -> Unit, modifier:
     Surface(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(14.dp),
+        shape = MaterialTheme.shapes.medium,
         color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
         contentColor = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier
@@ -785,7 +781,7 @@ private fun GradientBeginButton(enabled: Boolean, onClick: () -> Unit, modifier:
             ) else Modifier,
             contentAlignment = Alignment.Center
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = RealmsSpacing.m)) {
                 Icon(Icons.Default.Check, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
