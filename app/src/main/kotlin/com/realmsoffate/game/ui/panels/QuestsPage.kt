@@ -1,19 +1,22 @@
 package com.realmsoffate.game.ui.panels
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.game.GameUiState
+import com.realmsoffate.game.ui.components.EmptyState
+import com.realmsoffate.game.ui.components.FilterTabRow
+import com.realmsoffate.game.ui.components.PanelSheet
+import com.realmsoffate.game.ui.components.RealmsCard
+import com.realmsoffate.game.ui.components.StatusTag
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
 // ----------------- QUESTS -----------------
@@ -42,7 +45,7 @@ internal fun QuestsPanel(state: GameUiState, onClose: () -> Unit, onAbandon: (St
             EmptyState("\uD83D\uDCDC", "No quests yet. The world waits.")
             return@PanelSheet
         }
-        FilterTabs(
+        FilterTabRow(
             tabs = QuestFilter.entries.map { it.label to it.icon },
             selectedIndex = QuestFilter.entries.indexOf(filter),
             onSelect = { filter = QuestFilter.entries[it] }
@@ -51,14 +54,14 @@ internal fun QuestsPanel(state: GameUiState, onClose: () -> Unit, onAbandon: (St
         if (filtered.isEmpty()) {
             Text(
                 "No ${filter.label.lowercase()} quests.",
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
+                modifier = Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xxl),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             return@PanelSheet
         }
         LazyColumn(
-            Modifier.padding(horizontal = 14.dp).heightIn(max = 540.dp),
+            Modifier.padding(horizontal = RealmsSpacing.l).heightIn(max = 540.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(filtered) { q ->
@@ -68,80 +71,63 @@ internal fun QuestsPanel(state: GameUiState, onClose: () -> Unit, onAbandon: (St
                     "failed" -> realms.fumbleRed
                     else -> MaterialTheme.colorScheme.primary
                 }
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth().border(
-                        1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(16.dp)
-                    )
+                RealmsCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    outlined = true,
+                    accentColor = accent
                 ) {
-                    Column(Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(q.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        StatusTag(q.status.uppercase(), accent)
+                    }
+                    Text(
+                        "${q.type.uppercase()} · ${q.giver}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(q.desc, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(RealmsSpacing.s))
+                    q.objectives.forEachIndexed { i, obj ->
+                        val done = q.completed.getOrElse(i) { false }
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(q.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                            StatusTag(q.status, accent)
+                            Text(
+                                if (done) "\u2714" else "\u25CB",
+                                color = if (done) realms.success else MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                obj,
+                                style = MaterialTheme.typography.bodySmall,
+                                textDecoration = if (done) TextDecoration.LineThrough else null,
+                                color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                            )
                         }
-                        Text(
-                            "${q.type.uppercase()} · ${q.giver}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    }
+                    if (q.reward.isNotBlank()) {
                         Spacer(Modifier.height(6.dp))
-                        Text(q.desc, style = MaterialTheme.typography.bodyMedium)
-                        Spacer(Modifier.height(8.dp))
-                        q.objectives.forEachIndexed { i, obj ->
-                            val done = q.completed.getOrElse(i) { false }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    if (done) "\u2714" else "\u25CB",
-                                    color = if (done) realms.success else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    obj,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    textDecoration = if (done) TextDecoration.LineThrough else null,
-                                    color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
-                                )
-                            }
+                        Surface(
+                            color = realms.goldAccent.copy(alpha = 0.14f),
+                            shape = MaterialTheme.shapes.extraSmall
+                        ) {
+                            Text(
+                                "Reward: ${q.reward}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = realms.goldAccent,
+                                modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs),
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                        if (q.reward.isNotBlank()) {
-                            Spacer(Modifier.height(6.dp))
-                            Surface(
-                                color = realms.goldAccent.copy(alpha = 0.14f),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(
-                                    "Reward: ${q.reward}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = realms.goldAccent,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                        if (q.status == "active") {
-                            Spacer(Modifier.height(6.dp))
-                            TextButton(onClick = { onAbandon(q.id) }) {
-                                Text("Abandon", color = MaterialTheme.colorScheme.error)
-                            }
+                    }
+                    if (q.status == "active") {
+                        Spacer(Modifier.height(6.dp))
+                        TextButton(onClick = { onAbandon(q.id) }) {
+                            Text("Abandon", color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-internal fun StatusTag(status: String, color: Color) {
-    Surface(color = color.copy(alpha = 0.16f), shape = RoundedCornerShape(8.dp)) {
-        Text(
-            status.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = color,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-        )
     }
 }

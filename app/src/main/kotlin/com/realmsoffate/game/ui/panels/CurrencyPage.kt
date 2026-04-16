@@ -4,7 +4,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,7 +12,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.game.GameUiState
+import com.realmsoffate.game.ui.components.PanelSheet
+import com.realmsoffate.game.ui.components.RealmsCard
+import com.realmsoffate.game.ui.components.SectionHeader
+import com.realmsoffate.game.ui.components.StatusTag
+import com.realmsoffate.game.ui.components.WealthBars
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
+import com.realmsoffate.game.util.formatSigned
 
 // ----------------- CURRENCY (exchange + rate table) -----------------
 
@@ -47,20 +53,20 @@ internal fun CurrencyPanel(
         onClose = onClose
     ) {
         LazyColumn(
-            Modifier.padding(horizontal = 14.dp).heightIn(max = 560.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 560.dp),
+            verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
         ) {
             // Wealth header card.
             item {
                 Surface(
                     color = realms.goldAccent.copy(alpha = 0.14f),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = MaterialTheme.shapes.large,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(Modifier.padding(16.dp)) {
+                    Column(Modifier.padding(RealmsSpacing.l)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("\uD83D\uDCB0", style = MaterialTheme.typography.headlineMedium)
-                            Spacer(Modifier.width(12.dp))
+                            Spacer(Modifier.width(RealmsSpacing.m))
                             Column {
                                 Text("GOLD ON HAND", style = MaterialTheme.typography.labelMedium, color = realms.goldAccent)
                                 Text(
@@ -71,7 +77,7 @@ internal fun CurrencyPanel(
                                 )
                             }
                         }
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(RealmsSpacing.xs))
                         Text(
                             "Total wealth (gold-eq): $wealthGold",
                             style = MaterialTheme.typography.labelMedium,
@@ -82,7 +88,7 @@ internal fun CurrencyPanel(
             }
 
             // Per-faction currency cards with exchange affordance.
-            item { SectionCap("LOCAL CURRENCIES") }
+            item { SectionHeader("LOCAL CURRENCIES") }
             items(factions) { f ->
                 val balance = ch.currencyBalances[f.currency] ?: 0
                 val wealth = f.economy?.wealth ?: 3
@@ -125,9 +131,9 @@ internal fun CurrencyPanel(
 
             // Rate table at the bottom.
             item {
-                SectionCap("EXCHANGE RATES")
+                SectionHeader("EXCHANGE RATES")
                 RatesTable(factions)
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(RealmsSpacing.xxs))
                 Text(
                     "Rates follow economy strength: richer markets = more favourable swaps. Shops trade in local currency; higher reputation means better prices.",
                     style = MaterialTheme.typography.labelSmall,
@@ -151,61 +157,59 @@ private fun CurrencyFactionCard(
     onExchange: () -> Unit
 ) {
     val realms = RealmsTheme.colors
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(14.dp),
+    RealmsCard(
         modifier = Modifier.fillMaxWidth().border(
             1.dp,
             if (isLocal) realms.goldAccent.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant,
-            RoundedCornerShape(14.dp)
-        )
+            MaterialTheme.shapes.medium
+        ),
+        shape = MaterialTheme.shapes.medium,
+        contentPadding = RealmsSpacing.m
     ) {
-        Column(Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                        if (isLocal) {
-                            Spacer(Modifier.width(6.dp))
-                            Surface(color = realms.goldAccent.copy(alpha = 0.18f), shape = RoundedCornerShape(6.dp)) {
-                                Text(
-                                    "LOCAL",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = realms.goldAccent,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                )
-                            }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    if (isLocal) {
+                        Spacer(Modifier.width(RealmsSpacing.xs))
+                        Surface(color = realms.goldAccent.copy(alpha = 0.18f), shape = MaterialTheme.shapes.extraSmall) {
+                            Text(
+                                "LOCAL",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = realms.goldAccent,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.xxs)
+                            )
                         }
                     }
-                    Text(currency, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                StatusTag("REP ${formatSigned(rep)}", repColor)
+                Text(currency, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Spacer(Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        "Balance: $balance $currency",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = realms.goldAccent,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "Rate: 1 gold = ${"%.2f".format(rate)} $currency",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                WealthBars(wealth = wealth)
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = onExchange,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(10.dp)
-            ) { Text("Exchange", style = MaterialTheme.typography.labelLarge) }
+            StatusTag("REP ${formatSigned(rep)}", repColor)
         }
+        Spacer(Modifier.height(RealmsSpacing.xs))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Balance: $balance $currency",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = realms.goldAccent,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "Rate: 1 gold = ${"%.2f".format(rate)} $currency",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            WealthBars(wealth = wealth)
+        }
+        Spacer(Modifier.height(RealmsSpacing.s))
+        OutlinedButton(
+            onClick = onExchange,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.small
+        ) { Text("Exchange", style = MaterialTheme.typography.labelLarge) }
     }
 }
 
@@ -228,16 +232,16 @@ private fun ExchangeCard(
 
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        shape = RoundedCornerShape(14.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth().border(
-            1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), RoundedCornerShape(14.dp)
+            1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), MaterialTheme.shapes.medium
         )
     ) {
-        Column(Modifier.padding(14.dp)) {
+        Column(Modifier.padding(RealmsSpacing.m)) {
             Text("EXCHANGE WITH ${faction.name.uppercase()}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(RealmsSpacing.s))
             // Direction toggle
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)) {
                 FilterChip(
                     selected = direction == "to",
                     onClick = { direction = "to" },
@@ -249,22 +253,22 @@ private fun ExchangeCard(
                     label = { Text("${faction.currency} → Gold", style = MaterialTheme.typography.labelMedium) }
                 )
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(RealmsSpacing.s))
             OutlinedTextField(
                 value = amountText,
                 onValueChange = { amountText = it.filter { c -> c.isDigit() }.take(6) },
                 label = { Text(if (direction == "to") "Gold to spend" else "${faction.currency} to spend") },
                 singleLine = true,
-                shape = RoundedCornerShape(10.dp),
+                shape = MaterialTheme.shapes.small,
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(RealmsSpacing.s))
             Surface(
                 color = realms.goldAccent.copy(alpha = 0.14f),
-                shape = RoundedCornerShape(10.dp),
+                shape = MaterialTheme.shapes.small,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(Modifier.padding(10.dp)) {
+                Column(Modifier.padding(RealmsSpacing.s)) {
                     Text(
                         "You get: $preview ${if (direction == "to") faction.currency else "gold"}",
                         style = MaterialTheme.typography.titleSmall,
@@ -278,18 +282,18 @@ private fun ExchangeCard(
                     )
                 }
             }
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Spacer(Modifier.height(RealmsSpacing.s))
+            Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)) {
                 Button(
                     onClick = { onCommit(direction, amount) },
                     enabled = amount > 0 && canAfford,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = MaterialTheme.shapes.small
                 ) { Text("Exchange") }
                 OutlinedButton(
                     onClick = onCancel,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = MaterialTheme.shapes.small
                 ) { Text("Cancel") }
             }
             if (!canAfford && amount > 0) {
@@ -297,7 +301,7 @@ private fun ExchangeCard(
                     "Insufficient funds.",
                     style = MaterialTheme.typography.labelSmall,
                     color = realms.fumbleRed,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = RealmsSpacing.xs)
                 )
             }
         }
@@ -308,10 +312,10 @@ private fun ExchangeCard(
 private fun RatesTable(factions: List<com.realmsoffate.game.data.Faction>) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(10.dp),
+        shape = MaterialTheme.shapes.small,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(10.dp)) {
+        Column(Modifier.padding(RealmsSpacing.s)) {
             Row {
                 Text("Currency", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
                 Text("Econ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(70.dp))
@@ -321,7 +325,7 @@ private fun RatesTable(factions: List<com.realmsoffate.game.data.Faction>) {
             factions.forEach { f ->
                 val wealth = f.economy?.wealth ?: 3
                 val rate = (0.6 + 0.2 * (wealth - 3)).coerceIn(0.3, 1.6)
-                Row(Modifier.padding(vertical = 3.dp)) {
+                Row(Modifier.padding(vertical = RealmsSpacing.xxs)) {
                     Text(
                         f.currency,
                         style = MaterialTheme.typography.bodySmall,

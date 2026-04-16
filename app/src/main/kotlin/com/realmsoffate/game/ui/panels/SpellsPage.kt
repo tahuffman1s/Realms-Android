@@ -19,6 +19,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.game.Spells
+import com.realmsoffate.game.ui.components.EmptyState
+import com.realmsoffate.game.ui.components.PanelSheet
+import com.realmsoffate.game.ui.components.RealmsCard
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
 // ----------------- SPELLS (slot diamonds + grouped grid + detail) -----------------
@@ -58,7 +62,7 @@ internal fun SpellsPanel(
         val grouped = knownSpells.groupBy { it.level }
 
         LazyColumn(
-            Modifier.padding(horizontal = 14.dp).heightIn(max = 540.dp),
+            Modifier.padding(horizontal = RealmsSpacing.l).heightIn(max = 540.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             grouped.keys.sorted().forEach { lvl ->
@@ -110,7 +114,7 @@ private fun SpellSlotStrip(ch: com.realmsoffate.game.data.Character) {
     val levels = ch.maxSpellSlots.keys.sorted()
     if (levels.isEmpty()) return
     Row(
-        Modifier.padding(horizontal = 14.dp, vertical = 4.dp),
+        Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xs),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         levels.forEach { lvl ->
@@ -155,16 +159,16 @@ private fun SpellCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val border = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-    val bg = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-    Surface(
+    RealmsCard(
         onClick = onClick,
-        color = bg,
-        shape = RoundedCornerShape(12.dp),
-        modifier = modifier.border(1.dp, border, RoundedCornerShape(12.dp))
+        shape = MaterialTheme.shapes.medium,
+        outlined = true,
+        accentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        selected = selected,
+        contentPadding = RealmsSpacing.s,
+        modifier = modifier
     ) {
-        Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(spell.icon, style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
@@ -192,57 +196,55 @@ private fun SpellDetailCard(
     onCast: () -> Unit
 ) {
     val realms = RealmsTheme.colors
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        shape = RoundedCornerShape(14.dp),
-        modifier = Modifier.fillMaxWidth().border(
-            1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), RoundedCornerShape(14.dp)
-        )
+    RealmsCard(
+        outlined = true,
+        accentColor = MaterialTheme.colorScheme.primary,
+        shape = MaterialTheme.shapes.medium,
+        contentPadding = RealmsSpacing.m,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(spell.icon, style = MaterialTheme.typography.displaySmall)
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(spell.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(spell.icon, style = MaterialTheme.typography.displaySmall)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(spell.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "${spell.school} · ${if (spell.level == 0) "Cantrip" else "Level ${spell.level}"}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (spell.classes.isNotEmpty()) {
                     Text(
-                        "${spell.school} · ${if (spell.level == 0) "Cantrip" else "Level ${spell.level}"}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (spell.classes.isNotEmpty()) {
-                        Text(
-                            spell.classes.joinToString(" · "),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(spell.desc, style = MaterialTheme.typography.bodyMedium)
-            if (spell.damage != "-") {
-                Spacer(Modifier.height(4.dp))
-                Surface(
-                    color = realms.fumbleRed.copy(alpha = 0.14f),
-                    shape = RoundedCornerShape(6.dp)
-                ) {
-                    Text(
-                        "\uD83D\uDDE1\uFE0F ${spell.damage}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = realms.fumbleRed,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                        spell.classes.joinToString(" · "),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
                     )
                 }
             }
-            Spacer(Modifier.height(10.dp))
-            Button(
-                onClick = onCast,
-                enabled = canCast,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(10.dp)
-            ) { Text(if (canCast) "Cast Now" else "No Slots") }
         }
+        Spacer(Modifier.height(8.dp))
+        Text(spell.desc, style = MaterialTheme.typography.bodyMedium)
+        if (spell.damage != "-") {
+            Spacer(Modifier.height(RealmsSpacing.xs))
+            Surface(
+                color = realms.fumbleRed.copy(alpha = 0.14f),
+                shape = MaterialTheme.shapes.extraSmall
+            ) {
+                Text(
+                    "\uD83D\uDDE1\uFE0F ${spell.damage}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = realms.fumbleRed,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Button(
+            onClick = onCast,
+            enabled = canCast,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.small
+        ) { Text(if (canCast) "Cast Now" else "No Slots") }
     }
 }

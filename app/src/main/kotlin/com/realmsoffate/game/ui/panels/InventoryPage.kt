@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +18,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.data.Item
 import com.realmsoffate.game.game.GameUiState
+import com.realmsoffate.game.ui.components.EmptyState
+import com.realmsoffate.game.ui.components.PanelSheet
+import com.realmsoffate.game.ui.components.RealmsCard
+import com.realmsoffate.game.ui.components.SectionHeader
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
 // ----------------- INVENTORY (equipped slots + 5-col backpack grid) -----------------
@@ -36,7 +40,7 @@ internal fun InventoryPanel(state: GameUiState, onClose: () -> Unit, onEquip: (I
         val weapon = ch.inventory.firstOrNull { it.equipped && it.type == "weapon" }
         val armor = ch.inventory.firstOrNull { it.equipped && (it.type == "armor" || it.type == "shield") }
         Row(
-            Modifier.padding(horizontal = 14.dp).fillMaxWidth(),
+            Modifier.padding(horizontal = RealmsSpacing.l).fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             EquippedSlot(
@@ -68,12 +72,12 @@ internal fun InventoryPanel(state: GameUiState, onClose: () -> Unit, onEquip: (I
         }
         // ---- Backpack grid (5 col) ----
         Spacer(Modifier.height(10.dp))
-        SectionCap("  BACKPACK")
+        SectionHeader("  BACKPACK")
         val backpack = ch.inventory.filter { !(it.equipped && it.type in setOf("weapon", "armor", "shield")) }
         if (backpack.isEmpty()) {
             Text(
                 "Pack is empty.",
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                modifier = Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.m),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -83,7 +87,7 @@ internal fun InventoryPanel(state: GameUiState, onClose: () -> Unit, onEquip: (I
             columns = GridCells.Fixed(5),
             verticalArrangement = Arrangement.spacedBy(6.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(horizontal = 12.dp).heightIn(max = 380.dp)
+            modifier = Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 380.dp)
         ) {
             items(backpack) { item ->
                 BackpackCell(
@@ -105,35 +109,35 @@ private fun EquippedSlot(
     modifier: Modifier = Modifier
 ) {
     val rarityColor = item?.let { rarityColor(it.rarity) } ?: MaterialTheme.colorScheme.outlineVariant
-    Surface(
-        onClick = { if (item != null) onTap() },
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(14.dp),
-        modifier = modifier.border(1.dp, rarityColor.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
+    RealmsCard(
+        onClick = if (item != null) onTap else null,
+        shape = MaterialTheme.shapes.medium,
+        outlined = true,
+        accentColor = rarityColor,
+        contentPadding = RealmsSpacing.m,
+        modifier = modifier
     ) {
-        Column(Modifier.padding(12.dp)) {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(4.dp))
-            if (item != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(itemIconFor(item), style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.width(8.dp))
-                    Column {
-                        Text(item.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                        if (item.ac != null) Text("AC ${item.ac}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (item.damage != null) Text(item.damage, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(4.dp))
+        if (item != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(itemIconFor(item), style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text(item.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                    if (item.ac != null) Text("AC ${item.ac}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (item.damage != null) Text(item.damage, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-            } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(icon, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "empty",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(icon, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "empty",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -142,53 +146,51 @@ private fun EquippedSlot(
 @Composable
 private fun SelectedItemCard(item: Item, onEquipToggle: () -> Unit, onUse: () -> Unit) {
     val color = rarityColor(item.rarity)
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        shape = RoundedCornerShape(14.dp),
-        modifier = Modifier.padding(horizontal = 14.dp).fillMaxWidth().border(
-            1.dp, color.copy(alpha = 0.7f), RoundedCornerShape(14.dp)
-        )
+    RealmsCard(
+        outlined = true,
+        accentColor = color,
+        shape = MaterialTheme.shapes.medium,
+        contentPadding = RealmsSpacing.m,
+        modifier = Modifier.padding(horizontal = RealmsSpacing.l).fillMaxWidth()
     ) {
-        Column(Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)).background(color.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(44.dp).clip(MaterialTheme.shapes.small).background(color.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(itemIconFor(item), style = MaterialTheme.typography.headlineSmall)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(item.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    RarityTag(item.rarity, color)
+                    TypeTag(item.type)
+                    if (item.qty > 1) Text("×${item.qty}", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+        if (item.desc.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Text(item.desc, style = MaterialTheme.typography.bodySmall)
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (item.type in setOf("weapon", "armor", "shield")) {
+                Button(
+                    onClick = onEquipToggle,
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small
                 ) {
-                    Text(itemIconFor(item), style = MaterialTheme.typography.headlineSmall)
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(item.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        RarityTag(item.rarity, color)
-                        TypeTag(item.type)
-                        if (item.qty > 1) Text("×${item.qty}", style = MaterialTheme.typography.labelSmall)
-                    }
+                    Text(if (item.equipped) "Unequip" else "Equip")
                 }
             }
-            if (item.desc.isNotBlank()) {
-                Spacer(Modifier.height(8.dp))
-                Text(item.desc, style = MaterialTheme.typography.bodySmall)
-            }
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (item.type in setOf("weapon", "armor", "shield")) {
-                    Button(
-                        onClick = onEquipToggle,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text(if (item.equipped) "Unequip" else "Equip")
-                    }
-                }
-                if (item.type == "consumable") {
-                    OutlinedButton(
-                        onClick = onUse,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp)
-                    ) { Text("Use") }
-                }
+            if (item.type == "consumable") {
+                OutlinedButton(
+                    onClick = onUse,
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small
+                ) { Text("Use") }
             }
         }
     }
@@ -200,11 +202,11 @@ private fun BackpackCell(item: Item, selected: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         color = if (selected) color.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(10.dp),
+        shape = MaterialTheme.shapes.small,
         modifier = Modifier.aspectRatio(0.85f).border(
             1.dp,
             if (selected) color else color.copy(alpha = 0.25f),
-            RoundedCornerShape(10.dp)
+            MaterialTheme.shapes.small
         )
     ) {
         Box(Modifier.fillMaxSize()) {
@@ -226,7 +228,7 @@ private fun BackpackCell(item: Item, selected: Boolean, onClick: () -> Unit) {
             if (item.qty > 1) {
                 Surface(
                     color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(6.dp),
+                    shape = MaterialTheme.shapes.extraSmall,
                     modifier = Modifier.align(Alignment.TopEnd).padding(2.dp)
                 ) {
                     Text(
@@ -254,7 +256,7 @@ private fun BackpackCell(item: Item, selected: Boolean, onClick: () -> Unit) {
 private fun RarityTag(rarity: String, color: Color) {
     Surface(
         color = color.copy(alpha = 0.14f),
-        shape = RoundedCornerShape(6.dp)
+        shape = MaterialTheme.shapes.extraSmall
     ) {
         Text(
             rarity.uppercase(),
@@ -270,7 +272,7 @@ private fun RarityTag(rarity: String, color: Color) {
 private fun TypeTag(type: String) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(6.dp)
+        shape = MaterialTheme.shapes.extraSmall
     ) {
         Text(
             type,

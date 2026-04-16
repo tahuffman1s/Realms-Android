@@ -8,7 +8,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,7 +18,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.game.GameUiState
+import com.realmsoffate.game.ui.components.PanelSheet
+import com.realmsoffate.game.ui.components.RealmsProgressBar
+import com.realmsoffate.game.ui.components.SectionHeader
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
+import com.realmsoffate.game.util.formatSigned
 
 // ----------------- STATS -----------------
 
@@ -31,7 +35,7 @@ internal fun StatsPanel(state: GameUiState, onClose: () -> Unit) {
         Column(
             Modifier
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xs)
         ) {
             Text(ch.name, style = MaterialTheme.typography.headlineSmall)
             Text(
@@ -39,33 +43,33 @@ internal fun StatsPanel(state: GameUiState, onClose: () -> Unit) {
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(RealmsSpacing.m))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s), modifier = Modifier.fillMaxWidth()) {
                 StatTile(label = "HP", value = "${ch.hp}/${ch.maxHp}", color = realms.success, modifier = Modifier.weight(1f))
                 StatTile(label = "AC", value = "${ch.ac}", color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
                 StatTile(label = "PROF", value = "+${ch.proficiency}", color = MaterialTheme.colorScheme.secondary, modifier = Modifier.weight(1f))
                 StatTile(label = "XP", value = "${ch.xp}", color = realms.goldAccent, modifier = Modifier.weight(1f))
             }
 
-            Spacer(Modifier.height(14.dp))
-            SectionCap("ABILITIES")
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(RealmsSpacing.m))
+            SectionHeader("ABILITIES")
+            Spacer(Modifier.height(RealmsSpacing.xs))
             // 3-column grid with icons, matching the web's layout.
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs), modifier = Modifier.fillMaxWidth()) {
                 AbilityTile("STR", "Strength",     "\uD83D\uDCAA", ch.abilities.str, ch.abilities.strMod, Modifier.weight(1f))
                 AbilityTile("DEX", "Dexterity",    "\uD83C\uDFC3", ch.abilities.dex, ch.abilities.dexMod, Modifier.weight(1f))
                 AbilityTile("CON", "Constitution", "\u2764\uFE0F", ch.abilities.con, ch.abilities.conMod, Modifier.weight(1f))
             }
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            Spacer(Modifier.height(RealmsSpacing.xs))
+            Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs), modifier = Modifier.fillMaxWidth()) {
                 AbilityTile("INT", "Intelligence", "\uD83E\uDDE0", ch.abilities.int, ch.abilities.intMod, Modifier.weight(1f))
                 AbilityTile("WIS", "Wisdom",       "\uD83D\uDC41\uFE0F", ch.abilities.wis, ch.abilities.wisMod, Modifier.weight(1f))
                 AbilityTile("CHA", "Charisma",     "\uD83D\uDCE3", ch.abilities.cha, ch.abilities.chaMod, Modifier.weight(1f))
             }
 
-            Spacer(Modifier.height(14.dp))
-            SectionCap("MORALITY")
+            Spacer(Modifier.height(RealmsSpacing.m))
+            SectionHeader("MORALITY")
             val mcolor = when {
                 state.morality >= 30 -> realms.success
                 state.morality <= -30 -> realms.fumbleRed
@@ -78,33 +82,28 @@ internal fun StatsPanel(state: GameUiState, onClose: () -> Unit) {
                 color = mcolor,
                 fontWeight = FontWeight.Bold
             )
-            LinearProgressIndicator(
-                progress = { pct.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(4.dp)),
-                color = mcolor,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+            RealmsProgressBar(progress = pct, color = mcolor)
 
             if (ch.conditions.isNotEmpty()) {
-                Spacer(Modifier.height(14.dp))
-                SectionCap("CONDITIONS")
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(RealmsSpacing.m))
+                SectionHeader("CONDITIONS")
+                Spacer(Modifier.height(RealmsSpacing.xs))
                 Row(
                     Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)
                 ) {
                     ch.conditions.forEach { cond ->
                         Surface(
                             color = realms.warning.copy(alpha = 0.14f),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.border(1.dp, realms.warning.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                            shape = MaterialTheme.shapes.small,
+                            modifier = Modifier.border(1.dp, realms.warning.copy(alpha = 0.5f), MaterialTheme.shapes.small)
                         ) {
                             Text(
                                 cond,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = realms.warning,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs)
                             )
                         }
                     }
@@ -112,9 +111,9 @@ internal fun StatsPanel(state: GameUiState, onClose: () -> Unit) {
             }
 
             ch.backstory?.let { bs ->
-                Spacer(Modifier.height(14.dp))
-                SectionCap("BACKSTORY")
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Spacer(Modifier.height(RealmsSpacing.m))
+                SectionHeader("BACKSTORY")
+                Column(verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)) {
                     BackstoryCard("\uD83C\uDF05", "Origin", bs.origin, realms.info)
                     BackstoryCard("\uD83C\uDFAF", "Motivation", bs.motivation, realms.goldAccent)
                     BackstoryCard("\uD83D\uDC94", "Flaw", bs.flaw, realms.fumbleRed)
@@ -135,11 +134,11 @@ internal fun StatsPanel(state: GameUiState, onClose: () -> Unit) {
 private fun StatTile(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
     Surface(
         color = color.copy(alpha = 0.14f),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = modifier
     ) {
         Column(
-            Modifier.padding(10.dp).fillMaxWidth(),
+            Modifier.padding(RealmsSpacing.s).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = color)
@@ -152,20 +151,20 @@ private fun StatTile(label: String, value: String, color: Color, modifier: Modif
 private fun BackstoryCard(icon: String, label: String, text: String, accent: Color) {
     Surface(
         color = accent.copy(alpha = 0.08f),
-        shape = RoundedCornerShape(14.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(Modifier.padding(12.dp)) {
+        Row(Modifier.padding(RealmsSpacing.m)) {
             Box(
                 Modifier
                     .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(MaterialTheme.shapes.small)
                     .background(accent.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(icon, fontSize = 18.sp)
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(RealmsSpacing.m))
             Column(Modifier.weight(1f)) {
                 Text(
                     label.uppercase(),
@@ -173,7 +172,7 @@ private fun BackstoryCard(icon: String, label: String, text: String, accent: Col
                     color = accent,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(RealmsSpacing.xxs))
                 Text(
                     text,
                     style = MaterialTheme.typography.bodySmall.copy(
@@ -197,15 +196,15 @@ private fun AbilityTile(
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = modifier
     ) {
         Column(
-            Modifier.padding(horizontal = 6.dp, vertical = 10.dp).fillMaxWidth(),
+            Modifier.padding(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.s).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(icon, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(RealmsSpacing.xxs))
             Text(abbr, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Text("$score", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
             Text(
