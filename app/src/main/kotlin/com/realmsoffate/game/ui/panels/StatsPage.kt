@@ -28,105 +28,110 @@ import com.realmsoffate.game.util.formatSigned
 // ----------------- STATS -----------------
 
 @Composable
-internal fun StatsPanel(state: GameUiState, onClose: () -> Unit) {
+internal fun StatsContent(state: GameUiState) {
     val ch = state.character ?: return
     val realms = RealmsTheme.colors
-    PanelSheet("\uD83D\uDCCA  Character", onClose = onClose) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xs)
-        ) {
-            Text(ch.name, style = MaterialTheme.typography.headlineSmall)
-            Text(
-                "L${ch.level} ${ch.race} ${ch.cls}",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.height(RealmsSpacing.m))
+    Column(
+        Modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xs)
+    ) {
+        Text(ch.name, style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "L${ch.level} ${ch.race} ${ch.cls}",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.height(RealmsSpacing.m))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s), modifier = Modifier.fillMaxWidth()) {
-                StatTile(label = "HP", value = "${ch.hp}/${ch.maxHp}", color = realms.success, modifier = Modifier.weight(1f))
-                StatTile(label = "AC", value = "${ch.ac}", color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
-                StatTile(label = "PROF", value = "+${ch.proficiency}", color = MaterialTheme.colorScheme.secondary, modifier = Modifier.weight(1f))
-                StatTile(label = "XP", value = "${ch.xp}", color = realms.goldAccent, modifier = Modifier.weight(1f))
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s), modifier = Modifier.fillMaxWidth()) {
+            StatTile(label = "HP", value = "${ch.hp}/${ch.maxHp}", color = realms.success, modifier = Modifier.weight(1f))
+            StatTile(label = "AC", value = "${ch.ac}", color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
+            StatTile(label = "PROF", value = "+${ch.proficiency}", color = MaterialTheme.colorScheme.secondary, modifier = Modifier.weight(1f))
+            StatTile(label = "XP", value = "${ch.xp}", color = realms.goldAccent, modifier = Modifier.weight(1f))
+        }
 
+        Spacer(Modifier.height(RealmsSpacing.m))
+        SectionHeader("ABILITIES")
+        Spacer(Modifier.height(RealmsSpacing.xs))
+        // 3-column grid with icons, matching the web's layout.
+        Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs), modifier = Modifier.fillMaxWidth()) {
+            AbilityTile("STR", "Strength",     "\uD83D\uDCAA", ch.abilities.str, ch.abilities.strMod, Modifier.weight(1f))
+            AbilityTile("DEX", "Dexterity",    "\uD83C\uDFC3", ch.abilities.dex, ch.abilities.dexMod, Modifier.weight(1f))
+            AbilityTile("CON", "Constitution", "\u2764\uFE0F", ch.abilities.con, ch.abilities.conMod, Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(RealmsSpacing.xs))
+        Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs), modifier = Modifier.fillMaxWidth()) {
+            AbilityTile("INT", "Intelligence", "\uD83E\uDDE0", ch.abilities.int, ch.abilities.intMod, Modifier.weight(1f))
+            AbilityTile("WIS", "Wisdom",       "\uD83D\uDC41\uFE0F", ch.abilities.wis, ch.abilities.wisMod, Modifier.weight(1f))
+            AbilityTile("CHA", "Charisma",     "\uD83D\uDCE3", ch.abilities.cha, ch.abilities.chaMod, Modifier.weight(1f))
+        }
+
+        Spacer(Modifier.height(RealmsSpacing.m))
+        SectionHeader("MORALITY")
+        val mcolor = when {
+            state.morality >= 30 -> realms.success
+            state.morality <= -30 -> realms.fumbleRed
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
+        val pct = (state.morality + 100) / 200f
+        Text(
+            "${formatSigned(state.morality)}",
+            style = MaterialTheme.typography.titleLarge,
+            color = mcolor,
+            fontWeight = FontWeight.Bold
+        )
+        RealmsProgressBar(progress = pct, color = mcolor)
+
+        if (ch.conditions.isNotEmpty()) {
             Spacer(Modifier.height(RealmsSpacing.m))
-            SectionHeader("ABILITIES")
+            SectionHeader("CONDITIONS")
             Spacer(Modifier.height(RealmsSpacing.xs))
-            // 3-column grid with icons, matching the web's layout.
-            Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs), modifier = Modifier.fillMaxWidth()) {
-                AbilityTile("STR", "Strength",     "\uD83D\uDCAA", ch.abilities.str, ch.abilities.strMod, Modifier.weight(1f))
-                AbilityTile("DEX", "Dexterity",    "\uD83C\uDFC3", ch.abilities.dex, ch.abilities.dexMod, Modifier.weight(1f))
-                AbilityTile("CON", "Constitution", "\u2764\uFE0F", ch.abilities.con, ch.abilities.conMod, Modifier.weight(1f))
-            }
-            Spacer(Modifier.height(RealmsSpacing.xs))
-            Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs), modifier = Modifier.fillMaxWidth()) {
-                AbilityTile("INT", "Intelligence", "\uD83E\uDDE0", ch.abilities.int, ch.abilities.intMod, Modifier.weight(1f))
-                AbilityTile("WIS", "Wisdom",       "\uD83D\uDC41\uFE0F", ch.abilities.wis, ch.abilities.wisMod, Modifier.weight(1f))
-                AbilityTile("CHA", "Charisma",     "\uD83D\uDCE3", ch.abilities.cha, ch.abilities.chaMod, Modifier.weight(1f))
-            }
-
-            Spacer(Modifier.height(RealmsSpacing.m))
-            SectionHeader("MORALITY")
-            val mcolor = when {
-                state.morality >= 30 -> realms.success
-                state.morality <= -30 -> realms.fumbleRed
-                else -> MaterialTheme.colorScheme.onSurfaceVariant
-            }
-            val pct = (state.morality + 100) / 200f
-            Text(
-                "${formatSigned(state.morality)}",
-                style = MaterialTheme.typography.titleLarge,
-                color = mcolor,
-                fontWeight = FontWeight.Bold
-            )
-            RealmsProgressBar(progress = pct, color = mcolor)
-
-            if (ch.conditions.isNotEmpty()) {
-                Spacer(Modifier.height(RealmsSpacing.m))
-                SectionHeader("CONDITIONS")
-                Spacer(Modifier.height(RealmsSpacing.xs))
-                Row(
-                    Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)
-                ) {
-                    ch.conditions.forEach { cond ->
-                        Surface(
-                            color = realms.warning.copy(alpha = 0.14f),
-                            shape = MaterialTheme.shapes.small,
-                            modifier = Modifier.border(1.dp, realms.warning.copy(alpha = 0.5f), MaterialTheme.shapes.small)
-                        ) {
-                            Text(
-                                cond,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = realms.warning,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs)
-                            )
-                        }
-                    }
-                }
-            }
-
-            ch.backstory?.let { bs ->
-                Spacer(Modifier.height(RealmsSpacing.m))
-                SectionHeader("BACKSTORY")
-                Column(verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)) {
-                    BackstoryCard("\uD83C\uDF05", "Origin", bs.origin, realms.info)
-                    BackstoryCard("\uD83C\uDFAF", "Motivation", bs.motivation, realms.goldAccent)
-                    BackstoryCard("\uD83D\uDC94", "Flaw", bs.flaw, realms.fumbleRed)
-                    BackstoryCard("\uD83D\uDD17", "Bond", bs.bond, realms.success)
-                    BackstoryCard("\uD83D\uDD73\uFE0F", "Dark Secret", bs.darkSecret, MaterialTheme.colorScheme.secondary)
-                    BackstoryCard("\uD83D\uDD0D", "Lost Item", bs.lostItem, realms.goldAccent)
-                    BackstoryCard("\u2620\uFE0F", "Personal Enemy", bs.personalEnemy, realms.fumbleRed)
-                    bs.prophecy?.let { p ->
-                        if (p.isNotBlank()) BackstoryCard("\uD83D\uDD2E", "Prophecy", p, MaterialTheme.colorScheme.secondary)
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)
+            ) {
+                ch.conditions.forEach { cond ->
+                    Surface(
+                        color = realms.warning.copy(alpha = 0.14f),
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.border(1.dp, realms.warning.copy(alpha = 0.5f), MaterialTheme.shapes.small)
+                    ) {
+                        Text(
+                            cond,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = realms.warning,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs)
+                        )
                     }
                 }
             }
         }
+
+        ch.backstory?.let { bs ->
+            Spacer(Modifier.height(RealmsSpacing.m))
+            SectionHeader("BACKSTORY")
+            Column(verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)) {
+                BackstoryCard("\uD83C\uDF05", "Origin", bs.origin, realms.info)
+                BackstoryCard("\uD83C\uDFAF", "Motivation", bs.motivation, realms.goldAccent)
+                BackstoryCard("\uD83D\uDC94", "Flaw", bs.flaw, realms.fumbleRed)
+                BackstoryCard("\uD83D\uDD17", "Bond", bs.bond, realms.success)
+                BackstoryCard("\uD83D\uDD73\uFE0F", "Dark Secret", bs.darkSecret, MaterialTheme.colorScheme.secondary)
+                BackstoryCard("\uD83D\uDD0D", "Lost Item", bs.lostItem, realms.goldAccent)
+                BackstoryCard("\u2620\uFE0F", "Personal Enemy", bs.personalEnemy, realms.fumbleRed)
+                bs.prophecy?.let { p ->
+                    if (p.isNotBlank()) BackstoryCard("\uD83D\uDD2E", "Prophecy", p, MaterialTheme.colorScheme.secondary)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun StatsPanel(state: GameUiState, onClose: () -> Unit) {
+    PanelSheet("\uD83D\uDCCA  Character", onClose = onClose) {
+        StatsContent(state)
     }
 }
 

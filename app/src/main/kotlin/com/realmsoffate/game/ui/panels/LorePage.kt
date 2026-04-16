@@ -39,28 +39,33 @@ private enum class LoreTab(val label: String, val icon: String) {
 }
 
 @Composable
+internal fun LoreContent(state: GameUiState) {
+    val lore = state.worldLore
+    if (lore == null) {
+        EmptyState("\uD83D\uDCDA", "The world's secrets are not yet recorded.")
+        return
+    }
+    var tab by remember { mutableStateOf(LoreTab.World) }
+    val loreTabs = LoreTab.entries.map { it.label to it.icon }
+    FilterTabRow(
+        tabs = loreTabs,
+        selectedIndex = LoreTab.entries.indexOf(tab),
+        onSelect = { tab = LoreTab.entries[it] }
+    )
+    Spacer(Modifier.height(RealmsSpacing.xs))
+    when (tab) {
+        LoreTab.World -> LoreWorldTab(state)
+        LoreTab.Factions -> LoreFactionsTab(state)
+        LoreTab.Npcs -> LoreNpcsTab(state)
+        LoreTab.History -> LoreHistoryTab(state)
+        LoreTab.Rumors -> LoreRumorsTab(state)
+    }
+}
+
+@Composable
 internal fun LorePanel(state: GameUiState, onClose: () -> Unit) {
     PanelSheet("\uD83D\uDCDA  World Lore", onClose = onClose) {
-        val lore = state.worldLore
-        if (lore == null) {
-            EmptyState("\uD83D\uDCDA", "The world's secrets are not yet recorded.")
-            return@PanelSheet
-        }
-        var tab by remember { mutableStateOf(LoreTab.World) }
-        val loreTabs = LoreTab.entries.map { it.label to it.icon }
-        FilterTabRow(
-            tabs = loreTabs,
-            selectedIndex = LoreTab.entries.indexOf(tab),
-            onSelect = { tab = LoreTab.entries[it] }
-        )
-        Spacer(Modifier.height(RealmsSpacing.xs))
-        when (tab) {
-            LoreTab.World -> LoreWorldTab(state)
-            LoreTab.Factions -> LoreFactionsTab(state)
-            LoreTab.Npcs -> LoreNpcsTab(state)
-            LoreTab.History -> LoreHistoryTab(state)
-            LoreTab.Rumors -> LoreRumorsTab(state)
-        }
+        LoreContent(state)
     }
 }
 

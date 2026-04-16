@@ -50,141 +50,146 @@ private enum class JournalFilter(val label: String, val icon: String, val match:
 }
 
 @Composable
-internal fun JournalPanel(state: GameUiState, focusNpc: String? = null, onClose: () -> Unit) {
+internal fun JournalContent(state: GameUiState, focusNpc: String? = null) {
     var filter by remember { mutableStateOf(JournalFilter.All) }
     var selected by remember { mutableStateOf<String?>(focusNpc) }
     val filtered = state.npcLog.filter { filter.match(it.relationship.lowercase()) }
+    if (state.npcLog.isEmpty()) {
+        EmptyState("\uD83D\uDCD6", "No NPCs met yet.")
+        return
+    }
+    // ---- Player header card ----
+    state.character?.let { ch ->
+        Row(
+            Modifier.padding(horizontal = RealmsSpacing.m).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RealmsCard(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            ch.name.take(1).uppercase(),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(ch.name, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "L${ch.level} ${ch.race} ${ch.cls} (you)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(RealmsSpacing.s))
+    }
+    FilterTabRow(
+        tabs = JournalFilter.entries.map { it.label to it.icon },
+        selectedIndex = JournalFilter.entries.indexOf(filter),
+        onSelect = { filter = JournalFilter.entries[it] }
+    )
+    Spacer(Modifier.height(RealmsSpacing.s))
+    if (filtered.isEmpty()) {
+        Text(
+            "No ${filter.label.lowercase()} NPCs in journal.",
+            modifier = Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xxl),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+
+    // Selected NPC detail — animates in/out instead of abruptly appearing.
+    val selectedNpc = selected?.let { sel -> state.npcLog.firstOrNull { it.name == sel } }
+    AnimatedVisibility(
+        visible = selectedNpc != null,
+        enter = expandVertically(),
+        exit = shrinkVertically()
+    ) {
+        if (selectedNpc != null) {
+            Column {
+                NpcDetailCard(npc = selectedNpc, onClose = { selected = null })
+                Spacer(Modifier.height(RealmsSpacing.s))
+            }
+        }
+    }
+
+    LazyColumn(
+        Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 540.dp),
+        verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
+    ) {
+        items(filtered) { n ->
+            RealmsCard(
+                onClick = { selected = if (selected == n.name) null else n.name },
+                selected = selected == n.name,
+                accentColor = MaterialTheme.colorScheme.primary,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(n.name.take(1).uppercase(), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(n.name, style = MaterialTheme.typography.titleMedium)
+                        Text("${n.race} ${n.role} · ${n.age}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    RelationshipTag(n.relationship)
+                    if (n.status == "dead") {
+                        Spacer(Modifier.width(RealmsSpacing.xs))
+                        Surface(
+                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.16f),
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Text(
+                                "☠️ DEAD",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs)
+                            )
+                        }
+                    }
+                }
+                if (n.personality.isNotBlank()) Text(
+                    n.personality,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = RealmsSpacing.xs)
+                )
+                Text(
+                    "Last seen T${n.lastSeenTurn} · ${n.lastLocation}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = RealmsSpacing.xs)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun JournalPanel(state: GameUiState, focusNpc: String? = null, onClose: () -> Unit) {
     PanelSheet(
         "\uD83D\uDCD6  Journal",
         subtitle = if (state.npcLog.isEmpty()) null else "${state.npcLog.size} NPCs met",
         onClose = onClose
     ) {
-        if (state.npcLog.isEmpty()) {
-            EmptyState("\uD83D\uDCD6", "No NPCs met yet.")
-            return@PanelSheet
-        }
-        // ---- Player header card ----
-        state.character?.let { ch ->
-            Row(
-                Modifier.padding(horizontal = RealmsSpacing.m).fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                RealmsCard(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                ch.name.take(1).uppercase(),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(ch.name, style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "L${ch.level} ${ch.race} ${ch.cls} (you)",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.height(RealmsSpacing.s))
-        }
-        FilterTabRow(
-            tabs = JournalFilter.entries.map { it.label to it.icon },
-            selectedIndex = JournalFilter.entries.indexOf(filter),
-            onSelect = { filter = JournalFilter.entries[it] }
-        )
-        Spacer(Modifier.height(RealmsSpacing.s))
-        if (filtered.isEmpty()) {
-            Text(
-                "No ${filter.label.lowercase()} NPCs in journal.",
-                modifier = Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xxl),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            return@PanelSheet
-        }
-
-        // Selected NPC detail — animates in/out instead of abruptly appearing.
-        val selectedNpc = selected?.let { sel -> state.npcLog.firstOrNull { it.name == sel } }
-        AnimatedVisibility(
-            visible = selectedNpc != null,
-            enter = expandVertically(),
-            exit = shrinkVertically()
-        ) {
-            if (selectedNpc != null) {
-                Column {
-                    NpcDetailCard(npc = selectedNpc, onClose = { selected = null })
-                    Spacer(Modifier.height(RealmsSpacing.s))
-                }
-            }
-        }
-
-        LazyColumn(
-            Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 540.dp),
-            verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
-        ) {
-            items(filtered) { n ->
-                RealmsCard(
-                    onClick = { selected = if (selected == n.name) null else n.name },
-                    selected = selected == n.name,
-                    accentColor = MaterialTheme.colorScheme.primary,
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(n.name.take(1).uppercase(), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                        }
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(n.name, style = MaterialTheme.typography.titleMedium)
-                            Text("${n.race} ${n.role} · ${n.age}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        RelationshipTag(n.relationship)
-                        if (n.status == "dead") {
-                            Spacer(Modifier.width(RealmsSpacing.xs))
-                            Surface(
-                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.16f),
-                                shape = MaterialTheme.shapes.small
-                            ) {
-                                Text(
-                                    "☠️ DEAD",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.error,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs)
-                                )
-                            }
-                        }
-                    }
-                    if (n.personality.isNotBlank()) Text(
-                        n.personality,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = RealmsSpacing.xs)
-                    )
-                    Text(
-                        "Last seen T${n.lastSeenTurn} · ${n.lastLocation}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = RealmsSpacing.xs)
-                    )
-                }
-            }
-        }
+        JournalContent(state, focusNpc)
     }
 }
 

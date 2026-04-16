@@ -37,74 +37,84 @@ private val spellLevelLabels = mapOf(
 )
 
 @Composable
+internal fun SpellsContent(
+    state: GameUiState,
+    onHotbar: (Int, String?) -> Unit = { _, _ -> },
+    onCast: (spell: com.realmsoffate.game.game.Spell) -> Unit = {}
+) {
+    val ch = state.character ?: return
+    var selectedName by remember(ch) { mutableStateOf<String?>(null) }
+    if (ch.knownSpells.isEmpty()) {
+        EmptyState("\u2728", "You know no spells.")
+        return
+    }
+    // Slot diamonds header
+    SpellSlotStrip(ch)
+    Spacer(Modifier.height(6.dp))
+
+    val knownSpells = ch.knownSpells.mapNotNull { Spells.find(it) }.sortedBy { it.level }
+    val grouped = knownSpells.groupBy { it.level }
+
+    LazyColumn(
+        Modifier.padding(horizontal = RealmsSpacing.l).heightIn(max = 540.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        grouped.keys.sorted().forEach { lvl ->
+            val entries = grouped[lvl].orEmpty()
+            item {
+                Text(
+                    spellLevelLabels[lvl] ?: "LEVEL $lvl",
+                    style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 2.sp),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 2.dp)
+                )
+            }
+            // Render pairs of spells as rows of two — emulating the web's 2-col grid
+            // without pulling in another nested LazyVerticalGrid.
+            val pairs = entries.chunked(2)
+            items(pairs) { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                    row.forEach { spell ->
+                        SpellCard(
+                            spell = spell,
+                            selected = selectedName == spell.name,
+                            onClick = { selectedName = if (selectedName == spell.name) null else spell.name },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (row.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+        selectedName?.let { name ->
+            val sp = Spells.find(name)
+            if (sp != null) {
+                item {
+                    SpellDetailCard(
+                        spell = sp,
+                        canCast = sp.level == 0 || (ch.spellSlots[sp.level] ?: 0) > 0,
+                        onCast = { onCast(sp) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 internal fun SpellsPanel(
     state: GameUiState,
     onClose: () -> Unit,
     onHotbar: (Int, String?) -> Unit = { _, _ -> },
     onCast: (spell: com.realmsoffate.game.game.Spell) -> Unit = {}
 ) {
-    val ch = state.character ?: return
-    var selectedName by remember(ch) { mutableStateOf<String?>(null) }
+    val ch = state.character
     PanelSheet(
         "\u2728  Spells",
-        subtitle = if (ch.knownSpells.isEmpty()) null else "${ch.knownSpells.size} known",
+        subtitle = if (ch == null || ch.knownSpells.isEmpty()) null else "${ch.knownSpells.size} known",
         onClose = onClose
     ) {
-        if (ch.knownSpells.isEmpty()) {
-            EmptyState("\u2728", "You know no spells.")
-            return@PanelSheet
-        }
-        // Slot diamonds header
-        SpellSlotStrip(ch)
-        Spacer(Modifier.height(6.dp))
-
-        val knownSpells = ch.knownSpells.mapNotNull { Spells.find(it) }.sortedBy { it.level }
-        val grouped = knownSpells.groupBy { it.level }
-
-        LazyColumn(
-            Modifier.padding(horizontal = RealmsSpacing.l).heightIn(max = 540.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            grouped.keys.sorted().forEach { lvl ->
-                val entries = grouped[lvl].orEmpty()
-                item {
-                    Text(
-                        spellLevelLabels[lvl] ?: "LEVEL $lvl",
-                        style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 2.sp),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(top = 6.dp, bottom = 2.dp)
-                    )
-                }
-                // Render pairs of spells as rows of two — emulating the web's 2-col grid
-                // without pulling in another nested LazyVerticalGrid.
-                val pairs = entries.chunked(2)
-                items(pairs) { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                        row.forEach { spell ->
-                            SpellCard(
-                                spell = spell,
-                                selected = selectedName == spell.name,
-                                onClick = { selectedName = if (selectedName == spell.name) null else spell.name },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        if (row.size == 1) Spacer(Modifier.weight(1f))
-                    }
-                }
-            }
-            selectedName?.let { name ->
-                val sp = Spells.find(name)
-                if (sp != null) {
-                    item {
-                        SpellDetailCard(
-                            spell = sp,
-                            canCast = sp.level == 0 || (ch.spellSlots[sp.level] ?: 0) > 0,
-                            onCast = { onCast(sp) }
-                        )
-                    }
-                }
-            }
-        }
+        SpellsContent(state, onHotbar, onCast)
     }
 }
 

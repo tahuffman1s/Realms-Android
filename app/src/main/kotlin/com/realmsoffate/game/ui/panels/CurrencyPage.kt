@@ -24,9 +24,8 @@ import com.realmsoffate.game.util.formatSigned
 // ----------------- CURRENCY (exchange + rate table) -----------------
 
 @Composable
-internal fun CurrencyPanel(
+internal fun CurrencyContent(
     state: GameUiState,
-    onClose: () -> Unit,
     onExchange: (factionName: String, direction: String, amount: Int) -> Unit = { _, _, _ -> }
 ) {
     val ch = state.character ?: return
@@ -47,100 +46,114 @@ internal fun CurrencyPanel(
         (amt / rate).toInt()
     }
 
+    LazyColumn(
+        Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 560.dp),
+        verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
+    ) {
+        // Wealth header card.
+        item {
+            Surface(
+                color = realms.goldAccent.copy(alpha = 0.14f),
+                shape = MaterialTheme.shapes.large,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.padding(RealmsSpacing.l)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("\uD83D\uDCB0", style = MaterialTheme.typography.headlineMedium)
+                        Spacer(Modifier.width(RealmsSpacing.m))
+                        Column {
+                            Text("GOLD ON HAND", style = MaterialTheme.typography.labelMedium, color = realms.goldAccent)
+                            Text(
+                                "${ch.gold}",
+                                style = MaterialTheme.typography.displaySmall,
+                                color = realms.goldAccent,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(RealmsSpacing.xs))
+                    Text(
+                        "Total wealth (gold-eq): $wealthGold",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // Per-faction currency cards with exchange affordance.
+        item { SectionHeader("LOCAL CURRENCIES") }
+        items(factions) { f ->
+            val balance = ch.currencyBalances[f.currency] ?: 0
+            val wealth = f.economy?.wealth ?: 3
+            val rate = (0.6 + 0.2 * (wealth - 3)).coerceIn(0.3, 1.6)
+            val rep = state.factionRep[f.name] ?: 0
+            CurrencyFactionCard(
+                name = f.name,
+                currency = f.currency,
+                balance = balance,
+                wealth = wealth,
+                rate = rate,
+                repColor = when {
+                    rep >= 50 -> realms.success
+                    rep <= -50 -> realms.fumbleRed
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                rep = rep,
+                isLocal = (f.name == localFactionName),
+                onExchange = { exchangeTarget = f.name }
+            )
+        }
+
+        // Exchange UI for the chosen faction.
+        exchangeTarget?.let { t ->
+            val f = factions.firstOrNull { it.name == t }
+            if (f != null) {
+                item {
+                    ExchangeCard(
+                        faction = f,
+                        character = ch,
+                        onCommit = { direction, amount ->
+                            onExchange(t, direction, amount)
+                            exchangeTarget = null
+                        },
+                        onCancel = { exchangeTarget = null }
+                    )
+                }
+            }
+        }
+
+        // Rate table at the bottom.
+        item {
+            SectionHeader("EXCHANGE RATES")
+            RatesTable(factions)
+            Spacer(Modifier.height(RealmsSpacing.xxs))
+            Text(
+                "Rates follow economy strength: richer markets = more favourable swaps. Shops trade in local currency; higher reputation means better prices.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+internal fun CurrencyPanel(
+    state: GameUiState,
+    onClose: () -> Unit,
+    onExchange: (factionName: String, direction: String, amount: Int) -> Unit = { _, _, _ -> }
+) {
+    val localFactionName = state.worldLore?.let { lore ->
+        state.worldMap?.let { wm ->
+            com.realmsoffate.game.game.LoreGen.findLocalFaction(wm, lore, state.currentLoc)?.name
+        }
+    }
     PanelSheet(
         "\uD83D\uDCB0  Coin",
         subtitle = localFactionName?.let { "Local: $it" },
         onClose = onClose
     ) {
-        LazyColumn(
-            Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 560.dp),
-            verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
-        ) {
-            // Wealth header card.
-            item {
-                Surface(
-                    color = realms.goldAccent.copy(alpha = 0.14f),
-                    shape = MaterialTheme.shapes.large,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(Modifier.padding(RealmsSpacing.l)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("\uD83D\uDCB0", style = MaterialTheme.typography.headlineMedium)
-                            Spacer(Modifier.width(RealmsSpacing.m))
-                            Column {
-                                Text("GOLD ON HAND", style = MaterialTheme.typography.labelMedium, color = realms.goldAccent)
-                                Text(
-                                    "${ch.gold}",
-                                    style = MaterialTheme.typography.displaySmall,
-                                    color = realms.goldAccent,
-                                    fontWeight = FontWeight.Black
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(RealmsSpacing.xs))
-                        Text(
-                            "Total wealth (gold-eq): $wealthGold",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-
-            // Per-faction currency cards with exchange affordance.
-            item { SectionHeader("LOCAL CURRENCIES") }
-            items(factions) { f ->
-                val balance = ch.currencyBalances[f.currency] ?: 0
-                val wealth = f.economy?.wealth ?: 3
-                val rate = (0.6 + 0.2 * (wealth - 3)).coerceIn(0.3, 1.6)
-                val rep = state.factionRep[f.name] ?: 0
-                CurrencyFactionCard(
-                    name = f.name,
-                    currency = f.currency,
-                    balance = balance,
-                    wealth = wealth,
-                    rate = rate,
-                    repColor = when {
-                        rep >= 50 -> realms.success
-                        rep <= -50 -> realms.fumbleRed
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    rep = rep,
-                    isLocal = (f.name == localFactionName),
-                    onExchange = { exchangeTarget = f.name }
-                )
-            }
-
-            // Exchange UI for the chosen faction.
-            exchangeTarget?.let { t ->
-                val f = factions.firstOrNull { it.name == t }
-                if (f != null) {
-                    item {
-                        ExchangeCard(
-                            faction = f,
-                            character = ch,
-                            onCommit = { direction, amount ->
-                                onExchange(t, direction, amount)
-                                exchangeTarget = null
-                            },
-                            onCancel = { exchangeTarget = null }
-                        )
-                    }
-                }
-            }
-
-            // Rate table at the bottom.
-            item {
-                SectionHeader("EXCHANGE RATES")
-                RatesTable(factions)
-                Spacer(Modifier.height(RealmsSpacing.xxs))
-                Text(
-                    "Rates follow economy strength: richer markets = more favourable swaps. Shops trade in local currency; higher reputation means better prices.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        CurrencyContent(state, onExchange)
     }
 }
 

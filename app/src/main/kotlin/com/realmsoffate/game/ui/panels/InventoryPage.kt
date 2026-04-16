@@ -28,75 +28,81 @@ import com.realmsoffate.game.ui.theme.RealmsTheme
 // ----------------- INVENTORY (equipped slots + 5-col backpack grid) -----------------
 
 @Composable
-internal fun InventoryPanel(state: GameUiState, onClose: () -> Unit, onEquip: (Item) -> Unit) {
+internal fun InventoryContent(state: GameUiState, onEquip: (Item) -> Unit) {
     val ch = state.character ?: return
     var selected by remember(ch) { mutableStateOf<Item?>(null) }
+    // ---- Equipped slots (2 col) ----
+    val weapon = ch.inventory.firstOrNull { it.equipped && it.type == "weapon" }
+    val armor = ch.inventory.firstOrNull { it.equipped && (it.type == "armor" || it.type == "shield") }
+    Row(
+        Modifier.padding(horizontal = RealmsSpacing.l).fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        EquippedSlot(
+            label = "WEAPON",
+            icon = "\u2694\uFE0F",
+            item = weapon,
+            onTap = { selected = weapon },
+            modifier = Modifier.weight(1f)
+        )
+        EquippedSlot(
+            label = "ARMOR",
+            icon = "\uD83D\uDEE1\uFE0F",
+            item = armor,
+            onTap = { selected = armor },
+            modifier = Modifier.weight(1f)
+        )
+    }
+    // ---- Selected item detail card ----
+    selected?.let { item ->
+        Spacer(Modifier.height(8.dp))
+        SelectedItemCard(
+            item = item,
+            onEquipToggle = { onEquip(item); selected = item.copy(equipped = !item.equipped) },
+            onUse = {
+                // Consumables route through onEquip for now (a "use" hook would live on the VM).
+                onEquip(item); selected = null
+            }
+        )
+    }
+    // ---- Backpack grid (5 col) ----
+    Spacer(Modifier.height(10.dp))
+    SectionHeader("  BACKPACK")
+    val backpack = ch.inventory.filter { !(it.equipped && it.type in setOf("weapon", "armor", "shield")) }
+    if (backpack.isEmpty()) {
+        Text(
+            "Pack is empty.",
+            modifier = Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.m),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(5),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 380.dp)
+    ) {
+        items(backpack) { item ->
+            BackpackCell(
+                item = item,
+                selected = selected?.name == item.name,
+                onClick = { selected = item }
+            )
+        }
+    }
+}
+
+@Composable
+internal fun InventoryPanel(state: GameUiState, onClose: () -> Unit, onEquip: (Item) -> Unit) {
+    val ch = state.character
     PanelSheet(
         "\uD83C\uDF92  Inventory",
-        subtitle = if (ch.inventory.isEmpty()) null else "${ch.inventory.size} items",
+        subtitle = if (ch == null || ch.inventory.isEmpty()) null else "${ch.inventory.size} items",
         onClose = onClose
     ) {
-        // ---- Equipped slots (2 col) ----
-        val weapon = ch.inventory.firstOrNull { it.equipped && it.type == "weapon" }
-        val armor = ch.inventory.firstOrNull { it.equipped && (it.type == "armor" || it.type == "shield") }
-        Row(
-            Modifier.padding(horizontal = RealmsSpacing.l).fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            EquippedSlot(
-                label = "WEAPON",
-                icon = "\u2694\uFE0F",
-                item = weapon,
-                onTap = { selected = weapon },
-                modifier = Modifier.weight(1f)
-            )
-            EquippedSlot(
-                label = "ARMOR",
-                icon = "\uD83D\uDEE1\uFE0F",
-                item = armor,
-                onTap = { selected = armor },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        // ---- Selected item detail card ----
-        selected?.let { item ->
-            Spacer(Modifier.height(8.dp))
-            SelectedItemCard(
-                item = item,
-                onEquipToggle = { onEquip(item); selected = item.copy(equipped = !item.equipped) },
-                onUse = {
-                    // Consumables route through onEquip for now (a "use" hook would live on the VM).
-                    onEquip(item); selected = null
-                }
-            )
-        }
-        // ---- Backpack grid (5 col) ----
-        Spacer(Modifier.height(10.dp))
-        SectionHeader("  BACKPACK")
-        val backpack = ch.inventory.filter { !(it.equipped && it.type in setOf("weapon", "armor", "shield")) }
-        if (backpack.isEmpty()) {
-            Text(
-                "Pack is empty.",
-                modifier = Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.m),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            return@PanelSheet
-        }
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(5),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 380.dp)
-        ) {
-            items(backpack) { item ->
-                BackpackCell(
-                    item = item,
-                    selected = selected?.name == item.name,
-                    onClick = { selected = item }
-                )
-            }
-        }
+        InventoryContent(state, onEquip)
     }
 }
 

@@ -19,65 +19,70 @@ import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
 @Composable
+internal fun PartyContent(state: GameUiState, onDismiss: (String) -> Unit) {
+    if (state.party.isEmpty()) {
+        EmptyState("\uD83D\uDC64", "You travel alone.")
+        return
+    }
+    LazyColumn(
+        Modifier
+            .padding(horizontal = RealmsSpacing.l)
+            .heightIn(max = 400.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(state.party) { c ->
+            RealmsCard(modifier = Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            c.name.take(1).uppercase(),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    Spacer(Modifier.width(RealmsSpacing.s))
+                    Column(Modifier.weight(1f)) {
+                        Text(c.name, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "${c.race} ${c.role} · L${c.level}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    TextButton(onClick = { onDismiss(c.name) }) { Text("Dismiss") }
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "HP ${c.hp}/${c.maxHp}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = RealmsTheme.colors.success
+                )
+                if (c.personality.isNotBlank()) {
+                    Spacer(Modifier.height(RealmsSpacing.xs))
+                    Text(
+                        c.personality,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 internal fun PartyPanel(state: GameUiState, onClose: () -> Unit, onDismiss: (String) -> Unit) {
     PanelSheet(
         "\uD83D\uDC65  Party",
         subtitle = if (state.party.isEmpty()) null else "${state.party.size} companions",
         onClose = onClose
     ) {
-        if (state.party.isEmpty()) {
-            EmptyState("\uD83D\uDC64", "You travel alone.")
-            return@PanelSheet
-        }
-        LazyColumn(
-            Modifier
-                .padding(horizontal = RealmsSpacing.l)
-                .heightIn(max = 400.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(state.party) { c ->
-                RealmsCard(modifier = Modifier.fillMaxWidth()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                c.name.take(1).uppercase(),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                        Spacer(Modifier.width(RealmsSpacing.s))
-                        Column(Modifier.weight(1f)) {
-                            Text(c.name, style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "${c.race} ${c.role} · L${c.level}",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        TextButton(onClick = { onDismiss(c.name) }) { Text("Dismiss") }
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "HP ${c.hp}/${c.maxHp}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = RealmsTheme.colors.success
-                    )
-                    if (c.personality.isNotBlank()) {
-                        Spacer(Modifier.height(RealmsSpacing.xs))
-                        Text(
-                            c.personality,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
+        PartyContent(state, onDismiss)
     }
 }
