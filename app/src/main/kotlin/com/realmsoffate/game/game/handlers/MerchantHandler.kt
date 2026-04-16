@@ -1,6 +1,7 @@
 package com.realmsoffate.game.game.handlers
 
 import com.realmsoffate.game.data.Item
+import com.realmsoffate.game.data.deepCopy
 import com.realmsoffate.game.game.Dice
 import com.realmsoffate.game.game.DisplayMessage
 import com.realmsoffate.game.game.GameUiState
@@ -24,7 +25,7 @@ class MerchantHandler(
 
     fun buyItem(merchant: String, itemName: String, price: Int) {
         val s = ui.value
-        val ch = s.character ?: return
+        val ch = s.character?.deepCopy() ?: return
         if (ch.gold < price) return
         ch.gold -= price
         ch.inventory.add(Item(name = itemName, desc = "Bought from $merchant", type = "item", rarity = "common"))
@@ -37,7 +38,7 @@ class MerchantHandler(
 
     fun sellItem(merchant: String, item: Item, price: Int) {
         val s = ui.value
-        val ch = s.character ?: return
+        val ch = s.character?.deepCopy() ?: return
         val idx = ch.inventory.indexOfFirst { it.name == item.name && it.rarity == item.rarity }
         if (idx < 0) return
         val existing = ch.inventory[idx]
@@ -63,7 +64,7 @@ class MerchantHandler(
 
     fun buybackItem(merchant: String, item: Item, price: Int) {
         val s = ui.value
-        val ch = s.character ?: return
+        val ch = s.character?.deepCopy() ?: return
         if (ch.gold < price) return
         ch.gold -= price
         ch.inventory.add(item)
@@ -85,7 +86,7 @@ class MerchantHandler(
      */
     fun exchange(factionName: String, direction: String, goldAmount: Int) {
         val s = ui.value
-        val ch = s.character ?: return
+        val ch = s.character?.deepCopy() ?: return
         val faction = s.worldLore?.factions?.firstOrNull { it.name == factionName } ?: return
         val wealth = faction.economy?.wealth ?: 3
         val rate = (0.6 + 0.2 * (wealth - 3)).coerceIn(0.3, 1.6)

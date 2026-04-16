@@ -427,6 +427,36 @@ class ApplyParsedIntegrationTest {
         )
     }
 
+    // -------------------------------------------------------------------------
+    // Level-up preserves damage taken in same turn
+    // -------------------------------------------------------------------------
+
+    @Test fun `level-up preserves damage taken in same turn`() {
+        val state = GameStateFixture.baseState(
+            character = GameStateFixture.character(
+                hp = 10, maxHp = 10, xp = 290, level = 1
+            )
+        )
+        val char = state.character!!
+        val vm = GameStateFixture.viewModelWithState(state)
+
+        // Deal 5 damage AND grant enough XP to level up (threshold for level 2 is 300)
+        val parsed = ParsedReplyBuilder()
+            .narration("You take a hit but grow stronger.")
+            .damage(5)
+            .xp(20)
+            .build()
+
+        val result = vm.applyParsed(state, char, parsed, "I fight", roll = 10, mod = 0, prof = 0)
+
+        val c = result.character!!
+        assertEquals("should be level 2", 2, c.level)
+        assertTrue("maxHp should have increased", c.maxHp > 10)
+        assertTrue("hp should NOT be at maxHp due to damage", c.hp < c.maxHp)
+        // hp = (10 - 5) + hpGain = 5 + hpGain, which is less than maxHp = 10 + hpGain
+        assertEquals("hp should be maxHp minus 5 damage", c.maxHp - 5, c.hp)
+    }
+
     @Test fun `narration without NPC refs is unchanged`() {
         val npc = LogNpc(id = "vesper-saltblood", name = "Vesper Saltblood", race = "Human", role = "Bartender", metTurn = 1, lastSeenTurn = 1)
         val state = GameStateFixture.baseState(

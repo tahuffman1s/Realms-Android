@@ -113,8 +113,9 @@ object CharacterReducer {
         if (char.xp >= nextXp && char.level < 20) {
             char.level += 1
             val clsDef = Classes.find(char.cls)
-            char.maxHp += (clsDef?.hitDie ?: 8) + char.abilities.conMod
-            char.hp = char.maxHp
+            val hpGain = (clsDef?.hitDie ?: 8) + char.abilities.conMod
+            char.maxHp += hpGain
+            char.hp = (char.hp + hpGain).coerceAtMost(char.maxHp)
             // Refresh slot table to the new level's allotment
             SpellSlots.slotsForLevel(char.cls, char.level).forEachIndexed { idx, n ->
                 if (idx == 0 || n <= 0) return@forEachIndexed

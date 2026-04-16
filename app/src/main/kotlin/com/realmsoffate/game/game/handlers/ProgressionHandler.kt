@@ -1,5 +1,6 @@
 package com.realmsoffate.game.game.handlers
 
+import com.realmsoffate.game.data.deepCopy
 import com.realmsoffate.game.game.DisplayMessage
 import com.realmsoffate.game.game.Feats
 import com.realmsoffate.game.game.GameUiState
@@ -29,7 +30,7 @@ class ProgressionHandler(
         val pts = _pendingStatPoints.value
         if (pts <= 0) return
         val s = ui.value
-        val ch = s.character ?: return
+        val ch = s.character?.deepCopy() ?: return
         when (stat.uppercase()) {
             "STR" -> ch.abilities.str += 1
             "DEX" -> ch.abilities.dex += 1
@@ -45,7 +46,7 @@ class ProgressionHandler(
 
     fun selectFeat(featName: String) {
         val s = ui.value
-        val ch = s.character ?: return
+        val ch = s.character?.deepCopy() ?: return
         val feat = Feats.find(featName) ?: return
         feat.apply(ch)
         ch.feats.add(featName)

@@ -95,6 +95,17 @@ data class Character(
     }
 }
 
+/** Deep-copies all mutable state so mutations don't affect the original. */
+fun Character.deepCopy(): Character = copy(
+    inventory = inventory.toMutableList(),
+    knownSpells = knownSpells.toMutableList(),
+    spellSlots = spellSlots.toMutableMap(),
+    maxSpellSlots = maxSpellSlots.toMutableMap(),
+    currencyBalances = currencyBalances.toMutableMap(),
+    conditions = conditions.toMutableList(),
+    feats = feats.toMutableList()
+)
+
 @Serializable
 data class MapLocation(
     val id: Int,

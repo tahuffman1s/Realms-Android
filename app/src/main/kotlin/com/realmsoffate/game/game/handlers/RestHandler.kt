@@ -3,6 +3,7 @@ package com.realmsoffate.game.game.handlers
 import com.realmsoffate.game.data.GraveyardEntry
 import com.realmsoffate.game.data.SaveStore
 import com.realmsoffate.game.data.TimelineEntry
+import com.realmsoffate.game.data.deepCopy
 import com.realmsoffate.game.game.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +25,7 @@ class RestHandler(
 
     fun shortRest() {
         val s = ui.value
-        val ch = s.character ?: return
+        val ch = s.character?.deepCopy() ?: return
         val hitDie = Classes.find(ch.cls)?.hitDie ?: 8
         val heal = Dice.d(hitDie) + ch.abilities.conMod.coerceAtLeast(0)
         ch.hp = (ch.hp + heal).coerceAtMost(ch.maxHp)
@@ -36,7 +37,7 @@ class RestHandler(
 
     fun longRest() {
         val s = ui.value
-        val ch = s.character ?: return
+        val ch = s.character?.deepCopy() ?: return
         SpellSlots.applyLongRest(ch)
         // Long rest clears most conditions (per D&D 5e). Keep narrative-permanent
         // markers like "Cursed" in place — the narrator can remove them explicitly.
@@ -71,7 +72,7 @@ class RestHandler(
             return
         }
         if (updated.stable) {
-            val ch = s.character ?: return
+            val ch = s.character?.deepCopy() ?: return
             ch.hp = 1
             ui.value = ui.value.copy(
                 character = ch,
