@@ -140,6 +140,52 @@ gradle test
 gradle clean
 ```
 
+## Versioning & Releases
+
+This project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
+
+- **MAJOR** — breaking changes or graduation to production (1.0.0 = first Play Store release)
+- **MINOR** — new features, new game systems, significant UI changes
+- **PATCH** — bug fixes, balance tweaks, prompt adjustments, cosmetic changes
+
+### Version source of truth
+
+`app/build.gradle.kts` contains both `versionName` (semver string) and `versionCode` (integer for Play Store). The `versionCode` is always derived from `versionName`:
+
+```
+versionCode = MAJOR * 10000 + MINOR * 100 + PATCH
+```
+
+Never set `versionCode` independently — always compute it from the version string.
+
+### When to bump versions
+
+**On release only.** Normal commits do NOT touch version numbers. Versions change exclusively when the user requests a release.
+
+### Release protocol
+
+When the user says "release", "cut a release", "tag a release", or similar:
+
+1. **Determine bump type** from the work done since the last tag. If ambiguous, ask the user. Use `git log` to review changes since the last `v*` tag.
+2. **Compute** the new `versionName` and `versionCode`.
+3. **Update** `versionName` and `versionCode` in `app/build.gradle.kts`.
+4. **Commit** with message: `Release vX.Y.Z`.
+5. **Tag** with an annotated tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`.
+6. **Push** the commit and tag: `git push && git push --tags`.
+
+The tag push triggers `.github/workflows/release.yml`, which runs tests, builds the release APK, and creates a GitHub Release with the APK attached.
+
+### Example
+
+```bash
+# What Claude does when you say "release":
+# 1. Bumps app/build.gradle.kts: versionName = "0.2.0", versionCode = 200
+# 2. git commit -m "Release v0.2.0"
+# 3. git tag -a v0.2.0 -m "Release v0.2.0"
+# 4. git push && git push --tags
+# → GitHub Actions builds APK + creates release automatically
+```
+
 ## Testing
 
 ### Test structure
