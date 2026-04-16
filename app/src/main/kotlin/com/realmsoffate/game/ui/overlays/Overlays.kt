@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import com.realmsoffate.game.game.Feats
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.realmsoffate.game.ui.theme.RealmsElevation
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 import kotlinx.coroutines.delay
 
@@ -64,7 +65,7 @@ fun LevelUpOverlay(level: Int, statPoints: Int, onAssignStat: (String) -> Unit, 
                     style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 8.sp),
                     color = realms.goldAccent
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(RealmsSpacing.s))
                 Box(
                     Modifier
                         .size(168.dp)
@@ -97,7 +98,7 @@ fun LevelUpOverlay(level: Int, statPoints: Int, onAssignStat: (String) -> Unit, 
                         )
                     }
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(RealmsSpacing.l))
                 Text(
                     "You feel stronger.",
                     style = MaterialTheme.typography.titleMedium,
@@ -108,22 +109,22 @@ fun LevelUpOverlay(level: Int, statPoints: Int, onAssignStat: (String) -> Unit, 
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White.copy(alpha = 0.6f)
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(RealmsSpacing.l))
                 if (statPoints > 0) {
                     Text(
                         "$statPoints POINTS TO ASSIGN",
                         style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 3.sp),
                         color = Color.White
                     )
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(RealmsSpacing.m))
                     val stats = listOf("STR", "DEX", "CON", "INT", "WIS", "CHA")
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)) {
                         stats.chunked(3).forEach { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)) {
                                 row.forEach { stat ->
                                     FilledTonalButton(
                                         onClick = { onAssignStat(stat) },
-                                        shape = RoundedCornerShape(12.dp)
+                                        shape = MaterialTheme.shapes.medium
                                     ) {
                                         Text(stat, fontWeight = FontWeight.Bold)
                                     }
@@ -131,7 +132,7 @@ fun LevelUpOverlay(level: Int, statPoints: Int, onAssignStat: (String) -> Unit, 
                             }
                         }
                     }
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(RealmsSpacing.m))
                 } else {
                     // Auto-dismiss when no points left
                     LaunchedEffect(Unit) { delay(1500); onDismiss() }
@@ -196,7 +197,7 @@ fun InitiativeOverlay(onDismiss: () -> Unit) {
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("\u2694\uFE0F", fontSize = 54.sp)
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(RealmsSpacing.s))
                     Text(
                         "INITIATIVE",
                         style = MaterialTheme.typography.displayLarge.copy(
@@ -206,7 +207,7 @@ fun InitiativeOverlay(onDismiss: () -> Unit) {
                         color = realms.fumbleRed.copy(alpha = alpha.value),
                         textAlign = TextAlign.Center
                     )
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(RealmsSpacing.xs))
                     Text(
                         "ROLL FOR BLOOD",
                         style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 4.sp),
@@ -250,13 +251,13 @@ fun RestOverlay(kind: String, onDismiss: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             Surface(
-                shape = RoundedCornerShape(24.dp),
+                shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 6.dp,
+                tonalElevation = RealmsElevation.medium,
                 modifier = Modifier.widthIn(min = 300.dp)
             ) {
                 Column(
-                    Modifier.padding(horizontal = 24.dp, vertical = 22.dp),
+                    Modifier.padding(horizontal = RealmsSpacing.xxl, vertical = 22.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     if (long) SunriseIllustration() else CampfireIllustration()
@@ -266,7 +267,7 @@ fun RestOverlay(kind: String, onDismiss: () -> Unit) {
                         style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 4.sp),
                         color = realms.goldAccent
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(RealmsSpacing.s))
                     Text(
                         if (long) "Dawn breaks. You are made whole." else "The fire crackles. You recover $healed HP.",
                         style = MaterialTheme.typography.bodyMedium,
@@ -463,13 +464,13 @@ fun FeatSelectionOverlay(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
+            shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .fillMaxHeight(0.8f)
         ) {
-            Column(Modifier.padding(20.dp)) {
+            Column(Modifier.padding(RealmsSpacing.xl)) {
                 Text(
                     "CHOOSE A FEAT",
                     style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 3.sp),
@@ -481,21 +482,21 @@ fun FeatSelectionOverlay(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(RealmsSpacing.m))
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s),
                     modifier = Modifier.weight(1f)
                 ) {
                     items(available) { feat ->
                         Surface(
                             onClick = { onSelect(feat.name) },
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(14.dp),
+                            shape = MaterialTheme.shapes.medium,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(feat.icon, fontSize = 28.sp)
-                                Spacer(Modifier.width(12.dp))
+                                Spacer(Modifier.width(RealmsSpacing.m))
                                 Column(Modifier.weight(1f)) {
                                     Text(
                                         feat.name,

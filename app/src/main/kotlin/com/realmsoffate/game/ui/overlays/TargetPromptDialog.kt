@@ -1,21 +1,17 @@
 package com.realmsoffate.game.ui.overlays
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import com.realmsoffate.game.ui.theme.RealmsTheme
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 
 /**
  * Target-prompt spec: carried by the VM so the Compose tree can render the
@@ -43,7 +39,6 @@ fun TargetPromptDialog(
     onSelf: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val realms = RealmsTheme.colors
     var target by remember(spec) { mutableStateOf("") }
     val composed = remember(spec, target) {
         if (target.isBlank()) spec.verb else "${spec.verb.trimEnd()} ${target.trim()}"
@@ -53,9 +48,9 @@ fun TargetPromptDialog(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheet,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        shape = MaterialTheme.shapes.extraLarge
     ) {
-        Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+        Column(Modifier.padding(horizontal = RealmsSpacing.xl, vertical = RealmsSpacing.s)) {
             Text(
                 spec.title.uppercase(),
                 style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 3.sp),
@@ -67,13 +62,13 @@ fun TargetPromptDialog(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(RealmsSpacing.s))
             OutlinedTextField(
                 value = target,
                 onValueChange = { target = it.take(60) },
                 placeholder = { Text("the goblin · the merchant · the door…", style = MaterialTheme.typography.bodySmall) },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
             )
             if (spec.recentTargets.isNotEmpty()) {
@@ -94,9 +89,9 @@ fun TargetPromptDialog(
             // Preview
             Surface(
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                shape = RoundedCornerShape(10.dp),
+                shape = MaterialTheme.shapes.small,
                 modifier = Modifier.fillMaxWidth().border(
-                    1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), RoundedCornerShape(10.dp)
+                    1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), MaterialTheme.shapes.small
                 )
             ) {
                 Text(
@@ -106,24 +101,24 @@ fun TargetPromptDialog(
                     modifier = Modifier.padding(10.dp)
                 )
             }
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Spacer(Modifier.height(RealmsSpacing.m))
+            Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)) {
                 if (spec.selfCastable) {
                     OutlinedButton(
                         onClick = { onSelf() },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = MaterialTheme.shapes.small
                     ) { Text("On self", fontWeight = FontWeight.Bold) }
                 }
                 OutlinedButton(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = MaterialTheme.shapes.small
                 ) { Text("Cancel") }
                 Button(
                     onClick = { onSubmit(composed) },
                     modifier = Modifier.weight(1f).height(44.dp),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = MaterialTheme.shapes.small
                 ) { Text("Submit", fontWeight = FontWeight.Bold) }
             }
             Spacer(Modifier.navigationBarsPadding().height(14.dp))

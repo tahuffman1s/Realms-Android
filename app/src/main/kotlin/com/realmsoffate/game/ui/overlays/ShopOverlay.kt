@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.data.Character
 import com.realmsoffate.game.data.Item
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
 /**
@@ -54,9 +55,9 @@ fun ShopOverlay(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheet,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        shape = MaterialTheme.shapes.extraLarge
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 8.dp)) {
+        Column(Modifier.padding(horizontal = 18.dp, vertical = RealmsSpacing.s)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("\uD83D\uDCB0 $merchant", style = MaterialTheme.typography.titleLarge)
@@ -69,7 +70,7 @@ fun ShopOverlay(
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Close") }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(RealmsSpacing.s))
 
             // Tabs
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -80,7 +81,7 @@ fun ShopOverlay(
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(RealmsSpacing.s))
 
             // Haggle row — affects Buy prices only.
             if (tab == "buy") {
@@ -96,7 +97,7 @@ fun ShopOverlay(
                             }
                         },
                         enabled = !haggled,
-                        shape = RoundedCornerShape(10.dp),
+                        shape = MaterialTheme.shapes.small,
                         modifier = Modifier.height(36.dp)
                     ) { Text("HAGGLE", style = MaterialTheme.typography.labelMedium) }
                     Spacer(Modifier.width(10.dp))
@@ -108,7 +109,7 @@ fun ShopOverlay(
                         )
                     }
                 }
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(RealmsSpacing.s))
             }
 
             when (tab) {
@@ -199,11 +200,11 @@ private fun ShopTabBtn(label: String, selected: Boolean, modifier: Modifier = Mo
     Surface(
         onClick = onClick,
         color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(10.dp),
+        shape = MaterialTheme.shapes.small,
         modifier = modifier.height(40.dp).border(
             1.dp,
             if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-            RoundedCornerShape(10.dp)
+            MaterialTheme.shapes.small
         )
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -231,11 +232,11 @@ private fun ShopRow(
         enabled = canAfford,
         color = if (canAfford) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth().border(
             1.dp,
             if (canAfford) MaterialTheme.colorScheme.outlineVariant else Color.Transparent,
-            RoundedCornerShape(12.dp)
+            MaterialTheme.shapes.medium
         )
     ) {
         Row(
@@ -252,7 +253,7 @@ private fun ShopRow(
                     style = MaterialTheme.typography.labelMedium,
                     color = if (canAfford) realms.goldAccent else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = 3.dp)
                 )
             }
             Spacer(Modifier.width(6.dp))
@@ -269,7 +270,7 @@ private fun ShopRow(
 private fun EmptyShopNote(text: String) {
     Text(
         text,
-        modifier = Modifier.padding(vertical = 16.dp),
+        modifier = Modifier.padding(vertical = RealmsSpacing.l),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
