@@ -49,8 +49,9 @@ object CharacterReducer {
      * - HP: clamped to [0, maxHp] after adding heal and subtracting damage.
      * - XP: added straight; level-up triggers when XP >= levelThreshold(level+1)
      *   AND level < 20.
-     * - Level-up: +1 level, maxHp += (class hit die OR 8) + conMod, HP restored
-     *   to maxHp, spell slots refreshed to the new level's allotment.
+     * - Level-up: +1 level, maxHp += (class hit die OR 8) + conMod, HP gains the
+     *   same amount (preserving damage taken this turn), spell slots refreshed to
+     *   the new level's allotment.
      * - Feat trigger: every 4th level (4/8/12/16/20) → featPending = true,
      *   statPointsGained = 0. Other level-ups → featPending = false,
      *   statPointsGained = 2.
