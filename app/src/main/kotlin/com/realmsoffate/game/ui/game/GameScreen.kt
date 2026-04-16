@@ -657,7 +657,7 @@ private fun SettingsPanel(
 
             // Preview text at current scale
             Surface(
-                color = Color(0xFF1A1030).copy(alpha = 0.7f),
+                color = realms.asideBubble.copy(alpha = 0.7f),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -667,7 +667,7 @@ private fun SettingsPanel(
                         fontSize = (15f * fontScale).sp,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     ),
-                    color = Color(0xFFE8E1F0),
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(14.dp)
                 )
             }
@@ -896,7 +896,7 @@ private fun ConditionChip(name: String) {
         "blessed" -> realms.goldAccent to "\u2728"
         "cursed", "doomed" -> realms.fumbleRed to "\uD83D\uDC80"
         "frightened", "fearful" -> realms.warning to "\uD83D\uDE28"
-        "charmed" -> Color(0xFFFF8AC6) to "\uD83D\uDC95"
+        "charmed" -> MaterialTheme.colorScheme.tertiary to "\uD83D\uDC95"
         "paralyzed", "stunned" -> realms.info to "\u2744\uFE0F"
         "invisible" -> realms.info to "\uD83D\uDC7B"
         "silenced" -> realms.info to "\uD83E\uDD2B"
@@ -2186,8 +2186,8 @@ private fun StatChangePills(msg: DisplayMessage.Narration) {
     msg.conditionsAdded.forEach { condition ->
         pills.add(Triple(
             "+$condition",
-            Color(0xFFB197FF).copy(alpha = 0.2f),
-            Color(0xFFB197FF)
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
+            MaterialTheme.colorScheme.secondary
         ))
     }
     // Status effects removed
@@ -2219,8 +2219,8 @@ private fun StatChangePills(msg: DisplayMessage.Narration) {
         val good = msg.moralDelta > 0
         pills.add(Triple(
             "${if (good) "+" else ""}${msg.moralDelta} Moral",
-            if (good) Color(0xFF81C784).copy(alpha = 0.2f) else Color(0xFFE57373).copy(alpha = 0.2f),
-            if (good) Color(0xFF81C784) else Color(0xFFE57373)
+            if (good) realms.success.copy(alpha = 0.2f) else realms.fumbleRed.copy(alpha = 0.2f),
+            if (good) realms.success else realms.fumbleRed
         ))
     }
     // Faction reputation changes
@@ -2228,8 +2228,8 @@ private fun StatChangePills(msg: DisplayMessage.Narration) {
         val positive = delta > 0
         pills.add(Triple(
             "${if (positive) "+" else ""}$delta $faction",
-            if (positive) Color(0xFF64B5F6).copy(alpha = 0.2f) else Color(0xFFFF8A65).copy(alpha = 0.2f),
-            if (positive) Color(0xFF64B5F6) else Color(0xFFFF8A65)
+            if (positive) realms.info.copy(alpha = 0.2f) else realms.warning.copy(alpha = 0.2f),
+            if (positive) realms.info else realms.warning
         ))
     }
 
@@ -2694,19 +2694,20 @@ private fun NarratorBubble(
     isBookmarked: Boolean = false,
     onToggleBookmark: () -> Unit = {}
 ) {
+    val realms = RealmsTheme.colors
     var showFullProse by remember { mutableStateOf(false) }
     val summary = summarizeProse(text)
 
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
         Surface(
             onClick = { showFullProse = true },
-            color = Color(0xFF1A1030).copy(alpha = 0.85f),
+            color = realms.asideBubble.copy(alpha = 0.85f),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth(0.95f)
                 .border(
                     1.dp,
-                    Color(0xFFB197FF).copy(alpha = 0.3f),
+                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f),
                     RoundedCornerShape(16.dp)
                 )
         ) {
@@ -2729,19 +2730,19 @@ private fun NarratorBubble(
                             Icons.AutoMirrored.Filled.MenuBook,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
-                            tint = Color(0xFFB197FF).copy(alpha = 0.7f)
+                            tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
                             "NARRATOR",
                             style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 2.sp),
-                            color = Color(0xFFB197FF).copy(alpha = 0.7f),
+                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f),
                             fontWeight = FontWeight.Bold
                         )
                     }
                     Surface(
                         onClick = onToggleBookmark,
-                        color = if (isBookmarked) RealmsTheme.colors.goldAccent.copy(alpha = 0.22f)
+                        color = if (isBookmarked) realms.goldAccent.copy(alpha = 0.22f)
                                 else Color.Transparent,
                         shape = CircleShape,
                         modifier = Modifier.size(28.dp)
@@ -2750,8 +2751,8 @@ private fun NarratorBubble(
                             if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
                             contentDescription = "Bookmark",
                             modifier = Modifier.padding(4.dp),
-                            tint = if (isBookmarked) RealmsTheme.colors.goldAccent
-                                   else Color(0xFFB197FF).copy(alpha = 0.4f)
+                            tint = if (isBookmarked) realms.goldAccent
+                                   else MaterialTheme.colorScheme.secondary.copy(alpha = 0.4f)
                         )
                     }
                 }
@@ -2760,7 +2761,7 @@ private fun NarratorBubble(
                 Text(
                     summary,
                     style = MaterialTheme.typography.bodyMedium.copy(fontSize = (15f * LocalFontScale.current).sp),
-                    color = Color(0xFFE8E1F0),
+                    color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                     maxLines = 4,
                     overflow = TextOverflow.Ellipsis
@@ -2770,7 +2771,7 @@ private fun NarratorBubble(
                 Text(
                     "Tap to read full passage",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFFB197FF).copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
                 )
             }
         }
@@ -2812,6 +2813,7 @@ private fun summarizeProse(text: String): String {
 
 @Composable
 private fun ProseDetailDialog(text: String, onDismiss: () -> Unit) {
+    val realms = RealmsTheme.colors
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(
@@ -2821,13 +2823,13 @@ private fun ProseDetailDialog(text: String, onDismiss: () -> Unit) {
     ) {
         Surface(
             shape = RoundedCornerShape(24.dp),
-            color = Color(0xFF1A1030),
+            color = realms.asideBubble,
             modifier = Modifier
                 .fillMaxWidth(0.94f)
                 .fillMaxHeight(0.85f)
                 .border(
                     1.dp,
-                    Color(0xFFB197FF).copy(alpha = 0.3f),
+                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f),
                     RoundedCornerShape(24.dp)
                 )
         ) {
@@ -2841,13 +2843,13 @@ private fun ProseDetailDialog(text: String, onDismiss: () -> Unit) {
                         Icons.AutoMirrored.Filled.MenuBook,
                         contentDescription = null,
                         modifier = Modifier.size(22.dp),
-                        tint = Color(0xFFB197FF)
+                        tint = MaterialTheme.colorScheme.secondary
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
                         "NARRATOR",
                         style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 3.sp),
-                        color = Color(0xFFB197FF),
+                        color = MaterialTheme.colorScheme.secondary,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
@@ -2855,7 +2857,7 @@ private fun ProseDetailDialog(text: String, onDismiss: () -> Unit) {
                         Icon(
                             Icons.Default.Close,
                             "Close",
-                            tint = Color(0xFFB197FF).copy(alpha = 0.7f)
+                            tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -2868,7 +2870,7 @@ private fun ProseDetailDialog(text: String, onDismiss: () -> Unit) {
                             Brush.horizontalGradient(
                                 listOf(
                                     Color.Transparent,
-                                    Color(0xFFB197FF).copy(alpha = 0.5f),
+                                    MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
                                     Color.Transparent
                                 )
                             )
@@ -2885,7 +2887,7 @@ private fun ProseDetailDialog(text: String, onDismiss: () -> Unit) {
                     NarrationMarkdown(
                         text,
                         baseStyle = NarrationBodyStyle.copy(
-                            color = Color(0xFFE8E1F0)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     )
                 }
@@ -2912,7 +2914,7 @@ private fun NarratorQuipBubble(
                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                 fontSize = (13f * LocalFontScale.current).sp
             ),
-            color = Color(0xFF9E9AA8),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
     }
