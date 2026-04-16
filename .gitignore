@@ -5,17 +5,17 @@
 # Ignore Gradle GUI config
 gradle-app.setting
 
-# Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
-!gradle-wrapper.jar
-
-# Avoid ignore Gradle wrappper properties
-!gradle-wrapper.properties
 
 # Cache of project
 .gradletasknamecache
 
 # Machine-specific SDK path
 local.properties
+
+# Release signing — never commit keystores or passwords
+keystore.properties
+*.jks
+*.keystore
 
 # Eclipse Gradle plugin generated files
 # Eclipse Core

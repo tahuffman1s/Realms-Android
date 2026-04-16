@@ -186,6 +186,41 @@ The tag push triggers `.github/workflows/release.yml`, which runs tests, builds 
 # → GitHub Actions builds APK + creates release automatically
 ```
 
+## Release Signing
+
+Release APKs are signed with an upload keystore. The signing config in `app/build.gradle.kts` reads credentials from two sources (in order):
+
+1. **Local builds** — `keystore.properties` in the project root (gitignored):
+   ```properties
+   storeFile=../realms-upload.jks
+   storePassword=<password>
+   keyAlias=realms
+   keyPassword=<password>
+   ```
+
+2. **CI builds** — environment variables from GitHub Secrets:
+   - `KEYSTORE_BASE64` — base64-encoded `.jks` file
+   - `KEYSTORE_PASSWORD` — keystore password
+   - `KEY_ALIAS` — key alias (e.g. `realms`)
+   - `KEY_PASSWORD` — key password
+
+If neither source is configured, the release build produces an unsigned APK.
+
+### Setting up GitHub Secrets
+
+To enable signed CI releases, the user must add these secrets to the repo (Settings → Secrets → Actions):
+
+```bash
+# Encode the keystore for GitHub Secrets:
+base64 -w0 realms-upload.jks | pbcopy  # or xclip on Linux
+```
+
+Then add `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, and `KEY_PASSWORD` as repository secrets.
+
+### APK naming
+
+Release APKs are named `realms-of-fate-vX.Y.Z-release.apk` automatically via `archivesBaseName` in `build.gradle.kts`.
+
 ## Testing
 
 ### Test structure
