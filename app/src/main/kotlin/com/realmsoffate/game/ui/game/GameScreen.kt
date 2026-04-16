@@ -97,13 +97,19 @@ fun GameScreen(vm: GameViewModel) {
         listState.animateScrollToItem(target)
     }
 
-    // When a tab maps to a panel, open it. Chat is the main game view (no panel).
+    // Lists of sub-panels in each tab group — used for cycling on re-tap.
+    val characterPanels = listOf(Panel.Inventory, Panel.Stats, Panel.Spells, Panel.Currency)
+    val journalPanels   = listOf(Panel.Quests, Panel.Journal, Panel.Lore, Panel.Party, Panel.Memories)
+
+    // When a tab changes, open the default sub-panel for that group — but only
+    // if the current panel isn't already in that group (avoids resetting position
+    // when a panel opens a sibling via onOpenJournal / onOpenStats etc.).
     LaunchedEffect(tab) {
         when (tab) {
-            GameTab.Chat -> panel = Panel.None
-            GameTab.Map -> panel = Panel.Map
-            GameTab.Character -> panel = Panel.Inventory
-            GameTab.Journal -> panel = Panel.Quests
+            GameTab.Chat      -> panel = Panel.None
+            GameTab.Map       -> panel = Panel.Map
+            GameTab.Character -> if (panel !in characterPanels) panel = Panel.Inventory
+            GameTab.Journal   -> if (panel !in journalPanels)   panel = Panel.Quests
         }
     }
 
@@ -149,8 +155,27 @@ fun GameScreen(vm: GameViewModel) {
                 GameBottomNav(
                     selected = tab,
                     onSelect = { newTab ->
-                        if (newTab == GameTab.Chat) panel = Panel.None
-                        tab = newTab
+                        when {
+                            // Tapping Chat always returns to the main view.
+                            newTab == GameTab.Chat -> {
+                                panel = Panel.None
+                                tab = newTab
+                            }
+                            // Re-tapping the same tab cycles to the next sub-panel.
+                            newTab == tab -> when (newTab) {
+                                GameTab.Character -> {
+                                    val idx = characterPanels.indexOf(panel)
+                                    panel = characterPanels[(idx + 1) % characterPanels.size]
+                                }
+                                GameTab.Journal -> {
+                                    val idx = journalPanels.indexOf(panel)
+                                    panel = journalPanels[(idx + 1) % journalPanels.size]
+                                }
+                                else -> {}
+                            }
+                            // Switching to a new tab — LaunchedEffect handles opening the default sub-panel.
+                            else -> tab = newTab
+                        }
                     }
                 )
             }
