@@ -30,7 +30,6 @@ import com.realmsoffate.game.data.NarrationSegmentData
 import com.realmsoffate.game.data.TagParser
 import com.realmsoffate.game.data.TimelineEntry
 import com.realmsoffate.game.data.WorldEvent
-import com.realmsoffate.game.data.HistoryEntry
 import com.realmsoffate.game.data.WorldLore
 import com.realmsoffate.game.data.WorldMap
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +39,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.realmsoffate.game.game.reducers.NpcLogReducer
+import com.realmsoffate.game.game.reducers.WorldReducer
 
 enum class Screen { ApiSetup, Title, CharacterCreation, Game, Death }
 
@@ -1426,68 +1426,16 @@ class GameViewModel(
         newMsgs.addAll(npcLogResult.systemMessages)
         npcLogResult.timelineEntries.forEach { entry -> timeline += entry }
 
-        // Faction updates — ref may be a stable faction id (slug) or display name.
-        var worldLoreUpdated = state.worldLore
-        parsed.factionUpdates.forEach { (factionRef, field, value) ->
-            worldLoreUpdated = worldLoreUpdated?.let { lore ->
-                val newFactions = lore.factions.map { f ->
-                    // Try ID match first, then fall back to name match.
-                    val matches = (f.id.isNotBlank() && f.id == factionRef) ||
-                        f.name.equals(factionRef, true)
-                    if (matches) {
-                        when (field.lowercase()) {
-                            "status" -> f.copy(status = value)
-                            "ruler" -> f.copy(ruler = value, government = f.government?.copy(ruler = value))
-                            "disposition" -> f.copy(disposition = value)
-                            "mood" -> f.copy(mood = value)
-                            "description" -> f.copy(description = value)
-                            "type" -> f.copy(type = value)
-                            "name" -> f.copy(name = value)
-                            else -> f
-                        }
-                    } else f
-                }
-                lore.copy(factions = newFactions)
-            }
-            // Use resolved display name for system message (prefer matched faction name).
-            val factionDisplayName = worldLoreUpdated?.factions
-                ?.firstOrNull { (it.id.isNotBlank() && it.id == factionRef) || it.name.equals(factionRef, true) }
-                ?.name ?: factionRef
-            newMsgs.add(DisplayMessage.System("📜 $factionDisplayName: $field → $value"))
-            logTimeline("event", "Faction $factionDisplayName: $field changed to $value")
-        }
-
-        // Mark faction leaders as deceased when they die — use resolved display names.
-        parsed.npcDeaths.forEach { deadRef ->
-            val deadNpcIdx = NpcLogReducer.resolveNpcIdx(deadRef, npcLog)
-            val deadName = if (deadNpcIdx >= 0) npcLog[deadNpcIdx].name else deadRef
-            val factions = worldLoreUpdated?.factions.orEmpty()
-            factions.forEachIndexed { fIdx, faction ->
-                if (faction.ruler.equals(deadName, ignoreCase = true) ||
-                    faction.government?.ruler?.equals(deadName, ignoreCase = true) == true
-                ) {
-                    val updatedFactions = worldLoreUpdated!!.factions.toMutableList()
-                    updatedFactions[fIdx] = faction.copy(
-                        ruler = "$deadName (Deceased)",
-                        government = faction.government?.copy(ruler = "$deadName (Deceased)")
-                    )
-                    worldLoreUpdated = worldLoreUpdated!!.copy(factions = updatedFactions)
-                }
-            }
-        }
-
-        // New lore entries
-        parsed.loreEntries.forEach { entry ->
-            worldLoreUpdated = worldLoreUpdated?.let { lore ->
-                val newHistory = lore.history + HistoryEntry(
-                    era = "recent",
-                    year = state.turns + 1,
-                    text = entry
-                )
-                lore.copy(history = newHistory)
-            }
-            logTimeline("event", "Lore: $entry")
-        }
+        // World lore — faction updates, dead-leader cascade, lore entries.
+        val worldResult = WorldReducer.apply(
+            worldLore = state.worldLore,
+            npcLog = npcLog,
+            parsed = parsed,
+            currentTurn = state.turns + 1
+        )
+        var worldLoreUpdated = worldResult.worldLore
+        newMsgs.addAll(worldResult.systemMessages)
+        worldResult.timelineEntries.forEach { entry -> timeline += entry }
 
         // Quests
         val quests = state.quests.toMutableList()
