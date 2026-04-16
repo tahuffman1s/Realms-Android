@@ -6,6 +6,11 @@
 gradle-app.setting
 
 
+# Gradle wrapper — we use the system gradle package, not the wrapper
+gradlew
+gradlew.bat
+gradle/wrapper/
+
 # Cache of project
 .gradletasknamecache
 

@@ -66,7 +66,6 @@ import com.realmsoffate.game.data.NarrationSegmentData
 import com.realmsoffate.game.game.DisplayMessage
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.game.GameViewModel
-import com.realmsoffate.game.ui.dice.DiceRollerDialog
 import com.realmsoffate.game.ui.map.WorldMapScreen
 import com.realmsoffate.game.ui.overlays.FeatSelectionOverlay
 import com.realmsoffate.game.ui.overlays.InitiativeOverlay
@@ -341,10 +340,6 @@ fun GameScreen(vm: GameViewModel) {
                 }
             }
         }
-    }
-
-    state.lastCheck?.let { check ->
-        DiceRollerDialog(check, onClose = { vm.dismissLastCheck() })
     }
 
     state.preRoll?.let { pre ->

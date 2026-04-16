@@ -550,8 +550,6 @@ object TagParser {
     private val narratorAsidePattern = Regex("""\[NARRATOR_ASIDE]([\s\S]*?)\[/NARRATOR_ASIDE]""", RegexOption.IGNORE_CASE)
     private val playerDialogPattern = Regex("""\[PLAYER_DIALOG]([\s\S]*?)\[/PLAYER_DIALOG]""", RegexOption.IGNORE_CASE)
     private val npcDialogPattern = Regex("""\[NPC_DIALOG:([^\]]+)]([\s\S]*?)\[/NPC_DIALOG]""", RegexOption.IGNORE_CASE)
-    // Legacy aside tag — kept as fallback.
-    private val snarkPattern = Regex("""\[SNARK]([\s\S]*?)\[/SNARK]""", RegexOption.IGNORE_CASE)
     private val playerActionPattern = Regex("""\[PLAYER_ACTION]([\s\S]*?)\[/PLAYER_ACTION]""", RegexOption.IGNORE_CASE)
     private val npcActionPattern = Regex("""\[NPC_ACTION:([^\]]+)]([\s\S]*?)\[/NPC_ACTION]""", RegexOption.IGNORE_CASE)
 

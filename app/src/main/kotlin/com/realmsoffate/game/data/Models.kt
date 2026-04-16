@@ -309,12 +309,6 @@ data class Quest(
 @Serializable
 data class ChatMsg(val role: String, val content: String)
 
-@Serializable
-data class Dice(val roll: Int, val skill: String = "", val ability: String = "")
-
-@Serializable
-data class MerchantStock(val items: MutableMap<String, Int>)
-
 /**
  * One turn's worth of raw AI exchange data — captured for retrospective diagnostics.
  * Stored in SaveData so that reload → debug-dump still shows cache/source history.

@@ -552,10 +552,6 @@ class GameViewModel(
         timeline += TimelineEntry(_ui.value.turns, category, text)
     }
 
-    fun setProvider(p: AiProvider) {
-        _provider.value = p
-    }
-
     /** Back-to-setup from title (user wants to change provider / key). */
     fun backToApiSetup() {
         _screen.value = Screen.ApiSetup
@@ -800,10 +796,6 @@ class GameViewModel(
         dispatchToAi(pre.action, pre.skill, seed = false, preRolled = pre.roll)
     }
 
-    fun cancelPreRoll() {
-        // Rolls are final — no take-backs
-    }
-
     /**
      * Sends the action to the AI provider with the pre-rolled d20 value. Splits
      * the original submitAction's network + parse work out of the entry point so
@@ -930,8 +922,6 @@ class GameViewModel(
         val s = _ui.value
         _ui.value = s.copy(bookmarks = s.bookmarks.filter { it != text })
     }
-
-    fun isBookmarked(text: String): Boolean = _ui.value.bookmarks.contains(text.take(300))
 
     /** Slash-command helper — inserts a system line into the message feed. */
     fun postSystemMessage(text: String) {
@@ -1267,8 +1257,6 @@ class GameViewModel(
         )
     }
 
-    private fun levelThreshold(level: Int): Int = Companion.levelThreshold(level)
-
     /**
      * World events used to interrupt the chat with a big EventCard announcement.
      * That broke immersion and pre-empted the narrator's reveal. Now they're
@@ -1298,43 +1286,6 @@ class GameViewModel(
         "animal handling", "insight", "medicine", "perception", "survival" -> "WIS"
         "deception", "intimidation", "performance", "persuasion" -> "CHA"
         else -> "STR"
-    }
-
-    /** Infer the most appropriate ability from free-form action text. */
-    private fun inferAbilityFromAction(action: String): String {
-        val a = action.lowercase()
-        return when {
-            // STR — physical force, breaking, lifting, grappling
-            a.contains("attack") || a.contains("strike") || a.contains("hit") ||
-            a.contains("punch") || a.contains("kick") || a.contains("grapple") ||
-            a.contains("shove") || a.contains("push") || a.contains("lift") ||
-            a.contains("break") || a.contains("smash") || a.contains("force") -> "STR"
-            // DEX — stealth, agility, ranged, dodging, lockpicking
-            a.contains("sneak") || a.contains("stealth") || a.contains("hide") ||
-            a.contains("dodge") || a.contains("shoot") || a.contains("arrow") ||
-            a.contains("bow") || a.contains("pick lock") || a.contains("lockpick") ||
-            a.contains("climb") || a.contains("acrobat") || a.contains("leap") ||
-            a.contains("jump") || a.contains("dart") || a.contains("dagger") -> "DEX"
-            // INT — knowledge, investigation, magic, reading, studying
-            a.contains("cast") || a.contains("spell") || a.contains("magic") ||
-            a.contains("investigate") || a.contains("study") || a.contains("read") ||
-            a.contains("arcana") || a.contains("recall") || a.contains("decipher") ||
-            a.contains("analyze") || a.contains("examine") || a.contains("research") -> "INT"
-            // WIS — perception, insight, survival, healing, sensing
-            a.contains("look") || a.contains("listen") || a.contains("search") ||
-            a.contains("perceive") || a.contains("sense") || a.contains("track") ||
-            a.contains("heal") || a.contains("medicine") || a.contains("pray") ||
-            a.contains("meditat") || a.contains("forage") || a.contains("surviv") -> "WIS"
-            // CHA — persuasion, deception, intimidation, performance, social
-            a.contains("persuad") || a.contains("convince") || a.contains("talk") ||
-            a.contains("say") || a.contains("tell") || a.contains("ask") ||
-            a.contains("lie") || a.contains("deceiv") || a.contains("bluff") ||
-            a.contains("intimidat") || a.contains("threaten") || a.contains("charm") ||
-            a.contains("flirt") || a.contains("sing") || a.contains("perform") ||
-            a.contains("bribe") || a.contains("negotiate") || a.contains("barter") -> "CHA"
-            // Default to STR for truly ambiguous actions
-            else -> "STR"
-        }
     }
 
     private fun classProficient(cls: String, skill: String): Boolean {

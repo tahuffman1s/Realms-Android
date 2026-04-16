@@ -139,14 +139,6 @@ object SaveStore {
         }.sortedByDescending { it.savedAt }
     }
 
-    /** Enforces MAX_SLOTS by dropping the oldest. Autosave is never dropped. */
-    suspend fun pruneOldSlots() = withContext(Dispatchers.IO) {
-        val slots = listSlots().filter { it.slot != AUTOSAVE_KEY }
-        if (slots.size <= MAX_SLOTS) return@withContext
-        val over = slots.drop(MAX_SLOTS)
-        over.forEach { delete(it.slot) }
-    }
-
     // ---------------- GRAVEYARD ----------------
 
     suspend fun bury(entry: GraveyardEntry): Unit = withContext(Dispatchers.IO) {
