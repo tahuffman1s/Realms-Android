@@ -96,7 +96,7 @@ class RestHandler(
             xp = ch.xp,
             gold = ch.gold,
             morality = s.morality,
-            worldName = s.worldMap?.locations?.firstOrNull()?.name.orEmpty(),
+            worldName = s.worldLore?.worldName.orEmpty(),
             mutations = s.worldLore?.mutations.orEmpty(),
             companions = s.party.map { it.name },
             backstoryText = ch.backstory?.promptText,
