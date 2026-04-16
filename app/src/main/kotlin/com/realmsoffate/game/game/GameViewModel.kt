@@ -22,10 +22,8 @@ import com.realmsoffate.game.data.Prompts
 import com.realmsoffate.game.data.Quest
 import com.realmsoffate.game.data.GraveyardEntry
 import com.realmsoffate.game.data.DebugTurn
-import com.realmsoffate.game.data.SaveData
 import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
-import com.realmsoffate.game.data.SerializedBuyback
 import com.realmsoffate.game.data.NarrationSegmentData
 import com.realmsoffate.game.data.TagParser
 import com.realmsoffate.game.data.TimelineEntry
@@ -38,6 +36,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.realmsoffate.game.game.handlers.MerchantHandler
+import com.realmsoffate.game.game.handlers.ProgressionHandler
+import com.realmsoffate.game.game.handlers.RestHandler
+import com.realmsoffate.game.game.handlers.SaveService
 import com.realmsoffate.game.game.reducers.CombatReducer
 import com.realmsoffate.game.game.reducers.NpcLogReducer
 import com.realmsoffate.game.game.reducers.QuestReducer
@@ -176,13 +178,8 @@ class GameViewModel(
 
     private val _pendingCharacter = MutableStateFlow<Character?>(null)
 
-    /** Save slot thumbnails for the title-screen Load menu. */
     private val _saveSlots = MutableStateFlow<List<SaveSlotMeta>>(emptyList())
-    val saveSlots: StateFlow<List<SaveSlotMeta>> = _saveSlots.asStateFlow()
-
-    /** Graveyard tombstones for the title-screen Graveyard menu. */
     private val _graveyard = MutableStateFlow<List<GraveyardEntry>>(emptyList())
-    val graveyard: StateFlow<List<GraveyardEntry>> = _graveyard.asStateFlow()
 
     /** Most recent death — feeds the BitLife-style DeathScreen. */
     private val _lastDeath = MutableStateFlow<GraveyardEntry?>(null)
@@ -191,52 +188,23 @@ class GameViewModel(
     /** Running timeline — appended to on major events, stored on death. */
     private val timeline = mutableListOf<TimelineEntry>()
 
-    /** Set to a level number when the player just levelled up — game screen shows overlay. */
+    // ---- Handlers (Phase III) ----
+
     private val _pendingLevelUp = MutableStateFlow<Int?>(null)
-    val pendingLevelUpFlow: StateFlow<Int?> = _pendingLevelUp.asStateFlow()
-    private var pendingLevelUp: Int?
-        get() = _pendingLevelUp.value
-        set(v) { _pendingLevelUp.value = v }
-
-    fun dismissLevelUp() { _pendingLevelUp.value = null }
-
-    /** Stat points available to assign from level-ups. */
     private val _pendingStatPoints = MutableStateFlow(0)
-    val pendingStatPoints: StateFlow<Int> = _pendingStatPoints.asStateFlow()
-
-    /** Non-null when the player should choose a feat (at levels 4, 8, 12, 16, 20). */
     private val _pendingFeat = MutableStateFlow(false)
-    val pendingFeat: StateFlow<Boolean> = _pendingFeat.asStateFlow()
+    private val _restOverlay = MutableStateFlow<String?>(null)
+    private val _activeShop = MutableStateFlow<String?>(null)
+    private val _buybackStocks = MutableStateFlow<Map<String, List<com.realmsoffate.game.ui.overlays.BuybackEntry>>>(emptyMap())
 
-    fun assignStatPoint(stat: String) {
-        val pts = _pendingStatPoints.value
-        if (pts <= 0) return
-        val s = _ui.value
-        val ch = s.character ?: return
-        when (stat.uppercase()) {
-            "STR" -> ch.abilities.str += 1
-            "DEX" -> ch.abilities.dex += 1
-            "CON" -> { ch.abilities.con += 1; ch.maxHp += 1; ch.hp += 1 }
-            "INT" -> ch.abilities.int += 1
-            "WIS" -> ch.abilities.wis += 1
-            "CHA" -> ch.abilities.cha += 1
-            else -> return
-        }
-        _pendingStatPoints.value = pts - 1
-        _ui.value = s.copy(character = ch)
-    }
-
-    fun selectFeat(featName: String) {
-        val s = _ui.value
-        val ch = s.character ?: return
-        val feat = Feats.find(featName) ?: return
-        feat.apply(ch)
-        ch.feats.add(featName)
-        _pendingFeat.value = false
-        _ui.value = s.copy(character = ch, messages = s.messages + DisplayMessage.System("Feat acquired: $featName"))
-    }
-
-    fun dismissFeat() { _pendingFeat.value = false }
+    private val progressionHandler = ProgressionHandler(_ui, _pendingLevelUp, _pendingStatPoints, _pendingFeat)
+    val pendingLevelUpFlow: StateFlow<Int?> = progressionHandler.pendingLevelUpFlow
+    val pendingStatPoints: StateFlow<Int> = progressionHandler.pendingStatPointsFlow
+    val pendingFeat: StateFlow<Boolean> = progressionHandler.pendingFeatFlow
+    fun dismissLevelUp() = progressionHandler.dismissLevelUp()
+    fun assignStatPoint(stat: String) = progressionHandler.assignStatPoint(stat)
+    fun selectFeat(featName: String) = progressionHandler.selectFeat(featName)
+    fun dismissFeat() = progressionHandler.dismissFeat()
 
     private val _fontScale = MutableStateFlow(1.0f)
     val fontScale: StateFlow<Float> = _fontScale.asStateFlow()
@@ -427,12 +395,6 @@ class GameViewModel(
         }
     }
 
-    fun debugDumpFilename(): String {
-        val ch = _ui.value.character
-        val name = ch?.let { SaveStore.slotKeyFor(it.name) } ?: "debug"
-        return "debug_${name}_T${_ui.value.turns}_${System.currentTimeMillis() / 1000}.txt"
-    }
-
     /** Tutorial step — null means tutorial is complete or dismissed. */
     private val _tutorialStep = MutableStateFlow<Int?>(null)
     val tutorialStep: StateFlow<Int?> = _tutorialStep.asStateFlow()
@@ -452,39 +414,14 @@ class GameViewModel(
         viewModelScope.launch { prefs.resetTutorial() }
     }
 
-    /** Set to a Rest type (short/long) when player initiates via slash command / overlay. */
-    private val _restOverlay = MutableStateFlow<String?>(null)
-    val restOverlay: StateFlow<String?> = _restOverlay.asStateFlow()
-
-    fun shortRest() {
-        val s = _ui.value
-        val ch = s.character ?: return
-        val hitDie = Classes.find(ch.cls)?.hitDie ?: 8
-        val heal = Dice.d(hitDie) + ch.abilities.conMod.coerceAtLeast(0)
-        ch.hp = (ch.hp + heal).coerceAtMost(ch.maxHp)
-        SpellSlots.applyShortRest(ch)
-        _ui.value = s.copy(character = ch, messages = s.messages + DisplayMessage.System("Short rest — recovered $heal HP."))
-        logTimeline("event", "Short rest — +$heal HP")
-        _restOverlay.value = "short:$heal"
-    }
-
-    fun longRest() {
-        val s = _ui.value
-        val ch = s.character ?: return
-        SpellSlots.applyLongRest(ch)
-        // Long rest clears most conditions (per D&D 5e). Keep narrative-permanent
-        // markers like "Cursed" in place — the narrator can remove them explicitly.
-        val permanent = setOf("cursed", "doomed", "marked", "branded")
-        ch.conditions.removeAll { it.lowercase() !in permanent }
-        _ui.value = s.copy(
-            character = ch,
-            messages = s.messages + DisplayMessage.System("Long rest — fully restored.")
-        )
-        logTimeline("event", "Long rest — full heal + slots restored")
-        _restOverlay.value = "long"
-    }
-
-    fun dismissRest() { _restOverlay.value = null }
+    private val restHandler = RestHandler(
+        _ui, _restOverlay, _screen, _lastDeath,
+        ::logTimeline, viewModelScope, { saveService.refreshSlots() }, timeline
+    )
+    val restOverlay: StateFlow<String?> = restHandler.restOverlayState
+    fun shortRest() = restHandler.shortRest()
+    fun longRest() = restHandler.longRest()
+    fun dismissRest() = restHandler.dismissRest()
 
     /** Start traveling to a destination. Calculates road distance and begins turn-by-turn travel. */
     fun startTravel(destId: Int) {
@@ -534,151 +471,41 @@ class GameViewModel(
     val showInitiative: StateFlow<Boolean> = _showInitiative.asStateFlow()
     fun dismissInitiative() { _showInitiative.value = false }
 
-    /** Active shop merchant name — set when a [SHOP] tag arrives, cleared on close. */
-    private val _activeShop = MutableStateFlow<String?>(null)
-    val activeShop: StateFlow<String?> = _activeShop.asStateFlow()
-    fun dismissShop() { _activeShop.value = null }
-    fun openShop(merchantName: String) { _activeShop.value = merchantName }
+    private val merchantHandler = MerchantHandler(_ui, _activeShop, _buybackStocks, ::logTimeline)
+    val activeShop: StateFlow<String?> = merchantHandler.activeShopState
+    val buybackStocks: StateFlow<Map<String, List<com.realmsoffate.game.ui.overlays.BuybackEntry>>> = merchantHandler.buybackStocksState
+    fun dismissShop() = merchantHandler.dismissShop()
+    fun openShop(merchantName: String) = merchantHandler.openShop(merchantName)
+    fun buyItem(merchant: String, itemName: String, price: Int) = merchantHandler.buyItem(merchant, itemName, price)
+    fun sellItem(merchant: String, item: Item, price: Int) = merchantHandler.sellItem(merchant, item, price)
+    fun buybackItem(merchant: String, item: Item, price: Int) = merchantHandler.buybackItem(merchant, item, price)
+    fun rollDeathSave() = restHandler.rollDeathSave()
+    fun exchange(factionName: String, direction: String, goldAmount: Int) = merchantHandler.exchange(factionName, direction, goldAmount)
+    fun haggle(chaMod: Int): Float = merchantHandler.haggle(chaMod)
 
-    fun buyItem(merchant: String, itemName: String, price: Int) {
-        val s = _ui.value
-        val ch = s.character ?: return
-        if (ch.gold < price) return
-        ch.gold -= price
-        ch.inventory.add(Item(name = itemName, desc = "Bought from $merchant", type = "item", rarity = "common"))
-        _ui.value = s.copy(
-            character = ch,
-            messages = s.messages + DisplayMessage.System("Bought $itemName for ${price}g.")
-        )
-        logTimeline("event", "Bought $itemName for ${price}g from $merchant")
-    }
-
-    /** Buyback inventory — per merchant, last 8 items sold. */
-    private val _buybackStocks = MutableStateFlow<Map<String, List<com.realmsoffate.game.ui.overlays.BuybackEntry>>>(emptyMap())
-    val buybackStocks: StateFlow<Map<String, List<com.realmsoffate.game.ui.overlays.BuybackEntry>>> = _buybackStocks.asStateFlow()
-
-    fun sellItem(merchant: String, item: Item, price: Int) {
-        val s = _ui.value
-        val ch = s.character ?: return
-        val idx = ch.inventory.indexOfFirst { it.name == item.name && it.rarity == item.rarity }
-        if (idx < 0) return
-        val existing = ch.inventory[idx]
-        if (existing.qty > 1) {
-            ch.inventory[idx] = existing.copy(qty = existing.qty - 1)
-        } else {
-            ch.inventory.removeAt(idx)
+    private val saveService = SaveService(
+        _ui, _screen, _saveSlots, _graveyard, _buybackStocks,
+        _debugLog, timeline, viewModelScope,
+        clearOverlays = {
+            _pendingLevelUp.value = null
+            _restOverlay.value = null
+            _activeShop.value = null
+            _targetPrompt.value = null
+            _showInitiative.value = false
+            _lastDeath.value = null
         }
-        ch.gold += price
-        _ui.value = s.copy(
-            character = ch,
-            messages = s.messages + DisplayMessage.System("Sold ${item.name} for ${price}g.")
-        )
-        // Remember for buyback.
-        val current = _buybackStocks.value.toMutableMap()
-        val list = current[merchant].orEmpty().toMutableList()
-        list.add(0, com.realmsoffate.game.ui.overlays.BuybackEntry(item = item.copy(qty = 1), price = price * 2))
-        while (list.size > 8) list.removeAt(list.size - 1)
-        current[merchant] = list
-        _buybackStocks.value = current
-        logTimeline("event", "Sold ${item.name} for ${price}g to $merchant")
-    }
-
-    fun buybackItem(merchant: String, item: Item, price: Int) {
-        val s = _ui.value
-        val ch = s.character ?: return
-        if (ch.gold < price) return
-        ch.gold -= price
-        ch.inventory.add(item)
-        _ui.value = s.copy(
-            character = ch,
-            messages = s.messages + DisplayMessage.System("Bought back ${item.name} for ${price}g.")
-        )
-        val current = _buybackStocks.value.toMutableMap()
-        val list = current[merchant].orEmpty().toMutableList()
-        list.removeAll { it.item.name == item.name && it.price == price }
-        current[merchant] = list
-        _buybackStocks.value = current
-    }
-
-    /**
-     * Rolls a single death save. 3 successes = stabilise at 1 HP; 3 failures = die.
-     * Nat 20 jumps straight to stable + 1 HP; nat 1 counts as two failures.
-     */
-    fun rollDeathSave() {
-        val s = _ui.value
-        val saves = s.deathSave ?: return
-        val d = Dice.d20()
-        val (updated, label) = DeathSaves.roll(saves, d)
-        _ui.value = s.copy(
-            deathSave = updated,
-            messages = s.messages + DisplayMessage.System(label)
-        )
-        if (updated.dead) {
-            logTimeline("death", "Failed third death save.")
-            die("Failed the third death save.")
-            return
-        }
-        if (updated.stable) {
-            val ch = s.character ?: return
-            ch.hp = 1
-            _ui.value = _ui.value.copy(
-                character = ch,
-                deathSave = null,
-                messages = _ui.value.messages + DisplayMessage.System("Stable — 1 HP. Get away.")
-            )
-            logTimeline("event", "Stabilised after death saves")
-        }
-    }
-
-    /**
-     * Exchange gold ↔ a faction's local currency at a rate derived from its
-     * economy. 1 gold → `rate` local coins; `rate = 0.6 + 0.2 * (wealth - 3)`
-     * clamped to [0.3, 1.6]. Directions: "to" = gold → local, "from" = local → gold.
-     */
-    fun exchange(factionName: String, direction: String, goldAmount: Int) {
-        val s = _ui.value
-        val ch = s.character ?: return
-        val faction = s.worldLore?.factions?.firstOrNull { it.name == factionName } ?: return
-        val wealth = faction.economy?.wealth ?: 3
-        val rate = (0.6 + 0.2 * (wealth - 3)).coerceIn(0.3, 1.6)
-        val localCurrency = faction.currency
-        when (direction) {
-            "to" -> {
-                if (ch.gold < goldAmount) return
-                val localGained = (goldAmount * rate).toInt()
-                ch.gold -= goldAmount
-                ch.currencyBalances[localCurrency] =
-                    (ch.currencyBalances[localCurrency] ?: 0) + localGained
-                _ui.value = s.copy(
-                    character = ch,
-                    messages = s.messages + DisplayMessage.System("Exchanged ${goldAmount}g → $localGained $localCurrency.")
-                )
-            }
-            "from" -> {
-                val currentLocal = ch.currencyBalances[localCurrency] ?: 0
-                val localNeeded = goldAmount // caller passes local-amount-to-spend in this path
-                if (currentLocal < localNeeded) return
-                val goldGained = (localNeeded / rate).toInt()
-                ch.currencyBalances[localCurrency] = currentLocal - localNeeded
-                ch.gold += goldGained
-                _ui.value = s.copy(
-                    character = ch,
-                    messages = s.messages + DisplayMessage.System("Exchanged $localNeeded $localCurrency → ${goldGained}g.")
-                )
-            }
-        }
-    }
-
-    /** CHA check haggle — returns price multiplier (1.0 = no discount, down to 0.8). */
-    fun haggle(chaMod: Int): Float {
-        val roll = Dice.d20() + chaMod
-        return when {
-            roll >= 18 -> 0.8f // full 20%
-            roll >= 14 -> 0.9f // 10%
-            roll >= 10 -> 0.95f // 5%
-            else -> 1f
-        }
-    }
+    )
+    val saveSlots: StateFlow<List<SaveSlotMeta>> = saveService.saveSlotsMeta
+    val graveyard: StateFlow<List<GraveyardEntry>> = saveService.graveyardEntries
+    fun refreshSlots() = saveService.refreshSlots()
+    fun deleteSlot(slot: String) = saveService.deleteSlot(slot)
+    fun exhumeGrave(entry: GraveyardEntry) = saveService.exhumeGrave(entry)
+    fun saveToSlot(slot: String = "autosave") = saveService.saveToSlot(slot)
+    fun exportCurrentJson(): String? = saveService.exportCurrentJson()
+    fun exportFilename(): String = saveService.exportFilename()
+    fun debugDumpFilename(): String = saveService.debugDumpFilename()
+    fun importSave(json: String) = saveService.importSave(json)
+    fun loadSlot(slot: String = "autosave") = saveService.loadSlot(slot)
 
     init {
         viewModelScope.launch {
@@ -692,13 +519,6 @@ class GameViewModel(
             }
         }
         viewModelScope.launch { prefs.fontScale.collect { _fontScale.value = it } }
-    }
-
-    fun refreshSlots() {
-        viewModelScope.launch {
-            _saveSlots.value = SaveStore.listSlots()
-            _graveyard.value = SaveStore.listGraves()
-        }
     }
 
     /** Returns to the title screen without wiping state (for pause/menu). */
@@ -726,51 +546,6 @@ class GameViewModel(
             val mostRecent = slots.firstOrNull() ?: return@launch
             loadSlot(mostRecent.slot)
         }
-    }
-
-    fun deleteSlot(slot: String) {
-        viewModelScope.launch {
-            SaveStore.delete(slot)
-            refreshSlots()
-        }
-    }
-
-    fun exhumeGrave(entry: GraveyardEntry) {
-        viewModelScope.launch {
-            SaveStore.exhume(entry)
-            refreshSlots()
-        }
-    }
-
-    /** Triggered when the character's HP hits 0 — buries them and shows DeathScreen. */
-    private fun die(cause: String) {
-        val s = _ui.value
-        val ch = s.character ?: return
-        val entry = GraveyardEntry(
-            characterName = ch.name,
-            race = ch.race,
-            cls = ch.cls,
-            level = ch.level,
-            turns = s.turns,
-            xp = ch.xp,
-            gold = ch.gold,
-            morality = s.morality,
-            worldName = s.worldMap?.locations?.firstOrNull()?.name.orEmpty(),
-            mutations = s.worldLore?.mutations.orEmpty(),
-            companions = s.party.map { it.name },
-            backstoryText = ch.backstory?.promptText,
-            causeOfDeath = cause,
-            timeline = timeline.toList() + TimelineEntry(s.turns, "death", cause),
-            diedAt = java.time.Instant.now().toString()
-        )
-        _lastDeath.value = entry
-        viewModelScope.launch {
-            SaveStore.bury(entry)
-            SaveStore.delete("autosave")
-            SaveStore.delete(SaveStore.slotKeyFor(ch.name))
-            refreshSlots()
-        }
-        _screen.value = Screen.Death
     }
 
     private fun logTimeline(category: String, text: String) {
@@ -1287,7 +1062,7 @@ class GameViewModel(
 
         // Apply level-up side effects
         result.levelUp?.let { signal ->
-            pendingLevelUp = signal.newLevel
+            progressionHandler.pendingLevelUp = signal.newLevel
             if (signal.featPending) _pendingFeat.value = true
             else _pendingStatPoints.value += signal.statPointsGained
         }
@@ -1591,133 +1366,6 @@ class GameViewModel(
     fun abandonQuest(id: String) {
         val s = _ui.value
         _ui.value = s.copy(quests = s.quests.map { if (it.id == id) it.copy(status = "failed", turnCompleted = s.turns) else it })
-    }
-
-    fun saveToSlot(slot: String = "autosave") {
-        viewModelScope.launch {
-            SaveStore.write(slot, snapshotSaveData() ?: return@launch)
-        }
-    }
-
-    /**
-     * Captures every piece of state the player should see when reloading:
-     * character (with conditions + currency), world, NPC dialogue history,
-     * timeline, conditions, in-flight shop/buyback, weather, accumulator, the
-     * full chat-feed display messages, and the AI conversation history.
-     */
-    private fun snapshotSaveData(): SaveData? {
-        val s = _ui.value
-        val ch = s.character ?: return null
-        val wm = s.worldMap ?: return null
-        val buyback = _buybackStocks.value.mapValues { entry ->
-            entry.value.map { SerializedBuyback(item = it.item, price = it.price) }
-        }
-        return SaveData(
-            character = ch,
-            morality = s.morality,
-            factionRep = s.factionRep,
-            worldMap = wm,
-            currentLoc = s.currentLoc,
-            playerPos = s.playerPos,
-            worldLore = s.worldLore,
-            worldEvents = s.worldEvents,
-            lastEventTurn = s.lastEventTurn,
-            npcLog = s.npcLog,
-            party = s.party,
-            quests = s.quests,
-            hotbar = s.hotbar,
-            history = s.history,
-            turns = s.turns,
-            scene = s.currentScene,
-            savedAt = java.time.Instant.now().toString(),
-            sceneDesc = s.currentSceneDesc,
-            merchantStocks = s.merchantStocks,
-            buybackStocks = buyback,
-            currentChoices = s.currentChoices,
-            timeline = timeline.toList(),
-            displayMessages = s.messages,
-            deathSave = s.deathSave,
-            travelState = s.travelState,
-            debugLog = _debugLog.takeLast(50)
-        )
-    }
-
-    fun loadSlot(slot: String = "autosave") {
-        viewModelScope.launch {
-            val d = SaveStore.read(slot) ?: return@launch
-            // Restore the in-memory timeline so death-screen reads the full life.
-            timeline.clear()
-            timeline.addAll(d.timeline)
-            // Restore buyback stocks from the persisted form.
-            _buybackStocks.value = d.buybackStocks.mapValues { e ->
-                e.value.map { com.realmsoffate.game.ui.overlays.BuybackEntry(item = it.item, price = it.price) }
-            }
-            // Restore the debug log so reload → dump still shows historical cache/source data.
-            _debugLog.clear()
-            _debugLog.addAll(d.debugLog)
-            _ui.value = GameUiState(
-                character = d.character,
-                worldMap = d.worldMap,
-                currentLoc = d.currentLoc,
-                playerPos = d.playerPos,
-                worldLore = d.worldLore,
-                worldEvents = d.worldEvents,
-                lastEventTurn = d.lastEventTurn,
-                npcLog = d.npcLog,
-                party = d.party,
-                quests = d.quests,
-                hotbar = d.hotbar,
-                morality = d.morality,
-                factionRep = d.factionRep,
-                history = d.history,
-                turns = d.turns,
-                currentScene = d.scene,
-                currentSceneDesc = d.sceneDesc,
-                merchantStocks = d.merchantStocks,
-                currentChoices = d.currentChoices,
-                // Restore the rendered chat feed if the save has it; otherwise show
-                // a single "loaded" line so the player has context.
-                messages = if (d.displayMessages.isNotEmpty()) {
-                    d.displayMessages + DisplayMessage.System("Loaded — ${d.character.name}, turn ${d.turns}")
-                } else {
-                    listOf(DisplayMessage.System("Loaded — ${d.character.name}, turn ${d.turns}"))
-                },
-                turnStartIndex = if (d.displayMessages.isNotEmpty()) d.displayMessages.lastIndex else 0,
-                // Restore in-flight death-save tracker so reload picks the player up
-                // exactly where they fell.
-                deathSave = d.deathSave,
-                // Restore any in-progress road travel.
-                travelState = d.travelState
-            )
-            // Clear any stale ephemeral overlays so they don't leak into the loaded run.
-            _pendingLevelUp.value = null
-            _restOverlay.value = null
-            _activeShop.value = null
-            _targetPrompt.value = null
-            _showInitiative.value = false
-            _lastDeath.value = null
-            _screen.value = Screen.Game
-        }
-    }
-
-    /** Import a SaveData that came from a shared JSON file. */
-    fun importSave(json: String) {
-        viewModelScope.launch {
-            val data = SaveStore.fromJson(json) ?: return@launch
-            val slot = SaveStore.slotKeyFor(data.character.name)
-            SaveStore.write(slot, data)
-            refreshSlots()
-        }
-    }
-
-    /** Serialises the live in-memory state to a JSON string for export. */
-    fun exportCurrentJson(): String? = snapshotSaveData()?.let { SaveStore.toJson(it) }
-
-    /** Suggested filename for a save export, e.g. `Kaelis_L4_turn31.json`. */
-    fun exportFilename(): String {
-        val ch = _ui.value.character ?: return "save.json"
-        val safe = SaveStore.slotKeyFor(ch.name)
-        return "${safe}_L${ch.level}_turn${_ui.value.turns}.json"
     }
 
     companion object {

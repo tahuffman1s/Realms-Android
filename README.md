@@ -1,140 +1,144 @@
-# Realms of Fate — Android (Material You)
+# Realms of Fate
 
-A native Kotlin / Jetpack Compose port of the [Realms of Fate](../Realms) web game. AI-narrated D&D 5e sandbox RPG with three model backends (Gemini, DeepSeek, Claude), a procedurally-generated world, factions, quests, morality, reputation, and a Google-Maps-style world map.
+A native Android RPG where every adventure is narrated by an AI dungeon master. Built with Kotlin, Jetpack Compose, and D&D 5e mechanics. Each playthrough generates a unique world with factions, NPCs, quests, morality, and consequences that ripple across sessions.
 
-## What's inside
+Ported from a single-file HTML original with full feature parity.
 
-**Tech stack**
-- Kotlin 2.0 + Jetpack Compose (Material 3, with **Material You dynamic color** on Android 12+)
-- Single `ComponentActivity`, state held in `GameViewModel` (StateFlow)
-- `DataStore` for prefs + API key
-- JSON file save slots via `kotlinx.serialization`
-- `OkHttp` for all three AI providers
-- Compose `Canvas` for the world map (no external mapping library)
-- **Min SDK 26 (Android 8), target SDK 34 (Android 14)**
+## How it works
 
-**Preserved from the web version**
-- All three AI providers (Gemini, DeepSeek, Claude) with the **same optimized DeepSeek prompt + sampling** (temperature 0.9, top\_p 0.95, frequency\_penalty 0.3, presence\_penalty 0.1, max\_tokens 900, cache-stable system prefix)
-- Full tag vocabulary: `[SCENE:…]`, `[DAMAGE:N]`, `[HEAL:N]`, `[XP:N]`, `[GOLD:N]`, `[ITEM:…]`, `[CHECK:…]`, `[NPC_MET:…]`, `[QUEST_*]`, `[SHOP:…]`, `[TRAVEL:…]`, `[PARTY_JOIN:…]`, `[TIME:…]`, `[MORAL:…]`, `[REP:…]`, `[CHOICES]…[/CHOICES]`
-- Procedural world gen with locations / roads / terrain / rivers / lakes
-- Lore gen with factions (name, type, ruler, currency, baseloc), NPCs, primordial events, world mutations
-- Backstory generation (origin, motivation, flaw, bond, dark secret, personal enemy, lost item, prophecy)
-- World-event system (faction mobilization, assassinations, festivals, fires, storms — 7 templates)
-- Morality (-100..100), faction reputation, XP & level thresholds
-- NPC log / journal, party management, quests with objectives, merchant stocks
-- Spells, spell slots, spell hotbar
-- Dice-backed ability checks with crit detection
-- All side panels (inventory, quests, party, lore, journal, currency, spells, stats) as Material 3 bottom sheets
-- Google-Maps-style world map: pan/pinch/zoom, faction-territory toggle, style switch (default ↔ terrain), center-on-player, scale bar, compass, Google teardrop pins, label halos, two-tier roads (minor white + yellow highway), blue "you are here" dot
+You type what your character does. The AI narrates what happens next, rolling dice, tracking NPCs, advancing quests, and mutating the world behind the scenes. A structured tag protocol (`[DAMAGE:N]`, `[QUEST_START:...]`, `[NPC_MET:...]`, etc.) bridges the AI's prose with real game mechanics — HP, inventory, faction reputation, and 20+ other state variables update automatically each turn.
 
-**Deliberately removed (per the brief)**
-- **Three.js**: gone. Dice rolls are a pure Compose animation. No 3D anywhere.
-- **Appearance creator** + **3D character model in the top bar**: replaced by a single monogram tile derived from the character name.
+The narrator is modeled after the Baldur's Gate 3 narrator: sardonic, omniscient, and willing to let you fail spectacularly. Narrator asides ("Well, that was genuinely painful to watch") appear as distinct elements between prose blocks.
+
+## Tech stack
+
+| Layer | Choice |
+|-------|--------|
+| Language | Kotlin 2.0 |
+| UI | Jetpack Compose, Material 3 with Material You dynamic color |
+| Architecture | Single `ComponentActivity`, `GameViewModel` (StateFlow), pure reducers |
+| AI | DeepSeek V3 via OkHttp (Gemini + Claude supported but dormant) |
+| Persistence | DataStore (prefs), JSON save slots via kotlinx.serialization |
+| Map | Compose `Canvas` — no external mapping library |
+| Target | SDK 34 (Android 14), min SDK 26 (Android 8) |
+
+## Game systems
+
+**World generation** — Seeded procedural worlds with 11-15 locations, roads, rivers, terrain, and local points of interest. Deterministic from seed so saves reload identically.
+
+**Factions & lore** — 8-12 factions per world with government types, economies, currencies, rulers, and dynasty history. 300+ NPC name pool. Historical timeline spanning primordial through present era.
+
+**World mutations** — 2-3 per playthrough from a pool of 16 (The Dead Walk, Eternal Winter, Fey Crossing, Dragon Tyranny, etc.). Each injects a narrator prompt that colors every scene.
+
+**D&D 5e mechanics** — 11 races, 12 classes, point-buy abilities, proficiency scaling, spell slots, 34-entry spell database, skill checks (d20 + mod + prof vs DC), death saves, short/long rest.
+
+**Morality & reputation** — Morality tracks -100 to +100 across 7 tiers. Per-faction reputation affects prices, NPC reactions, and available choices.
+
+**Multi-currency economy** — Each faction mints its own currency. Exchange rates reflect economic wealth. Merchants accept local currency or gold.
+
+**Dynamic events** — Weighted random world events (faction mobilizations, assassinations, festivals, storms) trigger based on turns elapsed and player context.
+
+**NPC tracking** — Stable slug IDs persist across 100+ turns. Dialogue history (last 5 lines per NPC), memorable AI-curated quotes, relationship tracking, location awareness.
+
+## Prompt engineering
+
+The AI integration is the core of the game. Key design decisions:
+
+- **Prompt caching** — The system prefix (DS_PREFIX + SYS + world palette) is stable across turns. Dynamic state goes in the user message so DeepSeek's cache hits the full prefix, saving 70%+ of tokens on subsequent turns.
+- **Structured output** — A `[METADATA]{JSON}` block carries all mechanical state (damage, XP, items, NPC updates, quest changes). Regex fallback exists as a safety net but hasn't fired in production.
+- **Skill classification** — Freeform player actions get a lightweight pre-call: "What D&D 5e skill fits this?" Returns a skill name for the d20 check, or null if no check needed.
+- **Per-turn reminder** — A short trailer appended to the last user message reinforces tag structure, narrative voice, and mechanical rules late in long conversations.
 
 ## Building
 
-### Requirements
-- **Android Studio Koala or newer** (AGP 8.5, Kotlin 2.0)
-- Android SDK 34 installed
-- JDK 17 bundled with Android Studio is fine
-
-### First-time setup
+**Requirements:** Android Studio Koala+ (AGP 8.5, Kotlin 2.0), Android SDK 34, JDK 17.
 
 ```bash
-cd RealmsAndroid
-
-# Tell Gradle where your Android SDK lives (Android Studio usually creates this automatically)
+# First time — set your SDK path
 cp local.properties.sample local.properties
-# Edit local.properties and set sdk.dir=/path/to/Android/Sdk
+# Edit local.properties: sdk.dir=/path/to/Android/Sdk
 
-# If gradle-wrapper.jar is missing, either:
-#   a) open the project in Android Studio once (it downloads the wrapper), OR
-#   b) run `gradle wrapper` if you have a standalone Gradle 8.x on PATH
-```
-
-### Build a debug APK
-
-```bash
+# Debug APK
 ./gradlew assembleDebug
-# → app/build/outputs/apk/debug/app-debug.apk
-```
+# -> app/build/outputs/apk/debug/app-debug.apk
 
-### Install on a device
+# Release APK (needs signing config)
+./gradlew assembleRelease
 
-```bash
-./gradlew installDebug         # USB-connected or emulator
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-```
+# Lint
+./gradlew lint
 
-### Release build
-
-```bash
-./gradlew assembleRelease      # needs signing config
+# Tests
+./gradlew test
 ```
 
 ## First run
 
 1. Launch the app.
-2. Pick a provider (Gemini is free; DeepSeek is nearly free; Claude is best quality).
-3. Paste your API key — it stays on-device via `DataStore`.
-4. Create a character (race + class + abilities).
-5. The narrator takes over.
+2. Pick a provider and paste your API key (stored on-device via DataStore).
+3. Create a character — race, class, abilities, appearance.
+4. The narrator takes over.
 
 ## Project structure
 
 ```
 app/src/main/kotlin/com/realmsoffate/game/
-├── MainActivity.kt               # single activity, Compose root
-├── RealmsApp.kt                  # Application
+├── MainActivity.kt                  Single activity, Compose root
 ├── data/
-│   ├── Models.kt                 # Character, WorldMap, Quest, Item, etc.
-│   ├── TagParser.kt              # Parses [TAG:value] from AI output
-│   ├── AiProvider.kt             # Gemini / DeepSeek / Claude enum
-│   ├── AiRepository.kt           # OkHttp calls, DeepSeek tuned
-│   ├── Prompts.kt                # SYS + DS_PREFIX
-│   ├── PreferencesStore.kt       # DataStore prefs
-│   └── SaveStore.kt              # JSON save slots
+│   ├── Models.kt                    Character, WorldMap, Quest, Item, NPC, SaveData
+│   ├── TagParser.kt                 [METADATA] JSON + legacy regex tag extraction
+│   ├── AiRepository.kt             OkHttp client, DeepSeek prompt caching
+│   ├── Prompts.kt                   SYS + DS_PREFIX + per-turn reminder
+│   ├── PreferencesStore.kt          DataStore prefs
+│   └── SaveStore.kt                 JSON save slots
 ├── game/
-│   ├── GameViewModel.kt          # State + turn pipeline
-│   ├── WorldGen.kt               # Procedural world generator
-│   ├── LoreGen.kt                # Factions, NPCs, mutations
-│   ├── BackstoryGen.kt           # Player backstory
-│   ├── WorldEvents.kt            # Dynamic world events
-│   ├── Races.kt                  # Race definitions + physique templates
-│   ├── Classes.kt                # Class definitions + starting gear
-│   ├── Spells.kt                 # Spells + slots
-│   └── Dice.kt                   # d20 + dice formulas
+│   ├── GameViewModel.kt             State + turn pipeline (1741 lines)
+│   ├── WorldGen.kt                  Seeded procedural world generator
+│   ├── LoreGen.kt                   Factions, NPCs, history, rumors
+│   ├── BackstoryGen.kt              Player backstory (secret, enemy, prophecy)
+│   ├── Scenarios.kt                 18 opening scene templates
+│   ├── Mutations.kt                 16 world mutations with narrator prompts
+│   ├── WorldEvents.kt               Dynamic event triggers
+│   ├── Races.kt                     11 races with physique text
+│   ├── Classes.kt                   12 classes with starting gear
+│   ├── Spells.kt                    34-entry spell/ability database
+│   ├── Feats.kt                     Level-up feat selection
+│   ├── Dice.kt                      d20 + NdM±K formula parser
+│   └── reducers/
+│       ├── CharacterReducer.kt      HP, XP, inventory, conditions
+│       ├── CombatReducer.kt         Enemy HP, initiative, rounds
+│       ├── NpcLogReducer.kt         NPC meet/update/death/dialogue
+│       ├── QuestAndPartyReducer.kt  Quest lifecycle, party joins/leaves
+│       └── WorldReducer.kt          Faction updates, travel, events
 ├── ui/
-│   ├── theme/                    # Material You theme + typography
-│   ├── setup/                    # ApiSetup + CharacterCreation
-│   ├── game/                     # GameScreen + top/bottom bars
-│   ├── map/                      # Compose-Canvas world map
-│   ├── panels/                   # Inventory/Quests/Party/… bottom sheets
-│   └── dice/                     # d20 roll dialog (Compose animations)
+│   ├── theme/                       Material You + Cinzel/Crimson fonts
+│   ├── setup/                       API setup, title, character creation, death
+│   ├── game/                        Main game screen + top/bottom bars
+│   ├── map/                         Compose Canvas world map
+│   ├── panels/                      Inventory, quests, party, lore, stats, etc.
+│   ├── overlays/                    Shop, target prompt, rest, level-up
+│   └── dice/                        d20 roll animation
 └── util/
-    └── Markdown.kt               # Narration inline markdown renderer
+    └── Markdown.kt                  Narrator prose markdown renderer
 ```
 
-## DeepSeek tuning notes
+## Testing
 
-The DeepSeek path uses the same optimizations carried over from the web version:
-- **Cache-stable system prefix**: `DS_PREFIX + SYS` is built once per call from `const` sources. Dynamic per-turn state (character sheet, world events, quest list, inventory) goes in the **user** message so DeepSeek's prompt cache can hit the full prefix.
-- **Sampling**: `temperature=0.9`, `top_p=0.95`, `frequency_penalty=0.3`, `presence_penalty=0.1` — matches DeepSeek's documented creative-writing sweet spot while preserving tag strictness.
-- **Reminder shim**: the last user message gets a short `[REMINDER: …]` trailer so DS does not forget tag structure late in long conversations.
-- `max_tokens=900` to avoid truncated `[CHOICES]` blocks on long scenes.
+Integration tests cover the per-turn state-mutation pipeline via Robolectric:
 
-## Android-specific optimizations
+- `ApplyParsedIntegrationTest` — 20 tests across all reducer domains
+- `GameStateFixture` + `ParsedReplyBuilder` — test harness for constructing game state and AI responses
 
-- **Material You**: `dynamicDarkColorScheme` / `dynamicLightColorScheme` on Android 12+; graceful brand-palette fallback on 8–11.
-- **Edge-to-edge** with `enableEdgeToEdge()`, transparent system bars, proper insets handling on all panels.
-- **Adaptive launcher icon** with monochrome variant (themed icons on Android 13+).
-- **Splash screen** via `core-splashscreen`.
-- **R8 minification + resource shrinking** enabled for release builds.
-- **Configuration changes** (rotation, dark mode toggle) preserved via ViewModel.
-- **Predictive back gesture** support is automatic (single-activity Compose with stable root).
-- **Data extraction rules** exclude the API key from cloud backup; saves are included.
-- **Text input** uses `adjustResize` so narration scrolls behind the keyboard, not under it.
-- **Save game persistence** via app-private `files/saves/*.json`.
+Run with `./gradlew test`.
+
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for shipped phases, pending work, and strategic concerns. Key threads:
+
+- **AI Reliability** (Phases 1-4 shipped) — prompt caching, stable NPC IDs, JSON metadata, few-shot polish
+- **Parser** (Phases A-B shipped) — tokenizer + stack parser replacing regex
+- **GameViewModel Refactor** (Phases I-II shipped) — reducer extraction, `applyParsed` down from 528 to ~140 lines
+- **Phase III pending** — extract MerchantHandler, RestHandler, SaveService, ProgressionHandler
 
 ## License
 
