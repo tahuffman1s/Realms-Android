@@ -132,9 +132,105 @@ Fix remaining non-token padding values:
 | `GameOverlays.kt` | Delete dead code. Fix ModalBottomSheet shapes. Fix off-grid padding. |
 | `ChatInput.kt` | Delete SpellChip dead code. Add /memories command. |
 
+---
+
+## Chat Feed Redesign
+
+The chat feed gets a personality overhaul — every segment type becomes visually distinct.
+
+### Turn Dividers
+
+Between each narrator turn, render an ornamental divider:
+- Centered `TURN N` label in `labelSmall`, `outline` color, 2sp letter-spacing, serif font
+- Horizontal gradient lines on each side: `transparent` → `outlineVariant` → `transparent`
+- Padding: 16dp top, 8dp bottom
+
+### Prose Narration — Book Margin Style
+
+Replace the plain dark rectangle with a left-accent-bar treatment:
+- Surface: `narratorBubble` color, `shapes.medium`
+- Left border: 3dp solid `asideOnBubble` at 30% alpha (the purple accent creates a book-margin feel)
+- Padding: 14dp horizontal, 12dp vertical
+- Content: `NarrationMarkdown` as before (Crimson Text serif, 16sp)
+- Bookmark icon remains in bottom-right corner
+
+### NPC Action — Attributed to Character
+
+Currently identical to aside. Change to:
+- Left-aligned, no background surface
+- Left border: 2dp solid NPC's accent color at 30% alpha
+- Padding-left: 10dp after the border
+- Text: `bodySmall`, italic, NPC accent color at 80% alpha
+- This makes NPC actions visually attributable to the speaking NPC
+
+### Narrator Aside — Tilde Wrapper
+
+Currently identical to NPC action. Change to:
+- Centered, no background
+- Text wrapped in `~ tildes ~` decorators
+- Color: `asideOnBubble` at 70% alpha
+- Typography: `bodySmall`, italic
+- Visually distinct from NPC actions (centered vs left-aligned, purple vs NPC color)
+
+### Player Action — Right-aligned with Gold Accent
+
+Currently identical to aside. Change to:
+- Right-aligned, no background surface
+- Right border: 2dp solid `goldAccent` at 30% alpha
+- Padding-right: 10dp before the border
+- Text: `bodySmall`, italic, `goldAccent` at 80% alpha
+- Mirrors NPC action but on the player's side
+
+### NPC Dialog Bubble — Avatar Column
+
+Rework from inline avatar to column layout:
+- Left column: 32dp circle avatar with gradient background (NPC accent at 40% → 15%), 1.5dp accent border, initial letter in `titleSmall`
+- Right column (bubble): NPC bgTint at 12% alpha (lighter than current 75%), 1dp accent border at 20% alpha
+- Asymmetric corner radius: `RoundedCornerShape(4.dp, 14.dp, 14.dp, 14.dp)` — creates a speech-bubble tail pointing at the avatar
+- Speaker name: uppercased in `labelSmall`, accent color, 0.5sp letter-spacing
+- Quote text: `bodyMedium`, italic, `npcOnBubble` at 95% alpha
+
+### Player Dialog Bubble — Mirrored Layout
+
+Mirror of NPC dialog:
+- Right column: 32dp gold avatar with gradient, gold border, initial letter
+- Left column (bubble): `playerBubble` at 40% alpha, 1dp gold border at 30% alpha
+- Asymmetric corners: `RoundedCornerShape(14.dp, 4.dp, 14.dp, 14.dp)` — tail points right
+- No "You:" label — the gold avatar with initial is sufficient
+- Quote text: `bodyMedium`, italic, `playerOnBubble`
+
+### Scene Banner — Dramatic Entry
+
+Replace the flat `secondaryContainer` surface:
+- Background: `Brush.linearGradient` from `playerBubble` at 30% alpha to `npcBubble` at 30% alpha (135°)
+- Left border: 3dp solid `secondary`
+- Shape: `shapes.medium`
+- Layout: emoji icon at `titleMedium` + name in `labelLarge` / `secondary` + description in `bodySmall` / `onSurfaceVariant`
+- Margin: horizontal 12dp
+
+### Stat Change Pills — Icons
+
+Add small emoji prefixes to stat pills for personality:
+- HP: heart ♥ prefix
+- XP: star ★ prefix
+- Gold: coin prefix (already has 💰)
+- Rep: lightbulb 💡 prefix
+- Items: sword/shield prefix
+
+---
+
+## Files Changed by Chat Redesign
+
+| File | Change |
+|------|--------|
+| `MessageBubbles.kt` | Rework `NpcDialogueBubble` (avatar column, asymmetric corners, lighter bg), `PlayerBubble` (mirrored avatar column, remove "You:" label, asymmetric corners), `SceneBanner` (gradient + accent bar), `SystemLine` (unchanged), `EventCard` (unchanged), stat pill icons |
+| `NarrationBlock.kt` | Rework `NarratorProseBubble` (add left accent bar), create `NpcActionLine` (left-aligned with NPC color accent), create `NarratorAsideLine` (centered with tildes), create `PlayerActionLine` (right-aligned with gold accent). Replace `NarratorQuipBubble` dispatching with distinct composables per segment type. |
+| `ChatFeed.kt` | Add `TurnDivider` composable rendered between turns. Detect turn boundaries from message list. |
+
+---
+
 ## What Does NOT Change
 
-- Chat tab message feed and input (unchanged)
 - Map screen (unchanged)
 - Death screen, Title screen, Character Creation, API setup (unchanged)
 - Game logic, ViewModel, data layer (unchanged)
