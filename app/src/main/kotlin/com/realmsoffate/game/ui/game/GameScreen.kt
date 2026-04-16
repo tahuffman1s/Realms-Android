@@ -102,8 +102,23 @@ fun GameScreen(vm: GameViewModel) {
         when (tab) {
             GameTab.Chat -> panel = Panel.None
             GameTab.Map -> panel = Panel.Map
-            GameTab.Character -> panel = Panel.Inventory
-            GameTab.Journal -> panel = Panel.Quests
+            GameTab.Character -> panel = Panel.None
+            GameTab.Journal -> panel = Panel.None
+        }
+    }
+
+    // When a slash command sets a panel now handled by a pager, redirect to the correct tab.
+    LaunchedEffect(panel) {
+        when (panel) {
+            Panel.Inventory, Panel.Spells, Panel.Stats, Panel.Party, Panel.Currency -> {
+                tab = GameTab.Character
+                panel = Panel.None
+            }
+            Panel.Quests, Panel.Journal, Panel.Lore -> {
+                tab = GameTab.Journal
+                panel = Panel.None
+            }
+            else -> {} // Memories, Settings, Map, None — handled elsewhere
         }
     }
 
@@ -195,53 +210,99 @@ fun GameScreen(vm: GameViewModel) {
         containerColor = MaterialTheme.colorScheme.background
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
-            AnimatedVisibility(visible = state.currentScene != "default" && state.combat == null) {
-                SceneBanner(state.currentScene, state.currentSceneDesc)
-            }
-            // Combat HUD — visible only during battle scenes.
-            state.combat?.let { combat -> CombatHud(combat, state.npcLog, state.turns) }
-            ChatFeed(
-                state = state,
-                listState = listState,
-                bookmarks = state.bookmarks,
-                onToggleBookmark = { vm.toggleBookmark(it) },
-                onNpcReply = { npcName ->
-                    // Pre-fill input with reply context; keep keyboard open
-                    input = "I say to $npcName: "
-                },
-                onNpcReaction = { npcName, npcQuote, reaction ->
-                    val ctx = npcQuote.take(120)
-                    val reactionText = if (reaction.startsWith("emoji:")) {
-                        val emoji = reaction.removePrefix("emoji:")
-                        "I react to $npcName saying \"$ctx\" with $emoji (interpret this emoji's real-world cultural meaning and roleplay my character's reaction)"
-                    } else when (reaction) {
-                        "approve" -> "I nod approvingly at $npcName's words: \"$ctx\""
-                        "disapprove" -> "I shake my head at $npcName after hearing: \"$ctx\""
-                        "laugh" -> "I laugh at $npcName saying: \"$ctx\""
-                        "angry" -> "I glare angrily at $npcName for saying: \"$ctx\""
-                        "question" -> "I question what $npcName meant by: \"$ctx\""
-                        "shocked" -> "I stare at $npcName in shock after hearing: \"$ctx\""
-                        "suspicious" -> "I narrow my eyes suspiciously at $npcName after: \"$ctx\""
-                        else -> "I react to $npcName saying: \"$ctx\""
+            when (tab) {
+                GameTab.Chat -> {
+                    AnimatedVisibility(visible = state.currentScene != "default" && state.combat == null) {
+                        SceneBanner(state.currentScene, state.currentSceneDesc)
                     }
-                    vm.submitAction(reactionText)
-                },
-                onAttackNpc = { npcName ->
-                    vm.requestTargetPrompt(com.realmsoffate.game.ui.overlays.TargetPromptSpec(
-                        title = "Attack $npcName",
-                        verb = "I attack $npcName",
-                        recentTargets = listOf(npcName)
-                    ))
-                },
-                onOpenJournal = { npcName ->
-                    journalFocusNpc = npcName
-                    panel = Panel.Journal
-                },
-                onOpenStats = { panel = Panel.Stats },
-                onOpenShop = { vm.openShop(it) },
-                onClearError = { vm.clearError() },
-                modifier = Modifier.weight(1f).fillMaxWidth()
-            )
+                    // Combat HUD — visible only during battle scenes.
+                    state.combat?.let { combat -> CombatHud(combat, state.npcLog, state.turns) }
+                    ChatFeed(
+                        state = state,
+                        listState = listState,
+                        bookmarks = state.bookmarks,
+                        onToggleBookmark = { vm.toggleBookmark(it) },
+                        onNpcReply = { npcName ->
+                            // Pre-fill input with reply context; keep keyboard open
+                            input = "I say to $npcName: "
+                        },
+                        onNpcReaction = { npcName, npcQuote, reaction ->
+                            val ctx = npcQuote.take(120)
+                            val reactionText = if (reaction.startsWith("emoji:")) {
+                                val emoji = reaction.removePrefix("emoji:")
+                                "I react to $npcName saying \"$ctx\" with $emoji (interpret this emoji's real-world cultural meaning and roleplay my character's reaction)"
+                            } else when (reaction) {
+                                "approve" -> "I nod approvingly at $npcName's words: \"$ctx\""
+                                "disapprove" -> "I shake my head at $npcName after hearing: \"$ctx\""
+                                "laugh" -> "I laugh at $npcName saying: \"$ctx\""
+                                "angry" -> "I glare angrily at $npcName for saying: \"$ctx\""
+                                "question" -> "I question what $npcName meant by: \"$ctx\""
+                                "shocked" -> "I stare at $npcName in shock after hearing: \"$ctx\""
+                                "suspicious" -> "I narrow my eyes suspiciously at $npcName after: \"$ctx\""
+                                else -> "I react to $npcName saying: \"$ctx\""
+                            }
+                            vm.submitAction(reactionText)
+                        },
+                        onAttackNpc = { npcName ->
+                            vm.requestTargetPrompt(com.realmsoffate.game.ui.overlays.TargetPromptSpec(
+                                title = "Attack $npcName",
+                                verb = "I attack $npcName",
+                                recentTargets = listOf(npcName)
+                            ))
+                        },
+                        onOpenJournal = { npcName ->
+                            journalFocusNpc = npcName
+                            tab = GameTab.Journal
+                        },
+                        onOpenStats = { tab = GameTab.Character },
+                        onOpenShop = { vm.openShop(it) },
+                        onClearError = { vm.clearError() },
+                        modifier = Modifier.weight(1f).fillMaxWidth()
+                    )
+                }
+                GameTab.Character -> {
+                    CharacterPager(
+                        state = state,
+                        onEquip = vm::equipToggle,
+                        onDismiss = vm::dismissCompanion,
+                        onExchange = vm::exchange,
+                        onHotbar = vm::updateHotbar,
+                        onCast = { spell ->
+                            val activeCombat = state.combat
+                            val recentTargets = if (activeCombat != null) {
+                                activeCombat.order
+                                    .filter { !it.isPlayer }
+                                    .map { it.name }
+                                    .distinct()
+                                    .take(8)
+                            } else emptyList()
+                            tab = GameTab.Chat
+                            if (isSelfCastable(spell)) {
+                                vm.submitAction("I cast ${spell.name} on myself")
+                            } else {
+                                vm.requestTargetPrompt(
+                                    TargetPromptSpec(
+                                        title = "Cast ${spell.name}",
+                                        verb = "I cast ${spell.name} at",
+                                        selfCastable = isSelfCastable(spell),
+                                        recentTargets = recentTargets
+                                    )
+                                )
+                            }
+                        }
+                    )
+                }
+                GameTab.Journal -> {
+                    JournalPager(
+                        state = state,
+                        onAbandon = vm::abandonQuest,
+                        focusNpc = journalFocusNpc
+                    )
+                }
+                GameTab.Map -> {
+                    // Map is handled by the Panel.Map early return above; this is a safety fallback.
+                }
+            }
         }
     }
 
@@ -334,51 +395,6 @@ fun GameScreen(vm: GameViewModel) {
     }
 
     when (panel) {
-        Panel.Inventory -> InventoryPanel(state, onClose = { panel = Panel.None; tab = GameTab.Chat }, onEquip = vm::equipToggle)
-        Panel.Quests -> QuestsPanel(state, onClose = { panel = Panel.None; tab = GameTab.Chat }, onAbandon = vm::abandonQuest)
-        Panel.Party -> PartyPanel(state, onClose = { panel = Panel.None; tab = GameTab.Chat }, onDismiss = vm::dismissCompanion)
-        Panel.Lore -> LorePanel(state, onClose = { panel = Panel.None; tab = GameTab.Chat })
-        Panel.Journal -> JournalPanel(state, focusNpc = journalFocusNpc, onClose = { journalFocusNpc = null; panel = Panel.None; tab = GameTab.Chat })
-        Panel.Currency -> CurrencyPanel(
-            state = state,
-            onClose = { panel = Panel.None; tab = GameTab.Chat },
-            onExchange = vm::exchange
-        )
-        Panel.Spells -> SpellsPanel(
-            state = state,
-            onClose = { panel = Panel.None; tab = GameTab.Chat },
-            onHotbar = vm::updateHotbar,
-            onCast = { spell ->
-                val currentLocName = state.worldMap?.locations?.getOrNull(state.currentLoc)?.name.orEmpty()
-                val activeCombat = state.combat
-                val recentTargets = if (activeCombat != null) {
-                    // During combat, show entities from the initiative order
-                    activeCombat.order
-                        .filter { !it.isPlayer }
-                        .map { it.name }
-                        .distinct()
-                        .take(8)
-                } else {
-                    val nearbyNpcs = state.npcLog
-                        .filter { it.lastLocation == currentLocName }
-                        .sortedByDescending { it.lastSeenTurn }
-                        .take(6)
-                        .map { it.name }
-                    (nearbyNpcs + state.party.map { it.name }).distinct().take(8)
-                }
-                panel = Panel.None
-                tab = GameTab.Chat
-                vm.requestTargetPrompt(
-                    TargetPromptSpec(
-                        title = "Cast ${spell.name}",
-                        verb = "I cast ${spell.name} at",
-                        selfCastable = isSelfCastable(spell),
-                        recentTargets = recentTargets
-                    )
-                )
-            }
-        )
-        Panel.Stats -> StatsPanel(state, onClose = { panel = Panel.None; tab = GameTab.Chat })
         Panel.Memories -> MemoriesPanel(
             state,
             onClose = { panel = Panel.None; tab = GameTab.Chat },
