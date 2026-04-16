@@ -76,7 +76,8 @@ class SaveService(
             displayMessages = s.messages,
             deathSave = s.deathSave,
             travelState = s.travelState,
-            debugLog = debugLog.takeLast(50)
+            debugLog = debugLog.takeLast(50),
+            bookmarks = s.bookmarks
         )
     }
 
@@ -125,7 +126,8 @@ class SaveService(
                 // exactly where they fell.
                 deathSave = d.deathSave,
                 // Restore any in-progress road travel.
-                travelState = d.travelState
+                travelState = d.travelState,
+                bookmarks = d.bookmarks
             )
             // Clear any stale ephemeral overlays so they don't leak into the loaded run.
             clearOverlays()

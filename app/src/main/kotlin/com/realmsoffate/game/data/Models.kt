@@ -377,7 +377,8 @@ data class SaveData(
     /** Non-null when the player was mid-journey at save time. */
     val travelState: TravelState? = null,
     // ---- diagnostic trail: last ~50 AI exchanges, preserved across reloads ----
-    val debugLog: List<DebugTurn> = emptyList()
+    val debugLog: List<DebugTurn> = emptyList(),
+    val bookmarks: List<String> = emptyList()
 )
 
 /**

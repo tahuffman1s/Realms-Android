@@ -12,7 +12,9 @@ data class Feat(
 object Feats {
     val list = listOf(
         Feat("Lucky", "3x per long rest, reroll a d20. +1 to all saves.", "\uD83C\uDFB2") { ch ->
-            // Lucky is tracked narratively — the AI knows about it via the prompt
+            ch.abilities.con += 1
+            ch.maxHp += 1
+            ch.hp += 1
         },
         Feat("Tough", "+2 HP per level (retroactive). You're harder to kill.", "\uD83D\uDCAA") { ch ->
             ch.maxHp += ch.level * 2
