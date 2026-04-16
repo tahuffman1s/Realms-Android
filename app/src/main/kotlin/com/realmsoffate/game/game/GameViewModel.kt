@@ -1079,8 +1079,15 @@ class GameViewModel(
             val alreadyHasPlayer = lastOrNull() is DisplayMessage.Player &&
                 (lastOrNull() as? DisplayMessage.Player)?.text == playerAction
             if (!alreadyHasPlayer) add(DisplayMessage.Player(playerAction))
+            // Parser Phase C: substitute NPC slug IDs with display names
+            var resolvedNarration = parsed.narration
+            for (npc in state.npcLog) {
+                if (npc.id.isNotEmpty() && resolvedNarration.contains(npc.id, ignoreCase = true)) {
+                    resolvedNarration = resolvedNarration.replace(npc.id, npc.name, ignoreCase = true)
+                }
+            }
             add(DisplayMessage.Narration(
-                parsed.narration, parsed.scene, parsed.sceneDesc,
+                resolvedNarration, parsed.scene, parsed.sceneDesc,
                 hpBefore = hpBefore, hpAfter = char.hp, maxHp = char.maxHp,
                 goldBefore = goldBefore, goldAfter = char.gold,
                 xpGained = parsed.xp,

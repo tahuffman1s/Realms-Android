@@ -400,4 +400,49 @@ class ApplyParsedIntegrationTest {
             result.availableMerchants
         )
     }
+
+    // -------------------------------------------------------------------------
+    // Parser Phase C: NPC name substitution in narration
+    // -------------------------------------------------------------------------
+
+    @Test fun `narration with NPC slug ID gets display name substituted`() {
+        val npc = LogNpc(id = "vesper-saltblood", name = "Vesper Saltblood", race = "Human", role = "Bartender", metTurn = 1, lastSeenTurn = 1)
+        val state = GameStateFixture.baseState(
+            character = GameStateFixture.character(),
+            npcLog = listOf(npc)
+        )
+        val char = state.character!!
+        val vm = GameStateFixture.viewModelWithState(state)
+
+        val parsed = ParsedReplyBuilder()
+            .narration("vesper-saltblood stares at the coins on the counter.")
+            .build()
+
+        val result = vm.applyParsed(state, char, parsed, "I look", roll = 10, mod = 0, prof = 0)
+
+        val narrationMsg = result.messages.filterIsInstance<DisplayMessage.Narration>().last()
+        assertEquals(
+            "Vesper Saltblood stares at the coins on the counter.",
+            narrationMsg.text
+        )
+    }
+
+    @Test fun `narration without NPC refs is unchanged`() {
+        val npc = LogNpc(id = "vesper-saltblood", name = "Vesper Saltblood", race = "Human", role = "Bartender", metTurn = 1, lastSeenTurn = 1)
+        val state = GameStateFixture.baseState(
+            character = GameStateFixture.character(),
+            npcLog = listOf(npc)
+        )
+        val char = state.character!!
+        val vm = GameStateFixture.viewModelWithState(state)
+
+        val parsed = ParsedReplyBuilder()
+            .narration("The tavern is quiet tonight.")
+            .build()
+
+        val result = vm.applyParsed(state, char, parsed, "I look", roll = 10, mod = 0, prof = 0)
+
+        val narrationMsg = result.messages.filterIsInstance<DisplayMessage.Narration>().last()
+        assertEquals("The tavern is quiet tonight.", narrationMsg.text)
+    }
 }
