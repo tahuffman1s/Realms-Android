@@ -2,6 +2,7 @@
 
 package com.realmsoffate.game.ui.panels
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -10,8 +11,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.realmsoffate.game.ui.theme.RealmsTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,6 +78,27 @@ internal fun SectionCap(text: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(vertical = 4.dp)
     )
+}
+
+internal fun formatSigned(n: Int) = if (n >= 0) "+$n" else n.toString()
+
+@Composable
+internal fun WealthBars(wealth: Int) {
+    val realms = RealmsTheme.colors
+    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        repeat(5) { i ->
+            Box(
+                Modifier
+                    .width(14.dp)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(
+                        if (i < wealth) realms.goldAccent
+                        else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+            )
+        }
+    }
 }
 
 /** Compact pill-style filter tabs used by Quests/Journal panels. */
