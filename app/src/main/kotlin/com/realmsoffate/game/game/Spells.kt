@@ -127,32 +127,56 @@ object Spells {
  */
 object SpellSlots {
     private val FULL_CASTER = mapOf(
-        1 to listOf(2, 2, 0, 0, 0, 0),
-        2 to listOf(2, 3, 0, 0, 0, 0),
-        3 to listOf(2, 4, 2, 0, 0, 0),
-        4 to listOf(3, 4, 3, 0, 0, 0),
-        5 to listOf(3, 4, 3, 2, 0, 0),
-        6 to listOf(3, 4, 3, 3, 0, 0),
-        7 to listOf(3, 4, 3, 3, 1, 0),
-        8 to listOf(3, 4, 3, 3, 2, 0)
+        1  to listOf(2, 2, 0, 0, 0, 0),
+        2  to listOf(2, 3, 0, 0, 0, 0),
+        3  to listOf(2, 4, 2, 0, 0, 0),
+        4  to listOf(3, 4, 3, 0, 0, 0),
+        5  to listOf(3, 4, 3, 2, 0, 0),
+        6  to listOf(3, 4, 3, 3, 0, 0),
+        7  to listOf(3, 4, 3, 3, 1, 0),
+        8  to listOf(3, 4, 3, 3, 2, 0),
+        9  to listOf(3, 4, 3, 3, 3, 1),
+        10 to listOf(4, 4, 3, 3, 3, 2),
+        11 to listOf(4, 4, 3, 3, 3, 2),
+        12 to listOf(4, 4, 3, 3, 3, 2),
+        13 to listOf(4, 4, 3, 3, 3, 2),
+        14 to listOf(4, 4, 3, 3, 3, 2),
+        15 to listOf(4, 4, 3, 3, 3, 2),
+        16 to listOf(4, 4, 3, 3, 3, 2),
+        17 to listOf(4, 4, 3, 3, 3, 2),
+        18 to listOf(4, 4, 3, 3, 3, 3),
+        19 to listOf(4, 4, 3, 3, 3, 3),
+        20 to listOf(4, 4, 3, 3, 3, 3)
     )
 
     private val HALF_CASTER = mapOf(
-        1 to listOf(0, 0, 0, 0, 0, 0),
-        2 to listOf(0, 2, 0, 0, 0, 0),
-        3 to listOf(0, 3, 0, 0, 0, 0),
-        4 to listOf(0, 3, 0, 0, 0, 0),
-        5 to listOf(0, 4, 2, 0, 0, 0),
-        6 to listOf(0, 4, 2, 0, 0, 0),
-        7 to listOf(0, 4, 3, 0, 0, 0),
-        8 to listOf(0, 4, 3, 0, 0, 0)
+        1  to listOf(0, 0, 0, 0, 0, 0),
+        2  to listOf(0, 2, 0, 0, 0, 0),
+        3  to listOf(0, 3, 0, 0, 0, 0),
+        4  to listOf(0, 3, 0, 0, 0, 0),
+        5  to listOf(0, 4, 2, 0, 0, 0),
+        6  to listOf(0, 4, 2, 0, 0, 0),
+        7  to listOf(0, 4, 3, 0, 0, 0),
+        8  to listOf(0, 4, 3, 0, 0, 0),
+        9  to listOf(0, 4, 3, 2, 0, 0),
+        10 to listOf(0, 4, 3, 2, 0, 0),
+        11 to listOf(0, 4, 3, 3, 0, 0),
+        12 to listOf(0, 4, 3, 3, 0, 0),
+        13 to listOf(0, 4, 3, 3, 1, 0),
+        14 to listOf(0, 4, 3, 3, 1, 0),
+        15 to listOf(0, 4, 3, 3, 2, 0),
+        16 to listOf(0, 4, 3, 3, 2, 0),
+        17 to listOf(0, 4, 3, 3, 3, 1),
+        18 to listOf(0, 4, 3, 3, 3, 1),
+        19 to listOf(0, 4, 3, 3, 3, 2),
+        20 to listOf(0, 4, 3, 3, 3, 2)
     )
 
     private val FULL_CLASSES = setOf("Wizard", "Sorcerer", "Cleric", "Bard", "Druid", "Warlock")
     private val HALF_CLASSES = setOf("Paladin", "Ranger")
 
     fun slotsForLevel(cls: String, level: Int): List<Int> {
-        val lv = level.coerceIn(1, 8)
+        val lv = level.coerceIn(1, 20)
         return when (cls) {
             in FULL_CLASSES -> FULL_CASTER[lv] ?: listOf(0, 0, 0, 0, 0, 0)
             in HALF_CLASSES -> HALF_CASTER[lv] ?: listOf(0, 0, 0, 0, 0, 0)
