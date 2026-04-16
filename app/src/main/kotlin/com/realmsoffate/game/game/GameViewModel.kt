@@ -38,7 +38,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.realmsoffate.game.game.reducers.CombatReducer
 import com.realmsoffate.game.game.reducers.NpcLogReducer
+import com.realmsoffate.game.game.reducers.QuestReducer
+import com.realmsoffate.game.game.reducers.PartyReducer
 import com.realmsoffate.game.game.reducers.WorldReducer
 
 enum class Screen { ApiSetup, Title, CharacterCreation, Game, Death }
@@ -1104,63 +1107,27 @@ class GameViewModel(
                 )
             }
 
-            // Combat state: on scene=battle, lazily start a round tracker; otherwise clear.
-            // Case-insensitive in case the AI emits "Battle" / "BATTLE" — TagParser
-            // already trims, but the source-of-truth example uses lowercase so we
-            // defend rather than depend on it.
-            val nowScene = withHistory.currentScene
-            _ui.value = _ui.value.let { cur ->
-                val ch2 = cur.character ?: return@let cur
-                if (nowScene.equals("battle", ignoreCase = true)) {
-                    val existing = cur.combat
-                    var combat = if (existing == null) {
-                        _showInitiative.value = true
-                        CombatSystem.startCombat(ch2, cur.party)
-                    } else {
-                        CombatSystem.syncHp(existing.next(), ch2, cur.party)
-                    }
-                    // Merge enemy combatants from [ENEMY] tags into the initiative order
-                    var updatedNpcLog = cur.npcLog
-                    if (parsed.enemies.isNotEmpty()) {
-                        val currentOrder = combat.order.toMutableList()
-                        parsed.enemies.forEach { (name, hp, maxHp) ->
-                            val idx = currentOrder.indexOfFirst { it.name.equals(name, true) && !it.isPlayer }
-                            if (idx >= 0) {
-                                // Update existing enemy HP
-                                currentOrder[idx] = currentOrder[idx].copy(hp = hp, maxHp = maxHp)
-                            } else {
-                                // New enemy — add to the order
-                                currentOrder.add(Combatant(name = name, hp = hp, maxHp = maxHp, initiative = Dice.d(20), isPlayer = false))
-                            }
-                        }
-                        // Find enemies at 0 HP before removing them — mark them dead in npcLog
-                        val killedByHp = currentOrder.filter { !it.isPlayer && it.hp <= 0 }.map { it.name }
-                        if (killedByHp.isNotEmpty()) {
-                            val mutableLog = updatedNpcLog.toMutableList()
-                            killedByHp.forEach { deadName ->
-                                val npcIdx = mutableLog.indexOfFirst { it.name.equals(deadName, true) }
-                                if (npcIdx >= 0) {
-                                    mutableLog[npcIdx] = mutableLog[npcIdx].copy(
-                                        status = "dead",
-                                        relationship = "dead",
-                                        relationshipNote = "Killed turn ${cur.turns}"
-                                    )
-                                }
-                            }
-                            updatedNpcLog = mutableLog
-                        }
-                        // Remove enemies at 0 HP
-                        currentOrder.removeAll { !it.isPlayer && it.hp <= 0 }
-                        combat = combat.copy(order = currentOrder)
-                    }
-                    cur.copy(combat = combat, npcLog = updatedNpcLog)
-                } else if (cur.combat != null) {
-                    cur.copy(
-                        combat = null,
-                        messages = cur.messages + DisplayMessage.System("⚔️ Combat has ended.")
-                    )
-                } else cur
-            }
+            // Combat state: scene transitions + enemy roster updates. Extracted to
+            // CombatReducer; the showInitiative side-effect is dispatched here.
+            val cur = _ui.value
+            val combatResult = CombatReducer.transition(
+                scene = withHistory.currentScene,
+                combat = cur.combat,
+                character = cur.character,
+                party = cur.party,
+                npcLog = cur.npcLog,
+                parsedEnemies = parsed.enemies,
+                currentTurn = cur.turns
+            )
+            if (combatResult.showInitiative) _showInitiative.value = true
+            val combatMessages = if (combatResult.systemMessages.isNotEmpty()) {
+                cur.messages + combatResult.systemMessages
+            } else cur.messages
+            _ui.value = cur.copy(
+                combat = combatResult.combat,
+                npcLog = combatResult.npcLog,
+                messages = combatMessages
+            )
 
             // Possibly generate a world event
             maybeRollWorldEvent()
@@ -1438,46 +1405,23 @@ class GameViewModel(
         worldResult.timelineEntries.forEach { entry -> timeline += entry }
 
         // Quests
-        val quests = state.quests.toMutableList()
-        parsed.questStarts.forEach { q ->
-            val withLoc = q.copy(location = worldMap?.locations?.getOrNull(currentLoc)?.name.orEmpty())
-            quests.add(withLoc)
-            logTimeline("quest", "Quest started: ${q.title}")
-        }
-        parsed.questUpdates.forEach { (title, obj) ->
-            val idx = quests.indexOfFirst { it.title.equals(title, true) && it.status == "active" }
-            if (idx >= 0) {
-                val q = quests[idx]
-                val oi = q.objectives.indexOfFirst { it.equals(obj, true) }
-                if (oi >= 0) q.completed[oi] = true else {
-                    q.objectives.add(obj)
-                    q.completed.add(true)
-                }
-            }
-        }
-        parsed.questComplete.forEach { t ->
-            val idx = quests.indexOfFirst { it.title.equals(t, true) }
-            if (idx >= 0) quests[idx] = quests[idx].copy(status = "completed", turnCompleted = state.turns + 1)
-        }
-        parsed.questFails.forEach { t ->
-            val idx = quests.indexOfFirst { it.title.equals(t, true) }
-            if (idx >= 0) quests[idx] = quests[idx].copy(status = "failed", turnCompleted = state.turns + 1)
-        }
+        val questResult = QuestReducer.apply(
+            quests = state.quests,
+            parsed = parsed,
+            currentLocName = worldMap?.locations?.getOrNull(currentLoc)?.name.orEmpty(),
+            currentTurn = state.turns + 1
+        )
+        val quests = questResult.quests
+        questResult.timelineEntries.forEach { entry -> timeline += entry }
 
         // Party joins + leaves
-        val party = state.party.toMutableList().apply {
-            parsed.partyJoins.forEach {
-                add(it)
-                logTimeline("birth", "${it.name} the ${it.race} ${it.role} joined the party.")
-            }
-            parsed.partyLeaves.forEach { name ->
-                val idx = indexOfFirst { it.name.equals(name, ignoreCase = true) }
-                if (idx >= 0) {
-                    val gone = removeAt(idx)
-                    logTimeline("event", "${gone.name} left the party.")
-                }
-            }
-        }
+        val partyResult = PartyReducer.apply(
+            party = state.party,
+            parsed = parsed,
+            currentTurn = state.turns + 1
+        )
+        val party = partyResult.party
+        partyResult.timelineEntries.forEach { entry -> timeline += entry }
 
         // Merchant stocks — save stock and expose button; do NOT auto-open the overlay.
         val merchants = state.merchantStocks.toMutableMap()
