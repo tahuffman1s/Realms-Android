@@ -26,7 +26,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -54,7 +53,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.data.Choice
-import com.realmsoffate.game.game.DisplayMessage
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.ui.map.WorldMapScreen
@@ -222,113 +220,48 @@ fun GameScreen(vm: GameViewModel) {
             }
             // Combat HUD — visible only during battle scenes.
             state.combat?.let { combat -> CombatHud(combat, state.npcLog, state.turns) }
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                itemsIndexed(state.messages) { idx, msg ->
-                    when (msg) {
-                        is DisplayMessage.Player -> PlayerBubble(msg.text, state.character?.name)
-                        is DisplayMessage.Narration -> {
-                            NarrationBlock(
-                                msg.text, state.character?.name, msg, msg.segments,
-                                npcLog = state.npcLog,
-                                isLatestTurn = idx == state.messages.lastIndex || (idx == state.messages.size - 2 && state.messages.lastOrNull() is DisplayMessage.System),
-                                bookmarks = state.bookmarks,
-                                onToggleBookmark = { vm.toggleBookmark(it) },
-                                onNpcTap = { /* future use */ },
-                                onNpcReply = { npcName ->
-                                    // Pre-fill input with reply context
-                                    input = "I say to $npcName: "
-                                    focus.clearFocus()
-                                },
-                                onNpcReaction = { npcName, npcQuote, reaction ->
-                                    val ctx = npcQuote.take(120)
-                                    val reactionText = if (reaction.startsWith("emoji:")) {
-                                        val emoji = reaction.removePrefix("emoji:")
-                                        "I react to $npcName saying \"$ctx\" with $emoji (interpret this emoji's real-world cultural meaning and roleplay my character's reaction)"
-                                    } else when (reaction) {
-                                        "approve" -> "I nod approvingly at $npcName's words: \"$ctx\""
-                                        "disapprove" -> "I shake my head at $npcName after hearing: \"$ctx\""
-                                        "laugh" -> "I laugh at $npcName saying: \"$ctx\""
-                                        "angry" -> "I glare angrily at $npcName for saying: \"$ctx\""
-                                        "question" -> "I question what $npcName meant by: \"$ctx\""
-                                        "shocked" -> "I stare at $npcName in shock after hearing: \"$ctx\""
-                                        "suspicious" -> "I narrow my eyes suspiciously at $npcName after: \"$ctx\""
-                                        else -> "I react to $npcName saying: \"$ctx\""
-                                    }
-                                    vm.submitAction(reactionText)
-                                },
-                                onAttackNpc = { npcName ->
-                                    vm.requestTargetPrompt(com.realmsoffate.game.ui.overlays.TargetPromptSpec(
-                                        title = "Attack $npcName",
-                                        verb = "I attack $npcName",
-                                        recentTargets = listOf(npcName)
-                                    ))
-                                },
-                                onOpenJournal = { npcName ->
-                                    journalFocusNpc = npcName
-                                    panel = Panel.Journal
-                                },
-                                onOpenStats = {
-                                    panel = Panel.Stats
-                                }
-                            )
-                        }
-                        is DisplayMessage.Event -> EventCard(msg.icon, msg.title, msg.text)
-                        is DisplayMessage.System -> SystemLine(msg.text)
+            ChatFeed(
+                state = state,
+                listState = listState,
+                bookmarks = state.bookmarks,
+                onToggleBookmark = { vm.toggleBookmark(it) },
+                onNpcReply = { npcName ->
+                    // Pre-fill input with reply context; keep keyboard open
+                    input = "I say to $npcName: "
+                },
+                onNpcReaction = { npcName, npcQuote, reaction ->
+                    val ctx = npcQuote.take(120)
+                    val reactionText = if (reaction.startsWith("emoji:")) {
+                        val emoji = reaction.removePrefix("emoji:")
+                        "I react to $npcName saying \"$ctx\" with $emoji (interpret this emoji's real-world cultural meaning and roleplay my character's reaction)"
+                    } else when (reaction) {
+                        "approve" -> "I nod approvingly at $npcName's words: \"$ctx\""
+                        "disapprove" -> "I shake my head at $npcName after hearing: \"$ctx\""
+                        "laugh" -> "I laugh at $npcName saying: \"$ctx\""
+                        "angry" -> "I glare angrily at $npcName for saying: \"$ctx\""
+                        "question" -> "I question what $npcName meant by: \"$ctx\""
+                        "shocked" -> "I stare at $npcName in shock after hearing: \"$ctx\""
+                        "suspicious" -> "I narrow my eyes suspiciously at $npcName after: \"$ctx\""
+                        else -> "I react to $npcName saying: \"$ctx\""
                     }
-                }
-                if (state.isGenerating) {
-                    item { NarratorThinking() }
-                }
-                if (state.availableMerchants.isNotEmpty() && !state.isGenerating) {
-                    item {
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            state.availableMerchants.forEach { merchant ->
-                                Surface(
-                                    onClick = { vm.openShop(merchant) },
-                                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Row(
-                                        Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(Icons.Filled.Store, null, Modifier.size(18.dp))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(merchant, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                state.error?.let { err ->
-                    item {
-                        LaunchedEffect(err) {
-                            kotlinx.coroutines.delay(5000)
-                            vm.clearError()
-                        }
-                        Card(
-                            onClick = { vm.clearError() },
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                        ) {
-                            Text(
-                                err,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(14.dp),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-                }
-            }
+                    vm.submitAction(reactionText)
+                },
+                onAttackNpc = { npcName ->
+                    vm.requestTargetPrompt(com.realmsoffate.game.ui.overlays.TargetPromptSpec(
+                        title = "Attack $npcName",
+                        verb = "I attack $npcName",
+                        recentTargets = listOf(npcName)
+                    ))
+                },
+                onOpenJournal = { npcName ->
+                    journalFocusNpc = npcName
+                    panel = Panel.Journal
+                },
+                onOpenStats = { panel = Panel.Stats },
+                onOpenShop = { vm.openShop(it) },
+                onClearError = { vm.clearError() },
+                modifier = Modifier.weight(1f).fillMaxWidth()
+            )
         }
     }
 
