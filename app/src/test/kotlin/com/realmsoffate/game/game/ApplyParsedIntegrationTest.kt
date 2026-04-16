@@ -255,19 +255,18 @@ class ApplyParsedIntegrationTest {
         val char = state.character!!
         val vm = GameStateFixture.viewModelWithState(state)
 
-        // roll=5 → leaguesThisTurn = 2 + (5 % 3) = 2 + 2 = 4. newTraveled = 3 + 4 = 7.
+        // roll=5 → fixed 3 leagues per turn. newTraveled = 3 + 3 = 6.
         val parsed = ParsedReplyBuilder().narration("You travel on.").build()
         val result = vm.applyParsed(state, char, parsed, "I travel", roll = 5, mod = 0, prof = 0)
 
-        // Still traveling (7 < 10), travelState should exist with more leagues
+        // Still traveling (6 < 10), travelState should exist with more leagues
         assertNotNull("travelState should still be active", result.travelState)
         assertTrue(
             "leaguesTraveled should have increased from 3",
             (result.travelState?.leaguesTraveled ?: 0) > 3
         )
-        // Current behavior: progress is 2 + (roll % 3) leagues per turn
-        // roll=5 → 2 + (5%3)=2 → +4 leagues → 7 total
-        assertEquals(7, result.travelState?.leaguesTraveled)
+        // Fixed pace: 3 leagues per turn → 3 + 3 = 6 total
+        assertEquals(6, result.travelState?.leaguesTraveled)
     }
 
     // -------------------------------------------------------------------------

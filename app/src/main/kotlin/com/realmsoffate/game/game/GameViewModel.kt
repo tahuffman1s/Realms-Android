@@ -1107,8 +1107,7 @@ class GameViewModel(
         var travelState = state.travelState
 
         if (travelState != null && worldMap != null) {
-            // Progress travel by ~2-4 leagues per turn (road travel pace)
-            val leaguesThisTurn = 2 + (roll % 3) // 2-4 leagues based on dice
+            val leaguesThisTurn = 3
             val newTraveled = (travelState.leaguesTraveled + leaguesThisTurn)
                 .coerceAtMost(travelState.totalLeagues)
 
