@@ -45,32 +45,17 @@ JSON. DeepSeek pricing absorbs the second call cheaply.
 |---|---|---|
 | A | Tag-fragment post-strip hotfix on body cleaners | ✅ Shipped |
 | B | Tokenizer + stack parser, type-safe tokens, 12 unit tests, eliminates Bug #1 by construction | ✅ Shipped |
-| C | NPC display-name substitution in `parsed.narration` body | 🟡 Pending |
+| C | NPC display-name substitution in `parsed.narration` body | ✅ Shipped |
 | D | Retire regex mechanical-tag fallback (delete the `else` branch in `parse()` + `prose*` fallbacks) | 🟡 Gated on data soak |
 | E | Split `ParsedReply` into `NarrativeContent` + `TurnMechanics` | 🟢 Optional, deferred |
 
-### Phase C — substitute NPC display names in narration body
+### Phase C — substitute NPC display names in narration body ✅
 
-**Bug:** `parsed.narration` is built by stripping all tags from the raw
-response, leaving body text without subjects. `[NPC_ACTION:scroll-merchant]
-stares at the coins[/NPC_ACTION]` becomes "stares at the coins" with no
-subject.
-
-**Scope:** cosmetic only. The in-game UI renders via `segments` (which carry
-NPC ID and resolve to displayName). `parsed.narration` is only used in:
-1. Debug dump text (looks weird to humans reading dumps).
-2. The `dialoguePattern` / `dialogueFallback` regex scan in `TagParser` — but
-   that path is now dead-code-ish since structured `[NPC_DIALOG:id]` extraction
-   handles it directly.
-
-**Two-line approach:** in the narration-strip step, substitute the NPC's
-display name from `npcLog` for the `[NPC_ACTION:id]` / `[NPC_DIALOG:id]` body.
-Requires threading `npcLog` into `TagParser.parse()` OR moving narration
-assembly out of the parser and into the ViewModel where `npcLog` is already
-available.
-
-Prefer the second approach — it's cleaner architecturally and a precondition
-for Phase D's regex-fallback removal anyway.
+Shipped as a post-parse pass in `applyParsed` (GameViewModel). After
+`TagParser.parse()` returns, NPC slug IDs in `parsed.narration` are replaced
+with display names from `state.npcLog` before constructing
+`DisplayMessage.Narration`. Parser stays stateless — name resolution is a
+ViewModel concern. 2 new tests in `ApplyParsedIntegrationTest`.
 
 ### Phase D — retire regex mechanical-tag fallback
 
@@ -118,7 +103,7 @@ becomes after Phase II) needs material changes for another feature.
 
 **Result:** `GameViewModel.kt` 2131 → 1389 lines (−34.8%). `applyParsed`
 is ~140 lines (down from 528). 5 reducers totaling 817 lines, each pure with
-typed results. 4 handlers totaling 484 lines. 48 tests across 6 test classes,
+typed results. 4 handlers totaling 484 lines. 53 tests across 6 test classes,
 all green.
 
 ### Phase III — extract VM-level domain handlers ✅
@@ -159,29 +144,23 @@ but:
 
 Small bugs/quirks surfaced during playtests that don't warrant a phase:
 
-- **Quest objectives accumulate near-duplicates** — `quest_updates` appends a
-  new objective AS already-complete when its text doesn't match an existing
-  objective. AI sometimes slightly rephrases the original objective ("Find
-  someone who studies rifts" vs. "Find someone who studies rifts — the scroll
-  merchant might point you"), so the journal grows cluttered. Two-prong fix:
-  prompt nudge + reducer guard against fuzzy-match dupes.
-- **`availableMerchants` accumulates forever** — never pruned on scene change.
-  Visiting a merchant once means the shop button stays for the rest of the
-  game. Either prune on `scene` change away from the merchant's location, or
-  expire after N turns away.
-- **AI uses "Unnamed X" as initial NPC display name** — workaround: the
-  rename mechanic lets a later turn replace it with a real name. Underlying
-  cause: prompt tells AI "must have a name" but interpretation drifts. One
-  more BAD/GOOD example pair would tighten this.
-- **Travel progress is dice-dependent** — `2 + (roll % 3)` leagues per turn
-  means the same long journey takes wildly different turn counts depending on
-  the player's d20 luck. Either pin the formula or surface the variance.
+- ~~**Quest objectives accumulate near-duplicates**~~ — ✅ Fixed. Substring
+  containment dedup in `QuestAndPartyReducer`: if the new objective contains
+  an existing one (or vice versa), treats as a match. Longer text replaces
+  shorter.
+- ~~**`availableMerchants` accumulates forever**~~ — ✅ Fixed. Merchant list
+  clears on scene change. New `[MERCHANT_AVAILABLE:]` tags in the same turn
+  repopulate.
+- ~~**AI uses "Unnamed X" as initial NPC display name**~~ — ✅ Fixed. Added
+  BAD/GOOD prompt example reinforcing real-name slugs over generic descriptors.
+- ~~**Travel progress is dice-dependent**~~ — ✅ Fixed. Pinned to flat 3
+  leagues/turn.
 - **`logTimeline` is still a VM side-effect, not a reducer output** — every
   reducer returns timeline entries which the VM drains. The VM's own
   `logTimeline()` calls (used in `submitAction`, save load, etc.) still write
   directly to the timeline list. Could move to a `TimelineService` for
   consistency. Low priority.
-- **`parsed.narration` orphan subjects** — covered by Parser Phase C above.
+- ~~**`parsed.narration` orphan subjects**~~ — ✅ Fixed by Parser Phase C.
 
 ---
 
@@ -205,8 +184,8 @@ the wall, then size the fix to actual usage patterns.
 ### No true integration test coverage outside `applyParsed`
 
 The 8 integration tests cover the per-turn state-mutation path. Phase III
-added 28 handler-level tests (merchant, rest, save, progression), bringing
-the total to 48. Still not covered:
+added 28 handler-level tests (merchant, rest, save, progression). Phase C and
+tactical backlog work added 5 more integration tests, bringing the total to 53. Still not covered:
 - `submitAction` end-to-end (with mocked `AiRepository`)
 - Save/load round-trip
 - Travel state lifecycle

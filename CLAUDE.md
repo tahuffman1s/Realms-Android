@@ -230,7 +230,7 @@ app/src/test/kotlin/com/realmsoffate/game/
 ├── data/
 │   └── TagParserTest.kt              12 tests — tokenizer + segment parser
 └── game/
-    ├── ApplyParsedIntegrationTest.kt  8 tests — full turn pipeline via reducers
+    ├── ApplyParsedIntegrationTest.kt  13 tests — full turn pipeline via reducers
     ├── MerchantHandlerTest.kt         9 tests — buy/sell/buyback/exchange/haggle
     ├── RestHandlerTest.kt             7 tests — short rest, long rest, death saves
     ├── SaveServiceTest.kt             5 tests — export, filenames, snapshots
