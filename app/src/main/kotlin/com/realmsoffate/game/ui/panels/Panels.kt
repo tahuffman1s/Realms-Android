@@ -2315,15 +2315,15 @@ fun StatsPanel(state: GameUiState, onClose: () -> Unit) {
                 Spacer(Modifier.height(14.dp))
                 SectionCap("BACKSTORY")
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    BackstoryCard("\uD83C\uDF05", "Origin", bs.origin, Color(0xFF5B7FC7))
-                    BackstoryCard("\uD83C\uDFAF", "Motivation", bs.motivation, Color(0xFFD4A843))
-                    BackstoryCard("\uD83D\uDC94", "Flaw", bs.flaw, Color(0xFFC44040))
-                    BackstoryCard("\uD83D\uDD17", "Bond", bs.bond, Color(0xFF4A9E5E))
-                    BackstoryCard("\uD83D\uDD73\uFE0F", "Dark Secret", bs.darkSecret, Color(0xFF8B6CC7))
-                    BackstoryCard("\uD83D\uDD0D", "Lost Item", bs.lostItem, Color(0xFFD4A843))
-                    BackstoryCard("\u2620\uFE0F", "Personal Enemy", bs.personalEnemy, Color(0xFFC44040))
+                    BackstoryCard("\uD83C\uDF05", "Origin", bs.origin, realms.info)
+                    BackstoryCard("\uD83C\uDFAF", "Motivation", bs.motivation, realms.goldAccent)
+                    BackstoryCard("\uD83D\uDC94", "Flaw", bs.flaw, realms.fumbleRed)
+                    BackstoryCard("\uD83D\uDD17", "Bond", bs.bond, realms.success)
+                    BackstoryCard("\uD83D\uDD73\uFE0F", "Dark Secret", bs.darkSecret, MaterialTheme.colorScheme.secondary)
+                    BackstoryCard("\uD83D\uDD0D", "Lost Item", bs.lostItem, realms.goldAccent)
+                    BackstoryCard("\u2620\uFE0F", "Personal Enemy", bs.personalEnemy, realms.fumbleRed)
                     bs.prophecy?.let { p ->
-                        if (p.isNotBlank()) BackstoryCard("\uD83D\uDD2E", "Prophecy", p, Color(0xFFB197FF))
+                        if (p.isNotBlank()) BackstoryCard("\uD83D\uDD2E", "Prophecy", p, MaterialTheme.colorScheme.secondary)
                     }
                 }
             }
