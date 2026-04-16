@@ -1198,8 +1198,11 @@ class GameViewModel(
         partyResult.timelineEntries.forEach { entry -> timeline += entry }
 
         // Merchant stocks — save stock and expose button; do NOT auto-open the overlay.
+        // Clear merchant list on scene change — stale shops from previous locations
+        // shouldn't persist. New [MERCHANT_AVAILABLE:] tags in this turn repopulate.
+        val sceneChanged = parsed.scene != "default" && parsed.scene != state.currentScene
         val merchants = state.merchantStocks.toMutableMap()
-        val newMerchants = state.availableMerchants.toMutableList()
+        val newMerchants = if (sceneChanged) mutableListOf() else state.availableMerchants.toMutableList()
         parsed.shops.forEach { (name, items) ->
             merchants[name] = items
             if (!newMerchants.contains(name)) newMerchants.add(name)

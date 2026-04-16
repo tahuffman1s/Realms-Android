@@ -369,4 +369,35 @@ class ApplyParsedIntegrationTest {
         assertEquals("should still have 1 objective, not 2", 1, q.objectives.size)
         assertTrue("objective should be marked complete", q.completed[0])
     }
+
+    // -------------------------------------------------------------------------
+    // Merchant pruning on scene change
+    // -------------------------------------------------------------------------
+
+    @Test fun `scene change clears availableMerchants`() {
+        val state = GameStateFixture.baseState(
+            character = GameStateFixture.character()
+        ).copy(
+            currentScene = "old market",
+            availableMerchants = listOf("Old Merchant"),
+            merchantStocks = mapOf("Old Merchant" to mapOf("Sword" to 50))
+        )
+        val char = state.character!!
+        val vm = GameStateFixture.viewModelWithState(state)
+
+        // New scene with a new shop
+        val parsed = ParsedReplyBuilder()
+            .scene("tavern", "A cozy tavern")
+            .narration("You enter the tavern.")
+            .addShop("Barkeep", mapOf("Ale" to 2))
+            .build()
+
+        val result = vm.applyParsed(state, char, parsed, "I enter the tavern", roll = 10, mod = 0, prof = 0)
+
+        assertEquals(
+            "only the new merchant should remain after scene change",
+            listOf("Barkeep"),
+            result.availableMerchants
+        )
+    }
 }
