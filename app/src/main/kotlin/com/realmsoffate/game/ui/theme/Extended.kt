@@ -38,7 +38,9 @@ data class RealmsExtendedColors(
     val asideBubble: Color,
     val asideOnBubble: Color,
     val systemBubble: Color,
-    val systemOnBubble: Color
+    val systemOnBubble: Color,
+    val scrimOverlay: Color,
+    val npcPalette: List<Pair<Color, Color>>
 )
 
 private val DarkExtended = RealmsExtendedColors(
@@ -66,7 +68,20 @@ private val DarkExtended = RealmsExtendedColors(
     asideBubble = Color(0xFF1A1030),
     asideOnBubble = Color(0xFFB197FF),
     systemBubble = Color(0x1AFFFFFF),
-    systemOnBubble = Color(0xFF9E9AA8)
+    systemOnBubble = Color(0xFF9E9AA8),
+    scrimOverlay = Color(0xB3000000),
+    npcPalette = listOf(
+        Color(0xFF4A9E5E) to Color(0xFF1B3D23),
+        Color(0xFF5B7FC7) to Color(0xFF1C2D4A),
+        Color(0xFFD4A843) to Color(0xFF3D3118),
+        Color(0xFFC44040) to Color(0xFF3D1818),
+        Color(0xFF8B6CC7) to Color(0xFF2D1F42),
+        Color(0xFF4AA8A8) to Color(0xFF1A3636),
+        Color(0xFFCC6633) to Color(0xFF3D2010),
+        Color(0xFFAA44AA) to Color(0xFF361836),
+        Color(0xFF6A9E3A) to Color(0xFF223312),
+        Color(0xFF5577CC) to Color(0xFF1A2540),
+    )
 )
 
 private val LightExtended = RealmsExtendedColors(
@@ -94,7 +109,20 @@ private val LightExtended = RealmsExtendedColors(
     asideBubble = Color(0xFFE8E1F0),
     asideOnBubble = Color(0xFF6750A4),
     systemBubble = Color(0x1A000000),
-    systemOnBubble = Color(0xFF49454F)
+    systemOnBubble = Color(0xFF49454F),
+    scrimOverlay = Color(0xB3000000),
+    npcPalette = listOf(
+        Color(0xFF2D6B3A) to Color(0xFFDFF0E3),
+        Color(0xFF3A5A9E) to Color(0xFFDDE6F5),
+        Color(0xFF8A6E1A) to Color(0xFFF5EDD0),
+        Color(0xFF9E2020) to Color(0xFFF5D8D8),
+        Color(0xFF6A4A9E) to Color(0xFFEADFF5),
+        Color(0xFF2D7A7A) to Color(0xFFD8F0F0),
+        Color(0xFF9E4A1A) to Color(0xFFF5E0D0),
+        Color(0xFF8A2D8A) to Color(0xFFF0D8F0),
+        Color(0xFF4A7A20) to Color(0xFFE0EDCF),
+        Color(0xFF3A5599) to Color(0xFFD8E0F5),
+    )
 )
 
 val LocalRealmsColors = staticCompositionLocalOf { DarkExtended }
