@@ -2,6 +2,15 @@
 
 Kotlin + Jetpack Compose RPG game. Package: `com.realmsoffate.game`. Build system: Gradle with Kotlin DSL.
 
+## Agent Model Rule
+
+Opus (you) handles planning, design, architecture, and coordination. Sonnet handles execution.
+
+- **Dispatch all agents with `model: "sonnet"`** — implementation, exploration, review, research.
+- **Opus does the thinking** — brainstorming, writing plans, reviewing agent output, making judgment calls. Never delegate these to agents.
+- **Write agent prompts optimized for Sonnet** — be explicit and literal. Include exact file paths, line numbers, code snippets, and expected outcomes. Sonnet executes precisely what you specify; don't ask it to make design decisions or explore alternatives.
+- **Low-priority tasks** (typos, one-line fixes) don't need agents — do them yourself.
+
 ## Task Execution Protocol
 
 When the user gives you work, follow this protocol exactly.
@@ -230,7 +239,7 @@ app/src/test/kotlin/com/realmsoffate/game/
 ├── data/
 │   └── TagParserTest.kt              12 tests — tokenizer + segment parser
 └── game/
-    ├── ApplyParsedIntegrationTest.kt  13 tests — full turn pipeline via reducers
+    ├── ApplyParsedIntegrationTest.kt  14 tests — full turn pipeline via reducers
     ├── MerchantHandlerTest.kt         9 tests — buy/sell/buyback/exchange/haggle
     ├── RestHandlerTest.kt             7 tests — short rest, long rest, death saves
     ├── SaveServiceTest.kt             5 tests — export, filenames, snapshots

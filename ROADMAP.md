@@ -9,6 +9,8 @@ the **Status** column.
 - [AI Reliability](#ai-reliability) — Phases 1–5 (DeepSeek output stability)
 - [Parser](#parser) — Phases A–E (tokenizer + JSON metadata refinements)
 - [GameViewModel Refactor](#gameviewmodel-refactor) — Phases I–IV (god-method extraction)
+- [Bug Fixes](#bug-fixes) — critical gameplay and data-integrity bugs
+- [Build System](#build-system) — Gradle, SDK, versioning, release pipeline
 - [Tactical Backlog](#tactical-backlog) — small fixes flagged during playtests
 - [Strategic Concerns](#strategic-concerns) — long-horizon items not yet phases
 
@@ -101,9 +103,9 @@ becomes after Phase II) needs material changes for another feature.
 | III | Extract VM-level domain handlers (Merchant / Rest / Save / Progression) | ✅ Shipped |
 | IV | Split `GameViewModel` into multiple ViewModels | 🔴 Don't do |
 
-**Result:** `GameViewModel.kt` 2131 → 1389 lines (−34.8%). `applyParsed`
+**Result:** `GameViewModel.kt` 2131 → 1349 lines (−36.7%). `applyParsed`
 is ~140 lines (down from 528). 5 reducers totaling 817 lines, each pure with
-typed results. 4 handlers totaling 484 lines. 53 tests across 6 test classes,
+typed results. 4 handlers totaling 484 lines. 54 tests across 6 test classes,
 all green.
 
 ### Phase III — extract VM-level domain handlers ✅
@@ -135,8 +137,50 @@ but:
   already being pure functions.
 
 **Reconsider only if** `GameViewModel.kt` creeps back up past ~1500 lines
-(currently 1389 after Phase III), OR a second VM consumer appears
-(companion app, etc.).
+(currently 1349 after Phase III + dead code cleanup), OR a second VM consumer
+appears (companion app, etc.).
+
+---
+
+## Bug Fixes
+
+Critical bugs found via codebase audit and fixed:
+
+| Bug | Fix | Status |
+|-----|-----|--------|
+| Handler shared-state mutation — `MerchantHandler`, `RestHandler`, `ProgressionHandler` mutated live `Character` object directly before `copy()` | Added `Character.deepCopy()` that copies all 7 mutable collections; all handler methods deep-copy before mutating | ✅ Fixed |
+| Level-up overwrites damage — `CharacterReducer` set `hp = maxHp` on level-up, discarding any damage dealt in the same turn | Changed to additive: `hp = (hp + hpGain).coerceAtMost(maxHp)` | ✅ Fixed |
+| Spell slots cap at level 8 — `SpellSlots.slotsForLevel` coerced level to 1–8; levels 9–20 got level-8 slot counts | Extended `FULL_CASTER` and `HALF_CASTER` tables to level 20 with D&D 5e progression | ✅ Fixed |
+| Dead code — 322 lines of unreachable code (`DiceRollerDialog`, `CheckDisplay`, `inferAbilityFromAction`, unused data classes, vestigial provider scaffolding) | Deleted all dead code across 7 files | ✅ Cleaned |
+
+### Remaining known issues (moderate/low severity)
+
+- **Bookmarks not persisted** — `bookmarks` list is never saved to `SaveData`.
+  All bookmarks lost on reload.
+- **Graveyard uses location name, not world name** — death screen shows a
+  location name (e.g. "Thornhaven") instead of `worldLore.worldName`.
+- **Travel has no pathfinding** — can only travel to directly adjacent
+  locations. Tapping a distant location silently does nothing.
+- **Character appearance not in AI prompts** — appearance data (skin, hair,
+  build, gender, age) is collected but never injected into the narrator prompt.
+- **Morality not displayed in-game** — tracked and saved but no HUD indicator.
+- **Feat "Lucky" has no mechanical effect** — empty apply lambda.
+- **`worldEventHook` and `timeOfDay` on ParsedReply** — parsed but never
+  consumed by any reducer or VM code.
+
+---
+
+## Build System
+
+| Change | Status |
+|--------|--------|
+| Migrate to system Gradle 9.4 (pacman), remove wrapper | ✅ Shipped |
+| Upgrade AGP 8.5.2 → 9.0.1, Kotlin 2.0.20 → 2.2.10 | ✅ Shipped |
+| All SDK components via pacman/AUR, no sdkmanager | ✅ Shipped |
+| Semver versioning (0.1.0), computed versionCode | ✅ Shipped |
+| Tag-driven GitHub Actions release pipeline | ✅ Shipped |
+| APK signing (local keystore.properties + CI GitHub Secrets) | ✅ Shipped |
+| APK renamed to `realms-of-fate-vX.Y.Z-release.apk` in CI | ✅ Shipped |
 
 ---
 
@@ -184,8 +228,9 @@ the wall, then size the fix to actual usage patterns.
 ### No true integration test coverage outside `applyParsed`
 
 The 8 integration tests cover the per-turn state-mutation path. Phase III
-added 28 handler-level tests (merchant, rest, save, progression). Phase C and
-tactical backlog work added 5 more integration tests, bringing the total to 53. Still not covered:
+added 28 handler-level tests (merchant, rest, save, progression). Phase C,
+tactical backlog, and bug fix work added 6 more integration tests, bringing
+the total to 54. Still not covered:
 - `submitAction` end-to-end (with mocked `AiRepository`)
 - Save/load round-trip
 - Travel state lifecycle
