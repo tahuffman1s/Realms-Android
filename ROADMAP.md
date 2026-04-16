@@ -12,6 +12,8 @@ the **Status** column.
 - [Bug Fixes](#bug-fixes) — critical gameplay and data-integrity bugs
 - [Build System](#build-system) — Gradle, SDK, versioning, release pipeline
 - [Tactical Backlog](#tactical-backlog) — small fixes flagged during playtests
+- [UI/UX](#uiux) — bugs, UX problems, design system, accessibility
+- [Gameplay Rework](#gameplay-rework) — mechanically incomplete systems
 - [Strategic Concerns](#strategic-concerns) — long-horizon items not yet phases
 
 ---
@@ -205,6 +207,126 @@ Small bugs/quirks surfaced during playtests that don't warrant a phase:
   directly to the timeline list. Could move to a `TimelineService` for
   consistency. Low priority.
 - ~~**`parsed.narration` orphan subjects**~~ — ✅ Fixed by Parser Phase C.
+
+---
+
+## UI/UX
+
+Issues found via comprehensive UI audit. Organized by priority.
+
+### Bugs (fix before release)
+
+- [ ] **Tab.More sheet doesn't reopen on second tap** — `LaunchedEffect(tab)`
+  won't re-fire when the same key is set again. `GameScreen.kt:157–165`.
+- [ ] **`onNpcReply` clears keyboard focus instead of requesting it** —
+  `clearFocus()` called after prefilling text field, forcing a second tap.
+  `GameScreen.kt:252–256`.
+- [ ] **Legacy narration swipe-attack fires on old turns** — missing
+  `isLatestTurn` guard in the `splitNarration` path. `GameScreen.kt:2396–2413`.
+- [ ] **Save delete has no confirmation dialog** — one mis-tap destroys a save
+  permanently. `TitleScreen.kt:351`.
+- [ ] **ShopOverlay buyback tab state stuck** — when buyback stock empties while
+  tab is `"back"`, the tab disappears but state stays `"back"`, rendering
+  empty forever. `ShopOverlay.kt:74–76`.
+- [ ] **LevelUpOverlay dismissible with unassigned points** —
+  `dismissOnClickOutside = true` lets the player lose stat points by
+  accident. `Overlays.kt:53`.
+- [ ] **Markdown bold/italic parser falls through on unclosed bold** — unclosed
+  `**` falls into the `*italic*` branch, consuming mid-span content.
+  `Markdown.kt:161–169`.
+- [ ] **Map scale bar label doesn't update with zoom** — always reads
+  "6 leagues" regardless of zoom level. `WorldMapScreen.kt:181`.
+
+### UX Problems (fix for quality)
+
+- [ ] **Narration hidden behind tap** — `NarratorBubble` shows 3-line summary;
+  full prose requires tapping into a modal dialog. The narration IS the game.
+  `GameScreen.kt:2695–2781`.
+- [ ] **Structured segment ordering merges prose incorrectly** — all `Prose`
+  segments rendered at top, all NPC dialogue after, losing natural scene flow.
+  `GameScreen.kt:2291–2373`.
+- [ ] **Input field has no disabled visual during AI generation** — player can
+  type freely with no "waiting" cue. `GameScreen.kt:1156–1177`.
+- [ ] **Error card auto-dismisses silently in 5s** — no animation, countdown,
+  or visual hint that it's tappable. `GameScreen.kt:322–340`.
+- [ ] **Location name hard-capped at 110dp** — long names truncated regardless
+  of screen width. `GameScreen.kt:1073`.
+- [ ] **Empty chat state shows nothing** — blank screen with no placeholder on
+  first load. `GameScreen.kt:235–341`.
+- [ ] **Long NPC names overflow in dialogue bubbles and combat chips** — no
+  `maxLines`/`overflow` constraint. `GameScreen.kt:2983`, `1878`.
+- [ ] **Map travel dialog opens for unreachable locations** — shows dialog with
+  only a Close button and no explanation. `WorldMapScreen.kt:234–261`.
+- [ ] **Map traveling banner overlaps distance pills** — both use
+  `BottomCenter` alignment. `WorldMapScreen.kt:309–351`.
+- [ ] **Lore panel `ScrollableTabRow` conflicts with sheet dismiss gesture** —
+  horizontal swipe mis-routed as sheet dismiss. `Panels.kt:668–689`.
+- [ ] **Journal NPC detail card appears without animation** — abrupt layout
+  shift. `Panels.kt:1336–1342`.
+- [ ] **No error feedback for invalid API key format** — CTA silently disabled
+  with no hint. `ApiSetupScreen.kt:41, 107`.
+- [ ] **Shop sell price ignores item quantity** — selling a stack of 10 potions
+  yields the same gold as selling one. `ShopOverlay.kt:141–148`.
+
+### Design System Cleanup
+
+- [ ] **~15 hardcoded `Color(0xFF...)` in GameScreen.kt** — dark-mode-only
+  raw hex values; broken in light mode. Replace with `RealmsTheme.colors`
+  or `MaterialTheme.colorScheme`. Lines 660, 670, 2698, 2758, 2819, 2883, 2910.
+- [ ] **Hardcoded colors in Markdown.kt** — `parseInline` bold color
+  (`0xFFD4A843`) and code span colors are dark-mode only. Lines 137, 187.
+- [ ] **8 `BackstoryCard` calls with inline colors** — duplicates tokens
+  already in `Extended.kt`. `Panels.kt:2318–2326`.
+- [ ] **`CrimsonTextFontFamily` registers non-existent SemiBold weight** —
+  system synthesizes bold artificially. `Fonts.kt:36`.
+- [ ] **Activity theme parent is `Material.Light`** — flashes white on
+  dark-preference devices before Compose paints. `themes.xml:15`.
+
+### Accessibility
+
+- [ ] **App font scale ignores Android system font setting** —
+  `LocalFontScale` not wired to system accessibility. `GameScreen.kt:2112`.
+- [ ] **Bookmark touch targets below 48dp minimum** — `24–28dp` throughout.
+  `GameScreen.kt:2134, 2463, 2742`.
+- [ ] **Swipe/long-press gestures have no a11y alternative** — no
+  `Modifier.semantics` actions for screen reader users.
+  `GameScreen.kt:3134–3203`.
+
+### Improvements (nice to have)
+
+- [ ] **Choices FAB should show count badge** — `count` param accepted but
+  never displayed. `GameScreen.kt:1299–1308`.
+- [ ] **Active player combat chip should use gold, not error red** — visually
+  indistinct from enemy chips. `GameScreen.kt:1860–1867`.
+- [ ] **Party overflow `+N` should be tappable** — open Party panel on tap.
+  `GameScreen.kt:968–990`.
+- [ ] **Input field `maxLines = 3` clips long actions** — should be 5 or
+  scrollable. `GameScreen.kt:1163`.
+
+---
+
+## Gameplay Rework
+
+Systems that are tracked/displayed but mechanically incomplete:
+
+- [ ] **Spell slots never decrement on cast** — slots tracked, displayed,
+  restored on rest, but casting doesn't consume them. Spellcasters have
+  infinite resources. `Spells.kt`, `GameViewModel.kt`.
+- [ ] **Racial bonuses ignored** — `RaceDef.applyTo()` exists with per-race
+  stat bonuses but is never called. All races give a free +2/+1 to any stats.
+  `Races.kt`, `CharacterCreationScreen.kt`.
+- [ ] **Travel is adjacent-only, no pathfinding** — `startTravel()` requires a
+  direct road. No multi-hop routing. `GameViewModel.kt:427`.
+- [ ] **Morality not displayed in-game** — tracked, saved, passed to AI, but
+  no HUD indicator or panel entry. Players can't see their alignment.
+- [ ] **Character appearance not in AI prompts** — collected at creation but
+  never injected into the narrator prompt. `Prompts.kt`.
+- [ ] **Feat secondary effects unimplemented** — Alert (+5 initiative), Lucky
+  (reroll), Sharpshooter (ignore cover), GWM (+10 crit damage) are flavor
+  text only. `Feats.kt`.
+- [ ] **World event effects are prompt-only** — events describe price changes,
+  quest unlocks, etc. but no client-side state enforces them.
+  `WorldEvents.kt`.
 
 ---
 
