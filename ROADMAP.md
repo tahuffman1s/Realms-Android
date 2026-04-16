@@ -210,98 +210,93 @@ Small bugs/quirks surfaced during playtests that don't warrant a phase:
 
 ---
 
-## UI/UX
+## UI Rework
 
-Issues found via comprehensive UI audit. Organized by priority.
+Full UI overhaul to make the app feel like a polished native Android app.
+Chat feels like iMessage/Google Messages with Material You theming. All
+audited bugs, UX problems, and accessibility gaps are addressed within the
+phases. Full spec: `docs/superpowers/specs/2026-04-16-ui-rework-design.md`.
 
-### Bugs (fix before release)
+Ship in order: Phase 1 → 2 → 3 → 4, then 5 and 6 in any order.
 
-- [ ] **Tab.More sheet doesn't reopen on second tap** — `LaunchedEffect(tab)`
-  won't re-fire when the same key is set again. `GameScreen.kt:157–165`.
-- [ ] **`onNpcReply` clears keyboard focus instead of requesting it** —
-  `clearFocus()` called after prefilling text field, forcing a second tap.
-  `GameScreen.kt:252–256`.
-- [ ] **Legacy narration swipe-attack fires on old turns** — missing
-  `isLatestTurn` guard in the `splitNarration` path. `GameScreen.kt:2396–2413`.
-- [ ] **Save delete has no confirmation dialog** — one mis-tap destroys a save
-  permanently. `TitleScreen.kt:351`.
-- [ ] **ShopOverlay buyback tab state stuck** — when buyback stock empties while
-  tab is `"back"`, the tab disappears but state stays `"back"`, rendering
-  empty forever. `ShopOverlay.kt:74–76`.
-- [ ] **LevelUpOverlay dismissible with unassigned points** —
-  `dismissOnClickOutside = true` lets the player lose stat points by
-  accident. `Overlays.kt:53`.
-- [ ] **Markdown bold/italic parser falls through on unclosed bold** — unclosed
-  `**` falls into the `*italic*` branch, consuming mid-span content.
-  `Markdown.kt:161–169`.
-- [ ] **Map scale bar label doesn't update with zoom** — always reads
-  "6 leagues" regardless of zoom level. `WorldMapScreen.kt:181`.
+| Phase | What | Status | Fixes |
+|-------|------|--------|-------|
+| 1 | **Design System** — semantic color tokens, typography cleanup, markdown renderer, activity theme | 🔴 Next | Hardcoded colors, fake SemiBold, light flash, system font a11y |
+| 2 | **Chat Experience** — split GameScreen.kt (3.3k lines), document-order segments, collapsible narration, input UX, empty state, error handling | 🔴 Blocked on 1 | Narration behind tap, segment reorder, focus bug, swipe guard, a11y touch targets |
+| 3 | **Game Chrome** — two-row collapsing top bar, 4-tab bottom nav (Chat/Map/Character/Journal), contextual FAB | 🔴 Blocked on 2 | Tab.More re-entrancy, 110dp location cap, choices badge, combat chip colors |
+| 4 | **Panels** — split Panels.kt (2.4k lines) into CharacterTab + JournalTab + standalone sheets | 🔴 Blocked on 3 | Lore tab dismiss conflict, NPC card animation, equip toggle, sell qty, party height |
+| 5 | **Setup Flow** — ApiSetup, Title, CharacterCreation, Death screen polish | 🟢 After 3 | Save delete confirm, API key feedback, dead provider picker, step extraction |
+| 6 | **Map + Combat** — map fixes, combat HUD polish | 🟢 After 3 | Scale bar zoom, banner overlap, unreachable dialog, initiative chip overflow |
 
-### UX Problems (fix for quality)
+### Phase 1 — Design System
 
-- [ ] **Narration hidden behind tap** — `NarratorBubble` shows 3-line summary;
-  full prose requires tapping into a modal dialog. The narration IS the game.
-  `GameScreen.kt:2695–2781`.
-- [ ] **Structured segment ordering merges prose incorrectly** — all `Prose`
-  segments rendered at top, all NPC dialogue after, losing natural scene flow.
-  `GameScreen.kt:2291–2373`.
-- [ ] **Input field has no disabled visual during AI generation** — player can
-  type freely with no "waiting" cue. `GameScreen.kt:1156–1177`.
-- [ ] **Error card auto-dismisses silently in 5s** — no animation, countdown,
-  or visual hint that it's tappable. `GameScreen.kt:322–340`.
-- [ ] **Location name hard-capped at 110dp** — long names truncated regardless
-  of screen width. `GameScreen.kt:1073`.
-- [ ] **Empty chat state shows nothing** — blank screen with no placeholder on
-  first load. `GameScreen.kt:235–341`.
-- [ ] **Long NPC names overflow in dialogue bubbles and combat chips** — no
-  `maxLines`/`overflow` constraint. `GameScreen.kt:2983`, `1878`.
-- [ ] **Map travel dialog opens for unreachable locations** — shows dialog with
-  only a Close button and no explanation. `WorldMapScreen.kt:234–261`.
-- [ ] **Map traveling banner overlaps distance pills** — both use
-  `BottomCenter` alignment. `WorldMapScreen.kt:309–351`.
-- [ ] **Lore panel `ScrollableTabRow` conflicts with sheet dismiss gesture** —
-  horizontal swipe mis-routed as sheet dismiss. `Panels.kt:668–689`.
-- [ ] **Journal NPC detail card appears without animation** — abrupt layout
-  shift. `Panels.kt:1336–1342`.
-- [ ] **No error feedback for invalid API key format** — CTA silently disabled
-  with no hint. `ApiSetupScreen.kt:41, 107`.
-- [ ] **Shop sell price ignores item quantity** — selling a stack of 10 potions
-  yields the same gold as selling one. `ShopOverlay.kt:141–148`.
+- [ ] Replace ~20 hardcoded `Color(0xFF...)` with `RealmsTheme.colors` /
+  `MaterialTheme.colorScheme` tokens
+- [ ] Add bubble palette tokens to `Extended.kt`: `narratorBubble`,
+  `npcBubble`, `playerBubble`, `asideBubble`, `systemBubble` (+ on-colors)
+- [ ] Remove fake `SemiBold` from `CrimsonTextFontFamily`
+- [ ] Differentiate `titleLarge` (18sp) / `headlineSmall` (20sp)
+- [ ] Wire `LocalFontScale` to Android system font accessibility
+- [ ] Fix `parseInline` bold color and code span colors to use theme tokens
+- [ ] Fix unclosed `**bold**` fallthrough in markdown parser
+- [ ] Change `themes.xml` parent to `Material3.DarkNoActionBar`
 
-### Design System Cleanup
+### Phase 2 — Chat Experience
 
-- [ ] **~15 hardcoded `Color(0xFF...)` in GameScreen.kt** — dark-mode-only
-  raw hex values; broken in light mode. Replace with `RealmsTheme.colors`
-  or `MaterialTheme.colorScheme`. Lines 660, 670, 2698, 2758, 2819, 2883, 2910.
-- [ ] **Hardcoded colors in Markdown.kt** — `parseInline` bold color
-  (`0xFFD4A843`) and code span colors are dark-mode only. Lines 137, 187.
-- [ ] **8 `BackstoryCard` calls with inline colors** — duplicates tokens
-  already in `Extended.kt`. `Panels.kt:2318–2326`.
-- [ ] **`CrimsonTextFontFamily` registers non-existent SemiBold weight** —
-  system synthesizes bold artificially. `Fonts.kt:36`.
-- [ ] **Activity theme parent is `Material.Light`** — flashes white on
-  dark-preference devices before Compose paints. `themes.xml:15`.
+- [ ] Split `GameScreen.kt` → `ChatFeed.kt`, `MessageBubbles.kt`,
+  `NarrationBlock.kt`, `ChatInput.kt`, `GameScreen.kt` (scaffold only)
+- [ ] Render segments in document order (fix prose merging/reorder)
+- [ ] Bubble styles: left narrator, centered aside pill, left NPC with name
+  chip, right player, left system
+- [ ] Collapsible narration: latest turn full, older turns auto-collapse
+- [ ] Delete `ProseDetailDialog`
+- [ ] Input: `enabled` tied to `isGenerating`, placeholder swap, `maxLines = 5`
+- [ ] Fix `onNpcReply` to `requestFocus()` not `clearFocus()`
+- [ ] Fix legacy swipe-attack `isLatestTurn` guard
+- [ ] Empty state card when `messages.isEmpty()`
+- [ ] Error card: countdown ring, X dismiss, no silent auto-dismiss
+- [ ] Scroll-down indicator chip
+- [ ] Touch targets minimum 48dp (bookmarks, swipe a11y)
 
-### Accessibility
+### Phase 3 — Game Chrome
 
-- [ ] **App font scale ignores Android system font setting** —
-  `LocalFontScale` not wired to system accessibility. `GameScreen.kt:2112`.
-- [ ] **Bookmark touch targets below 48dp minimum** — `24–28dp` throughout.
-  `GameScreen.kt:2134, 2463, 2742`.
-- [ ] **Swipe/long-press gestures have no a11y alternative** — no
-  `Modifier.semantics` actions for screen reader users.
-  `GameScreen.kt:3134–3203`.
+- [ ] Two-row collapsing top bar: row 1 pinned (name + HP + gear),
+  row 2 collapses (location + turn + gold)
+- [ ] 4-tab bottom nav: Chat, Map, Character, Journal
+- [ ] Contextual FAB: choices (badge), combat (sword), rest (campfire),
+  hidden when no action
+- [ ] Settings gear icon → settings bottom sheet
+- [ ] Currency/exchange under Character > Stats
 
-### Improvements (nice to have)
+### Phase 4 — Panels
 
-- [ ] **Choices FAB should show count badge** — `count` param accepted but
-  never displayed. `GameScreen.kt:1299–1308`.
-- [ ] **Active player combat chip should use gold, not error red** — visually
-  indistinct from enemy chips. `GameScreen.kt:1860–1867`.
-- [ ] **Party overflow `+N` should be tappable** — open Party panel on tap.
-  `GameScreen.kt:968–990`.
-- [ ] **Input field `maxLines = 3` clips long actions** — should be 5 or
-  scrollable. `GameScreen.kt:1163`.
+- [ ] Split `Panels.kt` → `CharacterTab.kt` (`HorizontalPager`: Stats,
+  Inventory, Spells) + `JournalTab.kt` (`HorizontalPager`: Quests, NPCs,
+  Lore, Party) + `SettingsSheet.kt` + `ChoicesSheet.kt`
+- [ ] Extract page composables: `StatsPage`, `InventoryPage`, `SpellsPage`,
+  `QuestsPage`, `NpcJournalPage`, `LorePage`, `PartyPage`
+- [ ] Lore: `FilterChip` pills instead of `ScrollableTabRow`
+- [ ] NPC detail: `AnimatedVisibility(expandVertically())`
+- [ ] Inventory: equip reads latest VM state
+- [ ] Party: `heightIn(max)` constraint
+- [ ] Quest: `.entries` not `.values()`
+- [ ] Shop: sell price × quantity
+
+### Phase 5 — Setup Flow
+
+- [ ] ApiSetup: strip provider picker, key format hint, confirm-only save
+- [ ] Title: Material You cards, swipe-to-delete with undo Snackbar, hide
+  empty Load tile, collapsible graveyard
+- [ ] CharacterCreation: `LinearProgressIndicator`, step extraction, single
+  back button, clearer point-buy
+- [ ] Death: fix `moralityColor` dead code, loading placeholder
+
+### Phase 6 — Map + Combat
+
+- [ ] Map: scale bar updates with zoom, banner/pills no overlap, unreachable
+  location toast, empty state, Material You dialog surfaces
+- [ ] Combat: initiative chip `maxLines = 1` + ellipsis, player chip gold
+  border, enemy chips error container
 
 ---
 
