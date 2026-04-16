@@ -45,10 +45,22 @@ object QuestReducer {
             val idx = result.indexOfFirst { it.title.equals(title, true) && it.status == "active" }
             if (idx >= 0) {
                 val q = result[idx]
-                val oi = q.objectives.indexOfFirst { it.equals(obj, true) }
-                if (oi >= 0) q.completed[oi] = true else {
-                    q.objectives.add(obj)
-                    q.completed.add(true)
+                val exactIdx = q.objectives.indexOfFirst { it.equals(obj, true) }
+                if (exactIdx >= 0) {
+                    q.completed[exactIdx] = true
+                } else {
+                    val subIdx = q.objectives.indexOfFirst {
+                        it.contains(obj, true) || obj.contains(it, true)
+                    }
+                    if (subIdx >= 0) {
+                        if (obj.length > q.objectives[subIdx].length) {
+                            q.objectives[subIdx] = obj
+                        }
+                        q.completed[subIdx] = true
+                    } else {
+                        q.objectives.add(obj)
+                        q.completed.add(true)
+                    }
                 }
             }
         }

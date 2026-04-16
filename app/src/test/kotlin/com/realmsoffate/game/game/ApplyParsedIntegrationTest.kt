@@ -296,4 +296,77 @@ class ApplyParsedIntegrationTest {
         // Current behavior: disposition field is updated by the faction_update handler
         assertEquals("oppressive", updatedFaction?.disposition)
     }
+
+    // -------------------------------------------------------------------------
+    // Quest objective substring dedup
+    // -------------------------------------------------------------------------
+
+    @Test fun `quest objective superset replaces existing and marks complete`() {
+        val quest = Quest(
+            id = "q-the-rift",
+            title = "The Rift",
+            desc = "Investigate the rift.",
+            giver = "Scholar",
+            reward = "50 gold",
+            turnStarted = 1,
+            objectives = mutableListOf("Find someone who studies rifts"),
+            completed = mutableListOf(false),
+            status = "active",
+            location = "Testtown"
+        )
+        val state = GameStateFixture.baseState(
+            character = GameStateFixture.character(),
+            quests = listOf(quest)
+        )
+        val char = state.character!!
+        val vm = GameStateFixture.viewModelWithState(state)
+
+        val parsed = ParsedReplyBuilder()
+            .narration("You learn more.")
+            .addQuestUpdate("The Rift", "Find someone who studies rifts — the scroll merchant might point you")
+            .build()
+
+        val result = vm.applyParsed(state, char, parsed, "I ask around", roll = 10, mod = 0, prof = 0)
+
+        val q = result.quests.first { it.title == "The Rift" }
+        assertEquals("should still have 1 objective, not 2", 1, q.objectives.size)
+        assertTrue("objective should be marked complete", q.completed[0])
+        assertEquals(
+            "objective text should be replaced with the longer version",
+            "Find someone who studies rifts — the scroll merchant might point you",
+            q.objectives[0]
+        )
+    }
+
+    @Test fun `quest objective subset matches existing without adding duplicate`() {
+        val quest = Quest(
+            id = "q-the-rift",
+            title = "The Rift",
+            desc = "Investigate the rift.",
+            giver = "Scholar",
+            reward = "50 gold",
+            turnStarted = 1,
+            objectives = mutableListOf("Find someone who studies rifts — the scroll merchant might point you"),
+            completed = mutableListOf(false),
+            status = "active",
+            location = "Testtown"
+        )
+        val state = GameStateFixture.baseState(
+            character = GameStateFixture.character(),
+            quests = listOf(quest)
+        )
+        val char = state.character!!
+        val vm = GameStateFixture.viewModelWithState(state)
+
+        val parsed = ParsedReplyBuilder()
+            .narration("You learn more.")
+            .addQuestUpdate("The Rift", "Find someone who studies rifts")
+            .build()
+
+        val result = vm.applyParsed(state, char, parsed, "I ask around", roll = 10, mod = 0, prof = 0)
+
+        val q = result.quests.first { it.title == "The Rift" }
+        assertEquals("should still have 1 objective, not 2", 1, q.objectives.size)
+        assertTrue("objective should be marked complete", q.completed[0])
+    }
 }
