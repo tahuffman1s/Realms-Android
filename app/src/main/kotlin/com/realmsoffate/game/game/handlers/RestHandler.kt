@@ -38,6 +38,7 @@ class RestHandler(
     fun longRest() {
         val s = ui.value
         val ch = s.character?.deepCopy() ?: return
+        ch.hp = ch.maxHp
         SpellSlots.applyLongRest(ch)
         // Long rest clears most conditions (per D&D 5e). Keep narrative-permanent
         // markers like "Cursed" in place — the narrator can remove them explicitly.
