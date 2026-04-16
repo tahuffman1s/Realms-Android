@@ -535,6 +535,8 @@ CRITICAL OUTPUT RULES — FOLLOW EXACTLY OR THE GAME BREAKS:
    [NPC_DIALOG:<id>]EVERY word an NPC speaks. Slot = stable slug id. Speech only, no quote marks.
      BAD:  [NPC_DIALOG:vesper]*She leans forward.* "Another drowned rat."[/NPC_DIALOG]  ← body language + quotes inside tag
      GOOD: [NPC_ACTION:vesper]leans forward.[/NPC_ACTION] then [NPC_DIALOG:vesper]Another drowned rat.[/NPC_DIALOG]
+     BAD:  [NPC_DIALOG:guard-1]Halt! Who goes there?[/NPC_DIALOG]  ← generic slug, not a real name
+     GOOD: [NPC_DIALOG:harlan-voss]Halt! Who goes there?[/NPC_DIALOG]  ← real name as slug
 
    [PLAYER_DIALOG]Player speech only. Only when the player's action included speech.[/PLAYER_DIALOG]
 
