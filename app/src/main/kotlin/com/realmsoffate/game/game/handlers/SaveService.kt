@@ -70,6 +70,7 @@ class SaveService(
             savedAt = java.time.Instant.now().toString(),
             sceneDesc = s.currentSceneDesc,
             merchantStocks = s.merchantStocks,
+            availableMerchants = s.availableMerchants,
             buybackStocks = buyback,
             currentChoices = s.currentChoices,
             timeline = timeline.toList(),
@@ -113,6 +114,7 @@ class SaveService(
                 currentScene = d.scene,
                 currentSceneDesc = d.sceneDesc,
                 merchantStocks = d.merchantStocks,
+                availableMerchants = d.availableMerchants,
                 currentChoices = d.currentChoices,
                 // Restore the rendered chat feed if the save has it; otherwise show
                 // a single "loaded" line so the player has context.

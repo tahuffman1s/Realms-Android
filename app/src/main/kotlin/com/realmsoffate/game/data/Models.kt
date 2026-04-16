@@ -378,7 +378,8 @@ data class SaveData(
     val travelState: TravelState? = null,
     // ---- diagnostic trail: last ~50 AI exchanges, preserved across reloads ----
     val debugLog: List<DebugTurn> = emptyList(),
-    val bookmarks: List<String> = emptyList()
+    val bookmarks: List<String> = emptyList(),
+    val availableMerchants: List<String> = emptyList()
 )
 
 /**
