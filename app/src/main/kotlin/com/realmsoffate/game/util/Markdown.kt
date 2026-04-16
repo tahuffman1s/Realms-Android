@@ -37,6 +37,9 @@ fun NarrationMarkdown(
 ) {
     val style = baseStyle ?: MaterialTheme.typography.bodyLarge
     val realms = RealmsTheme.colors
+    val boldColor = realms.goldAccent
+    val codeBackground = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    val codeText = MaterialTheme.colorScheme.onSurfaceVariant
     val lines = text.trim().lines()
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         lines.forEach { raw ->
@@ -45,7 +48,7 @@ fun NarrationMarkdown(
                 line.isBlank() -> Spacer(Modifier.height(4.dp))
                 line.startsWith("### ") -> {
                     Text(
-                        parseInline(line.removePrefix("### ")),
+                        parseInline(line.removePrefix("### "), boldColor = boldColor, codeBackground = codeBackground, codeText = codeText),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
@@ -56,7 +59,7 @@ fun NarrationMarkdown(
                 }
                 line.startsWith("## ") -> {
                     Text(
-                        parseInline(line.removePrefix("## ")),
+                        parseInline(line.removePrefix("## "), boldColor = boldColor, codeBackground = codeBackground, codeText = codeText),
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
@@ -67,7 +70,7 @@ fun NarrationMarkdown(
                 }
                 line.startsWith("# ") -> {
                     Text(
-                        parseInline(line.removePrefix("# ")),
+                        parseInline(line.removePrefix("# "), boldColor = boldColor, codeBackground = codeBackground, codeText = codeText),
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 2.sp
@@ -102,7 +105,7 @@ fun NarrationMarkdown(
                             modifier = Modifier.padding(end = 8.dp)
                         )
                         Text(
-                            parseInline(line.removePrefix("- ").removePrefix("* ")),
+                            parseInline(line.removePrefix("- ").removePrefix("* "), boldColor = boldColor, codeBackground = codeBackground, codeText = codeText),
                             style = style,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -115,7 +118,7 @@ fun NarrationMarkdown(
                         modifier = Modifier.fillMaxWidth().padding(start = 4.dp, top = 2.dp, bottom = 2.dp)
                     ) {
                         Text(
-                            text = parseInline(line.removePrefix("> ")),
+                            text = parseInline(line.removePrefix("> "), boldColor = boldColor, codeBackground = codeBackground, codeText = codeText),
                             style = style.copy(fontStyle = FontStyle.Italic),
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                             color = MaterialTheme.colorScheme.onTertiaryContainer
@@ -124,7 +127,7 @@ fun NarrationMarkdown(
                 }
                 else -> {
                     Text(
-                        text = parseInline(line),
+                        text = parseInline(line, boldColor = boldColor, codeBackground = codeBackground, codeText = codeText),
                         style = style,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -134,14 +137,20 @@ fun NarrationMarkdown(
     }
 }
 
-fun parseInline(s: String, boldColor: Long = 0xFFD4A843, italicColor: Long = 0): AnnotatedString = buildAnnotatedString {
+fun parseInline(
+    s: String,
+    boldColor: Color = Color.Unspecified,
+    italicColor: Color = Color.Unspecified,
+    codeBackground: Color = Color.Unspecified,
+    codeText: Color = Color.Unspecified
+): AnnotatedString = buildAnnotatedString {
     var i = 0
     while (i < s.length) {
         // ***bold italic***
         if (i + 2 < s.length && s[i] == '*' && s[i + 1] == '*' && s[i + 2] == '*') {
             val end = s.indexOf("***", i + 3)
             if (end > 0) {
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic, color = Color(boldColor))) {
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic, color = boldColor)) {
                     append(s.substring(i + 3, end))
                 }
                 i = end + 3; continue
@@ -151,19 +160,19 @@ fun parseInline(s: String, boldColor: Long = 0xFFD4A843, italicColor: Long = 0):
         if (i + 1 < s.length && s[i] == '*' && s[i + 1] == '*') {
             val end = s.indexOf("**", i + 2)
             if (end > 0) {
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color(boldColor))) {
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = boldColor)) {
                     append(s.substring(i + 2, end))
                 }
                 i = end + 2; continue
             }
         }
-        // *italic*
-        if (s[i] == '*') {
+        // *italic* — guard against unclosed ** falling through
+        if (s[i] == '*' && !(i + 1 < s.length && s[i + 1] == '*')) {
             val end = s.indexOf('*', i + 1)
             if (end > 0) {
                 withStyle(SpanStyle(
                     fontStyle = FontStyle.Italic,
-                    color = if (italicColor != 0L) Color(italicColor) else Color.Unspecified
+                    color = italicColor
                 )) {
                     append(s.substring(i + 1, end))
                 }
@@ -184,7 +193,7 @@ fun parseInline(s: String, boldColor: Long = 0xFFD4A843, italicColor: Long = 0):
         if (s[i] == '`') {
             val end = s.indexOf('`', i + 1)
             if (end > 0) {
-                withStyle(SpanStyle(background = Color(0x33_B197FF), fontFamily = FontFamily.Monospace, color = Color(0xFFE8E1F0))) {
+                withStyle(SpanStyle(background = codeBackground, fontFamily = FontFamily.Monospace, color = codeText)) {
                     append(s.substring(i + 1, end))
                 }
                 i = end + 1; continue

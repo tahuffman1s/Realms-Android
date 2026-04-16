@@ -2105,7 +2105,12 @@ private fun PlayerBubble(
                         .removeSurrounding("\u201C", "\u201D")
                         .trim()
                     Text(
-                        text = com.realmsoffate.game.util.parseInline("\u201C$cleanText\u201D"),
+                        text = com.realmsoffate.game.util.parseInline(
+                            "\u201C$cleanText\u201D",
+                            boldColor = realms.goldAccent,
+                            codeBackground = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            codeText = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -2994,7 +2999,12 @@ private fun NpcDialogueBubble(
                             .removeSurrounding("\u2018", "\u2019")
                             .trim()
                         Text(
-                            text = com.realmsoffate.game.util.parseInline("\u201C$cleanQuote\u201D"),
+                            text = com.realmsoffate.game.util.parseInline(
+                                "\u201C$cleanQuote\u201D",
+                                boldColor = accent,
+                                codeBackground = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                codeText = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                                 color = Color.White.copy(alpha = 0.9f),
