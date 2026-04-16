@@ -31,9 +31,13 @@ import com.realmsoffate.game.ui.theme.RealmsTheme
 @Composable
 fun DeathScreen(vm: GameViewModel) {
     val death by vm.lastDeath.collectAsState()
-    val entry = death ?: return run {
-        // Safety fallback — shouldn't happen, but kick back to title if so.
-        vm.returnToTitle()
+    val entry = death
+    if (entry == null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        LaunchedEffect(Unit) { vm.returnToTitle() }
+        return
     }
 
     val realms = RealmsTheme.colors
@@ -235,7 +239,7 @@ private fun TimelineColumn(entries: List<TimelineEntry>) {
 private fun moralityColor(n: Int, r: com.realmsoffate.game.ui.theme.RealmsExtendedColors): Color = when {
     n >= 30 -> r.success
     n <= -30 -> r.fumbleRed
-    else -> Color.Unspecified.takeIf { false } ?: r.info
+    else -> r.info
 }
 
 private fun formatSigned(n: Int) = if (n >= 0) "+$n" else n.toString()

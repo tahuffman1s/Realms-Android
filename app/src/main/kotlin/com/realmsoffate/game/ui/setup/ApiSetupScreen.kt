@@ -98,7 +98,7 @@ fun ApiSetupScreen(vm: GameViewModel) {
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(
                 value = localKey,
-                onValueChange = { localKey = it; vm.setApiKey(it) },
+                onValueChange = { localKey = it },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text(provider.placeholder, style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)) },
                 singleLine = true,
@@ -106,6 +106,7 @@ fun ApiSetupScreen(vm: GameViewModel) {
                 trailingIcon = {
                     if (valid) Icon(Icons.Default.Lock, null, tint = realms.success)
                 },
+                supportingText = { Text("DeepSeek keys start with sk-") },
                 shape = RoundedCornerShape(14.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
@@ -113,7 +114,7 @@ fun ApiSetupScreen(vm: GameViewModel) {
 
             Spacer(Modifier.height(16.dp))
 
-            StartButton(valid = valid, onClick = { vm.confirmApiKey() })
+            StartButton(valid = valid, onClick = { vm.setApiKey(localKey); vm.confirmApiKey() })
 
             Spacer(Modifier.height(14.dp))
             Text(

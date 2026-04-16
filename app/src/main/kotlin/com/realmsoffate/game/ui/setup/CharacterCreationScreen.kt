@@ -83,11 +83,7 @@ fun CharacterCreationScreen(vm: GameViewModel) {
             Surface(tonalElevation = 1.dp) {
                 Column(Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (step > 0) {
-                            IconButton(onClick = { step-- }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                            }
-                        } else Spacer(Modifier.width(48.dp))
+                        Spacer(Modifier.width(48.dp))
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 stepTitle(step).uppercase(),
