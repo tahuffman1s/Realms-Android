@@ -1,16 +1,13 @@
 package com.realmsoffate.game.ui.game
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -18,6 +15,8 @@ import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.data.LogNpc
 import com.realmsoffate.game.game.CombatState
 import com.realmsoffate.game.game.Combatant
+import com.realmsoffate.game.ui.components.RealmsProgressBar
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
 @Composable
@@ -31,10 +30,10 @@ internal fun CombatHud(
         color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+        Column(Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.s)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("\u2694\uFE0F", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(RealmsSpacing.s))
                 Text(
                     "ROUND ${combat.round}",
                     style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 2.sp),
@@ -46,10 +45,10 @@ internal fun CombatHud(
                     val turnColor = if (active.isPlayer) realms.goldAccent else MaterialTheme.colorScheme.error
                     Surface(
                         color = turnColor.copy(alpha = 0.18f),
-                        shape = RoundedCornerShape(6.dp)
+                        shape = MaterialTheme.shapes.extraSmall
                     ) {
                         Row(
-                            Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            Modifier.padding(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.xxs),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
@@ -57,7 +56,7 @@ internal fun CombatHud(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = turnColor
                             )
-                            Spacer(Modifier.width(3.dp))
+                            Spacer(Modifier.width(RealmsSpacing.xxs))
                             Text(
                                 active.name.uppercase(),
                                 style = MaterialTheme.typography.labelSmall,
@@ -68,12 +67,12 @@ internal fun CombatHud(
                     }
                 }
             }
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(RealmsSpacing.xs))
             Row(
                 Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)
             ) {
                 combat.order.forEachIndexed { idx, c ->
                     InitiativeChip(c, active = idx == combat.activeIndex)
@@ -108,10 +107,10 @@ private fun InitiativeChip(c: Combatant, active: Boolean) {
     }
     Surface(
         color = chipBg,
-        shape = RoundedCornerShape(10.dp),
-        modifier = Modifier.border(1.dp, chipBorder, RoundedCornerShape(10.dp))
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier.border(1.dp, chipBorder, MaterialTheme.shapes.small)
     ) {
-        Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+        Column(Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xs)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (c.isPlayer) Text("\u2605", style = MaterialTheme.typography.labelSmall, color = realms.goldAccent)
                 else if (isEnemy) Text("\u2620", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
@@ -122,7 +121,7 @@ private fun InitiativeChip(c: Combatant, active: Boolean) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(RealmsSpacing.xs))
                 Text(
                     "i${c.initiative}",
                     style = MaterialTheme.typography.labelSmall,
@@ -136,21 +135,8 @@ private fun InitiativeChip(c: Combatant, active: Boolean) {
                     color = hpColor,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(Modifier.width(4.dp))
-                Box(
-                    Modifier
-                        .width(60.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth(pct)
-                            .fillMaxHeight()
-                            .background(hpColor)
-                    )
-                }
+                Spacer(Modifier.width(RealmsSpacing.xs))
+                RealmsProgressBar(progress = pct, color = hpColor, height = 4.dp, modifier = Modifier.width(60.dp))
             }
         }
     }

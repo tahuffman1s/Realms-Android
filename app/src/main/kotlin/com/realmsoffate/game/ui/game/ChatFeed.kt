@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.game.DisplayMessage
 import com.realmsoffate.game.game.GameUiState
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 
 @Composable
 internal fun ChatFeed(
@@ -36,7 +37,7 @@ internal fun ChatFeed(
     LazyColumn(
         state = listState,
         modifier = modifier,
-        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp),
+        contentPadding = PaddingValues(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.m),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Empty state — shown when there are no messages and nothing is generating
@@ -57,7 +58,7 @@ internal fun ChatFeed(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(RealmsSpacing.l))
                         Text(
                             "Your story begins...",
                             style = MaterialTheme.typography.bodyMedium,
@@ -100,7 +101,7 @@ internal fun ChatFeed(
             item {
                 Row(
                     Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
                 ) {
                     state.availableMerchants.forEach { merchant ->
                         Surface(
@@ -109,7 +110,7 @@ internal fun ChatFeed(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Row(
-                                Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                Modifier.padding(horizontal = RealmsSpacing.m, vertical = RealmsSpacing.s),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(Icons.Filled.Store, null, Modifier.size(18.dp))
@@ -129,7 +130,7 @@ internal fun ChatFeed(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                 ) {
                     Row(
-                        Modifier.padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+                        Modifier.padding(start = 14.dp, top = RealmsSpacing.s, bottom = RealmsSpacing.s, end = RealmsSpacing.xs),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(

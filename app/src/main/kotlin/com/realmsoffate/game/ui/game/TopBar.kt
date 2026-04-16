@@ -11,12 +11,10 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -27,6 +25,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.game.GameViewModel
+import com.realmsoffate.game.ui.components.RealmsProgressBar
+import com.realmsoffate.game.ui.theme.RealmsElevation
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
 // ============================================================
@@ -44,10 +45,10 @@ internal fun GameTopBar(
 
     Surface(
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp,
+        tonalElevation = RealmsElevation.low,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Column(Modifier.statusBarsPadding().padding(horizontal = RealmsSpacing.m, vertical = RealmsSpacing.s)) {
             // ----- Row 1: name | level badge | combat indicator | party icons | settings gear
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -57,10 +58,10 @@ internal fun GameTopBar(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(RealmsSpacing.s))
                 LevelBadge(ch.level)
                 if (state.currentScene == "battle") {
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(RealmsSpacing.xs))
                     CombatIndicator()
                 }
                 Spacer(Modifier.weight(1f))
@@ -71,22 +72,22 @@ internal fun GameTopBar(
                     Icon(Icons.Default.Settings, contentDescription = "Settings")
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(RealmsSpacing.s))
             // ----- Row 2: HP text + bar | XP text + bar | gold | location chip
             Row(verticalAlignment = Alignment.CenterVertically) {
                 HpInline(ch.hp, ch.maxHp, Modifier.weight(1.2f))
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(RealmsSpacing.s))
                 XpInline(ch.xp, ch.level, Modifier.weight(1.1f))
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(RealmsSpacing.s))
                 GoldInline("${ch.gold}", realms.goldAccent)
                 if (location != null) {
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(RealmsSpacing.s))
                     LocationInline(location.icon, location.name)
                 }
             }
             // ----- Row 3 (only when present): active conditions strip -----
             if (ch.conditions.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(RealmsSpacing.xs))
                 ConditionsStrip(ch.conditions)
             }
         }
@@ -97,7 +98,7 @@ internal fun GameTopBar(
 private fun ConditionsStrip(conditions: List<String>) {
     Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs),
         verticalAlignment = Alignment.CenterVertically
     ) {
         conditions.forEach { c -> ConditionChip(c) }
@@ -128,15 +129,15 @@ private fun ConditionChip(name: String) {
     }
     Surface(
         color = color.copy(alpha = 0.14f),
-        shape = RoundedCornerShape(10.dp),
-        modifier = Modifier.border(1.dp, color.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier.border(1.dp, color.copy(alpha = 0.5f), MaterialTheme.shapes.small)
     ) {
         Row(
-            Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            Modifier.padding(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.xxs),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(icon, style = MaterialTheme.typography.labelSmall)
-            Spacer(Modifier.width(3.dp))
+            Spacer(Modifier.width(RealmsSpacing.xxs))
             Text(
                 name,
                 style = MaterialTheme.typography.labelSmall,
@@ -153,14 +154,14 @@ private fun LevelBadge(level: Int) {
     val realms = RealmsTheme.colors
     Surface(
         color = realms.goldAccent.copy(alpha = 0.18f),
-        shape = RoundedCornerShape(6.dp)
+        shape = MaterialTheme.shapes.extraSmall
     ) {
         Text(
             "L$level",
             style = MaterialTheme.typography.labelMedium,
             color = realms.goldAccent,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            modifier = Modifier.padding(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.xxs)
         )
     }
 }
@@ -200,7 +201,7 @@ private fun PartyIcons(names: List<String>) {
                 "+${names.size - 3}",
                 fontSize = 10.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 8.dp)
+                modifier = Modifier.padding(start = RealmsSpacing.s)
             )
         }
     }
@@ -218,7 +219,7 @@ private fun HpInline(hp: Int, maxHp: Int, modifier: Modifier = Modifier) {
     Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("HP", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(RealmsSpacing.xs))
             Text(
                 "$hp/$maxHp",
                 style = MaterialTheme.typography.labelMedium,
@@ -226,13 +227,8 @@ private fun HpInline(hp: Int, maxHp: Int, modifier: Modifier = Modifier) {
                 fontWeight = FontWeight.Bold
             )
         }
-        Spacer(Modifier.height(2.dp))
-        LinearProgressIndicator(
-            progress = { pct },
-            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(4.dp)),
-            color = color,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        Spacer(Modifier.height(RealmsSpacing.xxs))
+        RealmsProgressBar(progress = pct, color = color)
     }
 }
 
@@ -245,20 +241,15 @@ private fun XpInline(xp: Int, level: Int, modifier: Modifier = Modifier) {
     Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("XP", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(RealmsSpacing.xs))
             Text(
                 "$xp / $next",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.secondary
             )
         }
-        Spacer(Modifier.height(2.dp))
-        LinearProgressIndicator(
-            progress = { pct },
-            modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(3.dp)),
-            color = MaterialTheme.colorScheme.secondary,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        Spacer(Modifier.height(RealmsSpacing.xxs))
+        RealmsProgressBar(progress = pct, color = MaterialTheme.colorScheme.secondary, height = 4.dp)
     }
 }
 
@@ -266,7 +257,7 @@ private fun XpInline(xp: Int, level: Int, modifier: Modifier = Modifier) {
 private fun GoldInline(value: String, tint: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text("\uD83D\uDCB0", style = MaterialTheme.typography.labelMedium)
-        Spacer(Modifier.width(2.dp))
+        Spacer(Modifier.width(RealmsSpacing.xxs))
         Text(
             value,
             style = MaterialTheme.typography.labelMedium,
@@ -280,7 +271,7 @@ private fun GoldInline(value: String, tint: Color) {
 private fun LocationInline(icon: String, name: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(icon, style = MaterialTheme.typography.labelMedium)
-        Spacer(Modifier.width(2.dp))
+        Spacer(Modifier.width(RealmsSpacing.xxs))
         Text(
             name,
             style = MaterialTheme.typography.labelMedium,

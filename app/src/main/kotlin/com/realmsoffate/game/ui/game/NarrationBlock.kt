@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.data.LogNpc
 import com.realmsoffate.game.data.NarrationSegmentData
 import com.realmsoffate.game.game.DisplayMessage
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 import com.realmsoffate.game.util.NarrationMarkdown
 
@@ -246,7 +247,7 @@ internal fun NarratorProseBubble(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { expanded = false }
-                        .padding(vertical = 4.dp),
+                        .padding(vertical = RealmsSpacing.xs),
                     textAlign = TextAlign.Center
                 )
             }
@@ -270,7 +271,7 @@ internal fun NarratorProseBubble(
                         "Tap to expand",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
+                        modifier = Modifier.padding(top = RealmsSpacing.xs)
                     )
                 }
             }

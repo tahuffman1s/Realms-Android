@@ -17,7 +17,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,6 +38,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.realmsoffate.game.game.DeathSaveState
 import com.realmsoffate.game.game.PreRollDisplay
+import com.realmsoffate.game.ui.theme.RealmsElevation
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 import kotlinx.coroutines.delay
 import kotlin.math.PI
@@ -131,8 +132,8 @@ internal fun PreRollDialog(
         )
     ) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
-            tonalElevation = 10.dp,
+            shape = MaterialTheme.shapes.large,
+            tonalElevation = RealmsElevation.high,
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier
                 .alpha(alpha.value)
@@ -140,7 +141,7 @@ internal fun PreRollDialog(
         ) {
             Column(
                 Modifier
-                    .padding(horizontal = 22.dp, vertical = 22.dp)
+                    .padding(RealmsSpacing.xxl)
                     .widthIn(min = 300.dp, max = 360.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -172,7 +173,7 @@ internal fun PreRollDialog(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(RealmsSpacing.xl))
 
                 // ---- d20 silhouette ----
                 Box(
@@ -233,7 +234,7 @@ internal fun PreRollDialog(
 
                 // ---- Crit / fumble flourish ----
                 if (pre.crit && spinComplete) {
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(RealmsSpacing.s))
                     Text(
                         if (pre.roll == 20) "🌟 NATURAL TWENTY"
                         else "💀 NATURAL ONE",
@@ -247,7 +248,7 @@ internal fun PreRollDialog(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 8.dp)
+                        modifier = Modifier.padding(horizontal = RealmsSpacing.s)
                     )
                 }
 
@@ -341,7 +342,7 @@ internal fun PreRollDialog(
                     }
                 }
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(RealmsSpacing.m))
                 Text(
                     "The narrator sets the DC.",
                     style = MaterialTheme.typography.labelSmall.copy(
@@ -357,7 +358,7 @@ internal fun PreRollDialog(
                     onClick = onConfirm,
                     enabled = spinComplete,
                     modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = MaterialTheme.shapes.medium,
                     colors = ButtonDefaults.buttonColors(containerColor = dieColor)
                 ) {
                     Text(
@@ -417,26 +418,26 @@ internal fun DeathSaveDialog(
             contentAlignment = Alignment.Center
         ) {
             Surface(
-                shape = RoundedCornerShape(24.dp),
+                shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp,
+                tonalElevation = RealmsElevation.medium,
                 modifier = Modifier.widthIn(min = 300.dp)
             ) {
                 Column(
-                    Modifier.padding(28.dp),
+                    Modifier.padding(RealmsSpacing.xxl),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
                         "\uD83D\uDC80",
                         style = MaterialTheme.typography.displayMedium
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(RealmsSpacing.s))
                     Text(
                         "DEATH SAVES",
                         style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 6.sp),
                         color = realms.fumbleRed
                     )
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(RealmsSpacing.m))
                     Text(
                         "You're bleeding out. Roll d20 — \u226510 succeeds, <10 fails. 3 successes stabilise, 3 failures end it.",
                         style = MaterialTheme.typography.bodySmall,
@@ -444,7 +445,7 @@ internal fun DeathSaveDialog(
                         textAlign = TextAlign.Center
                     )
                     Spacer(Modifier.height(14.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)) {
                         ScoreCol("SUCCESSES", saves.successes, realms.success)
                         ScoreCol("FAILURES", saves.failures, realms.fumbleRed)
                     }
@@ -456,10 +457,10 @@ internal fun DeathSaveDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(RealmsSpacing.l))
                     Button(
                         onClick = onRoll,
-                        shape = RoundedCornerShape(14.dp),
+                        shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = realms.fumbleRed,
@@ -476,8 +477,8 @@ internal fun DeathSaveDialog(
 private fun ScoreCol(label: String, count: Int, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = color)
-        Spacer(Modifier.height(4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Spacer(Modifier.height(RealmsSpacing.xs))
+        Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)) {
             repeat(3) { i ->
                 Box(
                     Modifier

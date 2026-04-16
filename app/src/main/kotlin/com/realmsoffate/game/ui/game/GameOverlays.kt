@@ -18,7 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.data.Choice
 import com.realmsoffate.game.game.GameUiState
+import com.realmsoffate.game.ui.theme.RealmsElevation
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
 // ============================================================
@@ -42,22 +43,22 @@ internal fun MemoriesPanel(state: GameUiState, onClose: () -> Unit, onDelete: (S
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 8.dp)) {
+        Column(Modifier.padding(horizontal = 18.dp, vertical = RealmsSpacing.s)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Bookmark, null, Modifier.size(20.dp), tint = realms.goldAccent)
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(RealmsSpacing.s))
                 Text("MEMORIES", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Close") }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(RealmsSpacing.s))
             if (state.bookmarks.isEmpty()) {
                 Text(
                     "No moments pinned yet.\nTap the bookmark icon on any message bubble to save it.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(24.dp)
+                    modifier = Modifier.padding(RealmsSpacing.xxl)
                 )
             } else {
                 LazyColumn(
@@ -67,11 +68,11 @@ internal fun MemoriesPanel(state: GameUiState, onClose: () -> Unit, onDelete: (S
                     items(state.bookmarks) { text ->
                         Surface(
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(14.dp),
+                            shape = MaterialTheme.shapes.medium,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
-                                Modifier.padding(12.dp),
+                                Modifier.padding(RealmsSpacing.m),
                                 verticalAlignment = Alignment.Top
                             ) {
                                 Icon(
@@ -80,7 +81,7 @@ internal fun MemoriesPanel(state: GameUiState, onClose: () -> Unit, onDelete: (S
                                     Modifier.size(16.dp).padding(top = 2.dp),
                                     tint = realms.goldAccent
                                 )
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(RealmsSpacing.s))
                                 Text(
                                     text,
                                     style = MaterialTheme.typography.bodySmall,
@@ -104,7 +105,7 @@ internal fun MemoriesPanel(state: GameUiState, onClose: () -> Unit, onDelete: (S
                     }
                 }
             }
-            Spacer(Modifier.navigationBarsPadding().height(12.dp))
+            Spacer(Modifier.navigationBarsPadding().height(RealmsSpacing.m))
         }
     }
 }
@@ -132,16 +133,16 @@ internal fun SettingsPanel(
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 8.dp)) {
+        Column(Modifier.padding(horizontal = 18.dp, vertical = RealmsSpacing.s)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Tune, null, Modifier.size(20.dp), tint = realms.goldAccent)
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(RealmsSpacing.s))
                 Text("SETTINGS", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Close") }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(RealmsSpacing.xl))
 
             Text(
                 "FONT SIZE",
@@ -149,13 +150,13 @@ internal fun SettingsPanel(
                 color = realms.goldAccent,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(RealmsSpacing.xs))
             Text(
                 "Adjusts text size across all chat bubbles",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(RealmsSpacing.l))
 
             // Preview text at current scale
             Surface(
@@ -174,7 +175,7 @@ internal fun SettingsPanel(
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(RealmsSpacing.l))
 
             // Slider
             Row(
@@ -186,7 +187,7 @@ internal fun SettingsPanel(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(RealmsSpacing.s))
                 Slider(
                     value = fontScale,
                     onValueChange = { onFontScaleChange(it) },
@@ -194,7 +195,7 @@ internal fun SettingsPanel(
                     steps = 0,
                     modifier = Modifier.weight(1f)
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(RealmsSpacing.s))
                 Text(
                     "A",
                     style = MaterialTheme.typography.titleLarge,
@@ -211,38 +212,38 @@ internal fun SettingsPanel(
                 textAlign = TextAlign.Center
             )
 
-            HorizontalDivider(Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(Modifier.padding(vertical = RealmsSpacing.m))
 
             // Utility actions
-            Text("Actions", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(bottom = 8.dp))
+            Text("Actions", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(bottom = RealmsSpacing.s))
 
             OutlinedButton(
                 onClick = { onExportSave(); onClose() },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Export Save") }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(RealmsSpacing.s))
 
             OutlinedButton(
                 onClick = { onShortRest() },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Short Rest") }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(RealmsSpacing.s))
 
             OutlinedButton(
                 onClick = { onLongRest() },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Long Rest") }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(RealmsSpacing.s))
 
             OutlinedButton(
                 onClick = { onDebugDump(); onClose() },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Debug Dump") }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(RealmsSpacing.l))
 
             OutlinedButton(
                 onClick = { onReturnToTitle() },
@@ -250,7 +251,7 @@ internal fun SettingsPanel(
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
             ) { Text("Return to Title") }
 
-            Spacer(Modifier.navigationBarsPadding().height(12.dp))
+            Spacer(Modifier.navigationBarsPadding().height(RealmsSpacing.m))
         }
     }
 }
@@ -283,24 +284,24 @@ internal fun TutorialOverlay(step: Int, onNext: () -> Unit, onDismiss: () -> Uni
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.72f))
+            .background(realms.scrimOverlay)
             .clickable(onClick = onNext),
         contentAlignment = current.alignment
     ) {
         Surface(
-            shape = RoundedCornerShape(20.dp),
+            shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 8.dp,
+            tonalElevation = RealmsElevation.medium,
             modifier = Modifier
-                .padding(24.dp)
+                .padding(RealmsSpacing.xxl)
                 .widthIn(max = 340.dp)
         ) {
             Column(
-                Modifier.padding(20.dp),
+                Modifier.padding(RealmsSpacing.xl),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(current.icon, fontSize = 40.sp)
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(RealmsSpacing.m))
                 Text(
                     current.title,
                     style = MaterialTheme.typography.titleMedium,
@@ -308,16 +309,16 @@ internal fun TutorialOverlay(step: Int, onNext: () -> Unit, onDismiss: () -> Uni
                     color = realms.goldAccent,
                     textAlign = TextAlign.Center
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(RealmsSpacing.s))
                 Text(
                     current.message,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(RealmsSpacing.l))
                 // Progress dots
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)) {
                     steps.indices.forEach { i ->
                         Box(
                             Modifier
@@ -336,7 +337,7 @@ internal fun TutorialOverlay(step: Int, onNext: () -> Unit, onDismiss: () -> Uni
                 Spacer(Modifier.height(14.dp))
                 Row(
                     Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
                 ) {
                     TextButton(
                         onClick = onDismiss,
@@ -377,11 +378,11 @@ internal fun ChoicesSheet(
         sheetState = sheet,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.s)) {
             Text("YOUR CHOICES", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(10.dp))
-            choices.forEach { c -> ChoiceTile(c, onClick = { onPick(c) }) ; Spacer(Modifier.height(8.dp)) }
-            Spacer(Modifier.navigationBarsPadding().height(12.dp))
+            choices.forEach { c -> ChoiceTile(c, onClick = { onPick(c) }) ; Spacer(Modifier.height(RealmsSpacing.s)) }
+            Spacer(Modifier.navigationBarsPadding().height(RealmsSpacing.m))
         }
     }
 }
@@ -420,13 +421,13 @@ internal fun MoreMenuSheet(
         sheetState = sheet,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
-        Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = RealmsSpacing.s)) {
             Text("MORE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(10.dp))
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s),
+                horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s),
                 modifier = Modifier.heightIn(max = 420.dp)
             ) {
                 items(items) { (icon, pair) ->
@@ -434,7 +435,7 @@ internal fun MoreMenuSheet(
                     MoreTile(icon = icon, label = label, onClick = { onAction(action) })
                 }
             }
-            Spacer(Modifier.navigationBarsPadding().height(12.dp))
+            Spacer(Modifier.navigationBarsPadding().height(RealmsSpacing.m))
         }
     }
 }
@@ -443,7 +444,7 @@ internal fun MoreMenuSheet(
 internal fun MoreTile(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
     Column(
         Modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .clickable(onClick = onClick)
             .padding(vertical = 10.dp)

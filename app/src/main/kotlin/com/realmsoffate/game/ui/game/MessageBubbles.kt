@@ -21,7 +21,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material.icons.Icons
@@ -49,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.data.Choice
 import com.realmsoffate.game.data.LogNpc
 import com.realmsoffate.game.game.DisplayMessage
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
 // ============================================================
@@ -64,24 +64,10 @@ internal fun sceneEmoji(s: String): String = when (s) {
     "underground" -> "\uD83D\uDD73\uFE0F"; else -> "\uD83C\uDF0C"
 }
 
-/** Stable color palette for NPC dialogue — each NPC gets a consistent hue derived from their name. */
-internal val npcColorPalette = listOf(
-    Color(0xFF4A9E5E) to Color(0xFF1B3D23), // green
-    Color(0xFF5B7FC7) to Color(0xFF1C2D4A), // blue
-    Color(0xFFD4A843) to Color(0xFF3D3118), // gold
-    Color(0xFFC44040) to Color(0xFF3D1818), // red
-    Color(0xFF8B6CC7) to Color(0xFF2D1F42), // purple
-    Color(0xFF4AA8A8) to Color(0xFF1A3636), // teal
-    Color(0xFFCC6633) to Color(0xFF3D2010), // orange
-    Color(0xFFAA44AA) to Color(0xFF361836), // magenta
-    Color(0xFF6A9E3A) to Color(0xFF223312), // lime
-    Color(0xFF5577CC) to Color(0xFF1A2540), // steel blue
-)
-
-internal fun npcColor(name: String): Pair<Color, Color> {
-    if (name.isBlank()) return npcColorPalette[0]
-    val idx = (name.lowercase().hashCode() and 0x7FFFFFFF) % npcColorPalette.size
-    return npcColorPalette[idx]
+internal fun npcColor(name: String, palette: List<Pair<Color, Color>>): Pair<Color, Color> {
+    if (name.isBlank()) return palette[0]
+    val idx = (name.lowercase().hashCode() and 0x7FFFFFFF) % palette.size
+    return palette[idx]
 }
 
 /**
@@ -127,7 +113,7 @@ internal fun SceneBanner(scene: String, desc: String) {
     ) {
         Row(
             Modifier
-                .padding(horizontal = 18.dp, vertical = 10.dp)
+                .padding(horizontal = RealmsSpacing.xl, vertical = RealmsSpacing.s)
                 .animateContentSize(animationSpec = tween(220)),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -175,12 +161,12 @@ internal fun PlayerBubble(
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
         Surface(
             color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-            shape = RoundedCornerShape(14.dp),
+            shape = MaterialTheme.shapes.medium,
             modifier = Modifier.fillMaxWidth(0.85f).border(
-                1.dp, realms.goldAccent.copy(alpha = 0.45f), RoundedCornerShape(14.dp)
+                1.dp, realms.goldAccent.copy(alpha = 0.45f), MaterialTheme.shapes.medium
             )
         ) {
-            Row(Modifier.padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp)) {
+            Row(Modifier.padding(start = RealmsSpacing.l, end = RealmsSpacing.xs, top = RealmsSpacing.s, bottom = RealmsSpacing.s)) {
                 Column(Modifier.weight(1f)) {
                     Text(
                         "$displayName:",
@@ -328,14 +314,14 @@ internal fun StatChangePills(msg: DisplayMessage.Narration) {
             pills.forEach { (text, bg, fg) ->
                 Surface(
                     color = bg,
-                    shape = RoundedCornerShape(20.dp)
+                    shape = MaterialTheme.shapes.large
                 ) {
                     Text(
                         text,
                         style = MaterialTheme.typography.labelSmall,
                         color = fg,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xs)
                     )
                 }
             }
@@ -352,7 +338,7 @@ internal fun NarratorQuipBubble(
     // Rendered as plain, smaller, centered gray italic text — no surface, no border, no header.
     // Extra vertical padding gives breathing room between the quip and neighboring bubbles.
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().padding(horizontal = RealmsSpacing.xl, vertical = RealmsSpacing.m),
         horizontalArrangement = Arrangement.Center
     ) {
         Text(
@@ -378,7 +364,7 @@ internal fun NpcDialogueBubble(
     onReaction: (String) -> Unit = {},
     isInteractive: Boolean = true
 ) {
-    val (accent, bgTint) = npcColor(name)
+    val (accent, bgTint) = npcColor(name, RealmsTheme.colors.npcPalette)
     var showReactions by remember { mutableStateOf(false) }
     var appliedReaction by remember { mutableStateOf<String?>(null) }
 
@@ -387,7 +373,7 @@ internal fun NpcDialogueBubble(
         Box(Modifier.padding(bottom = if (appliedReaction != null) 8.dp else 0.dp)) {
             Surface(
                 color = bgTint.copy(alpha = 0.75f),
-                shape = RoundedCornerShape(14.dp),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier
                     .fillMaxWidth(0.92f)
                     .combinedClickable(
@@ -395,7 +381,7 @@ internal fun NpcDialogueBubble(
                         onLongClick = { if (isInteractive) showReactions = !showReactions }
                     )
             ) {
-                Row(Modifier.padding(start = 14.dp, end = 6.dp, top = 8.dp, bottom = 8.dp)) {
+                Row(Modifier.padding(start = RealmsSpacing.l, end = RealmsSpacing.xs, top = RealmsSpacing.s, bottom = RealmsSpacing.s)) {
                     if (name.isNotBlank()) {
                         Box(
                             Modifier.size(24.dp).clip(CircleShape)
@@ -461,7 +447,7 @@ internal fun NpcDialogueBubble(
             // Applied reaction pill — overlapping bottom-right
             appliedReaction?.let { emoji ->
                 Surface(
-                    shape = RoundedCornerShape(50),
+                    shape = CircleShape,
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     border = BorderStroke(
                         1.dp,
@@ -476,7 +462,7 @@ internal fun NpcDialogueBubble(
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier.padding(horizontal = 6.dp)
+                        modifier = Modifier.padding(horizontal = RealmsSpacing.xs)
                     ) {
                         Text(emoji, fontSize = 14.sp)
                     }
@@ -492,13 +478,13 @@ internal fun NpcDialogueBubble(
         ) {
             Surface(
                 color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(24.dp),
+                shape = MaterialTheme.shapes.large,
                 tonalElevation = 3.dp,
                 shadowElevation = 2.dp,
-                modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                modifier = Modifier.padding(start = RealmsSpacing.s, top = RealmsSpacing.xs)
             ) {
                 Row(
-                    Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                    Modifier.padding(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.xxs),
                     horizontalArrangement = Arrangement.spacedBy(0.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -587,7 +573,7 @@ internal fun SwipeableMessage(
         Row(
             Modifier
                 .matchParentSize()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = RealmsSpacing.l),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Left side (revealed on swipe right) — Examine
@@ -651,10 +637,10 @@ internal fun EventCard(icon: String, title: String, text: String) {
     val realms = RealmsTheme.colors
     Surface(
         color = realms.warning.copy(alpha = 0.14f),
-        shape = RoundedCornerShape(14.dp),
-        modifier = Modifier.fillMaxWidth().border(1.dp, realms.warning.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth().border(1.dp, realms.warning.copy(alpha = 0.5f), MaterialTheme.shapes.medium)
     ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Column(Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.s)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(icon, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.width(8.dp))
@@ -682,14 +668,14 @@ internal fun SystemLine(text: String) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
         Surface(
             color = bg,
-            shape = RoundedCornerShape(20.dp)
+            shape = MaterialTheme.shapes.large
         ) {
             Text(
                 text,
                 style = MaterialTheme.typography.labelMedium,
                 color = fg,
                 fontWeight = if (text.startsWith("✓") || text.startsWith("✗")) FontWeight.Bold else FontWeight.Normal,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                modifier = Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xs)
             )
         }
     }
@@ -703,7 +689,7 @@ internal fun NarratorThinking() {
         animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
         label = "alpha"
     )
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.xs)) {
         Box(Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = alpha)))
         Spacer(Modifier.width(6.dp))
         Box(Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = alpha * 0.75f)))
@@ -723,11 +709,11 @@ internal fun ChoiceTile(c: Choice, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(14.dp),
-        modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            Modifier.fillMaxWidth().padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.m),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -740,12 +726,12 @@ internal fun ChoiceTile(c: Choice, onClick: () -> Unit) {
             Text(c.text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             if (c.skill.isNotBlank()) {
                 Spacer(Modifier.width(8.dp))
-                Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = RoundedCornerShape(8.dp)) {
+                Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = MaterialTheme.shapes.extraSmall) {
                     Text(
                         c.skill.uppercase(),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                        modifier = Modifier.padding(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.xxs)
                     )
                 }
             }

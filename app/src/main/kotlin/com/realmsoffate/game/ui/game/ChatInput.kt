@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.ui.overlays.TargetPromptSpec
+import com.realmsoffate.game.ui.theme.RealmsElevation
+import com.realmsoffate.game.ui.theme.RealmsSpacing
 
 @Composable
 internal fun GameInputBar(
@@ -51,15 +53,15 @@ internal fun GameInputBar(
                 }
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 2.dp,
+                    tonalElevation = RealmsElevation.low,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         Modifier
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            .padding(horizontal = 10.dp, vertical = RealmsSpacing.s),
+                        horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         ActionChip(Icons.Filled.GpsFixed, "Attack", onClick = {
@@ -88,11 +90,11 @@ internal fun GameInputBar(
         // ---- Input row (its own surface so the divider between hotbar +
         //      input is visually obvious on mobile) ----
         Surface(
-            tonalElevation = 4.dp,
+            tonalElevation = RealmsElevation.low,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
-                Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                Modifier.padding(horizontal = 10.dp, vertical = RealmsSpacing.s),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
@@ -106,11 +108,11 @@ internal fun GameInputBar(
                             style = MaterialTheme.typography.bodyMedium
                         )
                     },
-                    shape = RoundedCornerShape(24.dp),
+                    shape = MaterialTheme.shapes.large,
                     singleLine = false,
                     maxLines = 5
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(RealmsSpacing.s))
                 FilledIconButton(
                     onClick = onSend,
                     enabled = input.isNotBlank() && !state.isGenerating,
@@ -136,7 +138,7 @@ private fun ActionChip(icon: androidx.compose.ui.graphics.vector.ImageVector, la
         modifier = Modifier.height(46.dp)  // bigger touch target
     ) {
         Row(
-            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            Modifier.padding(horizontal = RealmsSpacing.m, vertical = RealmsSpacing.s),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
@@ -176,9 +178,9 @@ private fun SpellChip(slot: Int, name: String, icon: String, onClick: () -> Unit
         modifier = Modifier.height(46.dp)
     ) {
         Row(
-            Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            Modifier.padding(horizontal = 10.dp, vertical = RealmsSpacing.s),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)
         ) {
             Box(
                 Modifier
