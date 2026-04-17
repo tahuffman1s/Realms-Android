@@ -12,6 +12,8 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -88,11 +90,14 @@ fun RealmsTheme(
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    val debugTheme by com.realmsoffate.game.debug.DebugHook.themeOverride.collectAsState()
+    val effectiveDarkTheme = debugTheme ?: darkTheme
+
     val context = LocalContext.current
     val colors: ColorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        darkTheme -> FallbackDark
+            if (effectiveDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        effectiveDarkTheme -> FallbackDark
         else -> FallbackLight
     }
 
@@ -104,13 +109,13 @@ fun RealmsTheme(
             window.navigationBarColor = Color.Transparent.toArgb()
             WindowCompat.setDecorFitsSystemWindows(window, false)
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !darkTheme
-                isAppearanceLightNavigationBars = !darkTheme
+                isAppearanceLightStatusBars = !effectiveDarkTheme
+                isAppearanceLightNavigationBars = !effectiveDarkTheme
             }
         }
     }
 
-    CompositionLocalProvider(LocalRealmsColors provides extendedColorsFor(darkTheme)) {
+    CompositionLocalProvider(LocalRealmsColors provides extendedColorsFor(effectiveDarkTheme)) {
         MaterialTheme(
             colorScheme = colors,
             typography = RealmsTypography,

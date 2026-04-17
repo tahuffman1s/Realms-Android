@@ -51,7 +51,9 @@ fun GameScreen(vm: GameViewModel) {
     val focus = LocalFocusManager.current
     val listState = rememberLazyListState()
     val context = LocalContext.current
-    val fontScale by vm.fontScale.collectAsState()
+    val debugFontScale by com.realmsoffate.game.debug.DebugHook.fontScaleOverride.collectAsState()
+    val vmFontScale by vm.fontScale.collectAsState()
+    val fontScale = debugFontScale ?: vmFontScale
 
     // Export JSON launcher — wired to the More menu's Download tile.
     val exportLauncher = rememberLauncherForActivityResult(
@@ -164,7 +166,9 @@ fun GameScreen(vm: GameViewModel) {
                             }
                         },
                         onTargetPrompt = { vm.requestTargetPrompt(it) },
-                        onSpellsOpen = { panel = Panel.Spells }
+                        onSpellsOpen = { panel = Panel.Spells },
+                        hasChoices = state.currentChoices.isNotEmpty(),
+                        onChoicesOpen = { choicesOpen = true }
                     )
                 }
                 GameBottomNav(
@@ -179,15 +183,6 @@ fun GameScreen(vm: GameViewModel) {
         floatingActionButton = {
             if (tab == GameTab.Chat && !state.isGenerating) {
                 when {
-                    state.currentChoices.isNotEmpty() -> {
-                        ExtendedFloatingActionButton(
-                            onClick = { choicesOpen = true },
-                            icon = { Icon(Icons.AutoMirrored.Filled.List, "Choices") },
-                            text = { Text("${state.currentChoices.size} choices") },
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
                     state.combat != null -> {
                         FloatingActionButton(
                             onClick = {

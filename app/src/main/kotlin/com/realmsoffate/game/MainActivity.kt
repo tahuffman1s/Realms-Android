@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        com.realmsoffate.game.debug.DebugHook.onAttach?.invoke(this, viewModel)
         setContent {
             RealmsTheme {
                 Surface(
