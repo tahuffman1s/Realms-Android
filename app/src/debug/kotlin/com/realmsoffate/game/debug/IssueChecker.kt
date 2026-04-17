@@ -44,63 +44,76 @@ object IssueChecker {
     private fun Bitmap.contains(x: Int, y: Int): Boolean =
         x in 0 until width && y in 0 until height
 
-    /** Clamp the rect to bitmap bounds; returns null if entirely outside. */
-    private fun Bitmap.clamp(r: Rect): Rect? {
-        val clamped = Rect(
-            max(0, r.left),
-            max(0, r.top),
-            min(width, r.right),
-            min(height, r.bottom)
+    /** Squared Euclidean distance in RGB space. */
+    private fun colorDistSq(a: Int, b: Int): Int {
+        val dr = Color.red(a) - Color.red(b)
+        val dg = Color.green(a) - Color.green(b)
+        val db = Color.blue(a) - Color.blue(b)
+        return dr * dr + dg * dg + db * db
+    }
+
+    /**
+     * Sample a dense grid inside [bounds], then split pixels into background
+     * (the dominant color cluster) and foreground (anything sufficiently
+     * different). Returns `(foreground, background)` or null if sampling
+     * failed or only one color cluster was found (meaning we couldn't
+     * distinguish text from its background — skip the check instead of
+     * reporting a false positive).
+     *
+     * The inner 60% of the bounds is sampled to avoid borders, shadows,
+     * and edge anti-aliasing.
+     */
+    private fun sampleFgBg(bitmap: Bitmap, bounds: Rect): Pair<Int, Int>? {
+        // Shrink to inner 60% to avoid borders/shadows
+        val insetX = (bounds.width() * 0.2f).toInt()
+        val insetY = (bounds.height() * 0.2f).toInt()
+        val inner = Rect(
+            max(0, bounds.left + insetX),
+            max(0, bounds.top + insetY),
+            min(bitmap.width, bounds.right - insetX),
+            min(bitmap.height, bounds.bottom - insetY)
         )
-        return if (clamped.isEmpty) null else clamped
-    }
+        if (inner.isEmpty || inner.width() < 4 || inner.height() < 4) return null
 
-    /**
-     * Sample the four corners of [bounds] and return the most common color
-     * as the estimated background color.  Falls back to the first valid
-     * corner if counts are tied.
-     */
-    private fun sampleBackground(bitmap: Bitmap, bounds: Rect): Int? {
-        val clamped = bitmap.clamp(bounds) ?: return null
-        val candidates = listOf(
-            clamped.left  to clamped.top,
-            clamped.right - 1 to clamped.top,
-            clamped.left  to clamped.bottom - 1,
-            clamped.right - 1 to clamped.bottom - 1
-        ).filter { (x, y) -> bitmap.contains(x, y) }
-
-        if (candidates.isEmpty()) return null
-
-        val colors = candidates.map { (x, y) -> bitmap.getPixel(x, y) }
-        return colors.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
-            ?: colors.first()
-    }
-
-    /**
-     * Sample a small cross pattern at the center of [bounds].
-     * Returns the pixel that deviates most from [background] — that is
-     * the text/foreground color.
-     */
-    private fun sampleTextColor(bitmap: Bitmap, bounds: Rect, background: Int): Int? {
-        val cx = (bounds.left + bounds.right) / 2
-        val cy = (bounds.top + bounds.bottom) / 2
-        val radius = 3
-
-        val samples = buildList {
-            add(cx to cy)
-            for (d in 1..radius) {
-                add(cx + d to cy)
-                add(cx - d to cy)
-                add(cx to cy + d)
-                add(cx to cy - d)
+        // Sample a grid of points (up to ~100 samples)
+        val stepX = max(1, inner.width() / 10)
+        val stepY = max(1, inner.height() / 10)
+        val pixels = mutableListOf<Int>()
+        var y = inner.top
+        while (y < inner.bottom) {
+            var x = inner.left
+            while (x < inner.right) {
+                if (bitmap.contains(x, y)) pixels.add(bitmap.getPixel(x, y))
+                x += stepX
             }
-        }.filter { (x, y) -> bitmap.contains(x, y) }
+            y += stepY
+        }
+        if (pixels.size < 4) return null
 
-        if (samples.isEmpty()) return null
+        // Find the most common color (background)
+        val bg = pixels.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
+            ?: return null
 
-        return samples
-            .map { (x, y) -> bitmap.getPixel(x, y) }
-            .maxByOrNull { contrastRatio(it, background) }
+        // Color distance threshold: two colors must differ by at least this
+        // much in RGB space to be considered distinct. 30^2 * 3 channels = 2700
+        // catches subtle text but ignores sub-pixel anti-aliasing noise.
+        val threshold = 2700
+
+        // Find the most distant pixel from bg that appears at least twice
+        // (single outlier pixels are noise from anti-aliasing)
+        val nonBgPixels = pixels
+            .filter { colorDistSq(it, bg) > threshold }
+        if (nonBgPixels.isEmpty()) return null // only one color cluster — can't determine contrast
+
+        // The foreground color is the most common non-background pixel
+        val fg = nonBgPixels.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
+            ?: return null
+
+        // Sanity: if fg appeared only once, it's probably noise
+        val fgCount = nonBgPixels.count { it == fg }
+        if (fgCount < 2) return null
+
+        return fg to bg
     }
 
     // ── Public API ─────────────────────────────────────────────────────────
@@ -172,10 +185,12 @@ object IssueChecker {
             if (nodeTextContent != null && isVisible &&
                 Rect.intersects(boundsInScreen, bitmapRect)
             ) {
-                val bg = sampleBackground(bitmap, boundsInScreen)
-                val fg = if (bg != null) sampleTextColor(bitmap, boundsInScreen, bg) else null
-
-                if (bg != null && fg != null) {
+                val fgBg = sampleFgBg(bitmap, boundsInScreen)
+                // fgBg is null when only one color cluster was found — meaning
+                // we couldn't distinguish text from background. Skip rather
+                // than report a false positive.
+                if (fgBg != null) {
+                    val (fg, bg) = fgBg
                     val ratio = contrastRatio(fg, bg)
                     if (ratio < 4.5) {
                         issues.add(
