@@ -195,15 +195,26 @@ object IssueChecker {
                 if (fgBg != null) {
                     val (fg, bg) = fgBg
                     val ratio = contrastRatio(fg, bg)
-                    if (ratio < 4.5) {
+                    // Two tiers:
+                    // - Below 2.0:1 is genuinely unreadable (high) — catches real
+                    //   bugs like white-on-white, invisible text, broken themes
+                    // - 2.0–3.0:1 is marginal (medium) — might be intentional
+                    //   styled text but worth a look
+                    // - Above 3.0:1 is fine — WCAG 4.5:1 is too strict for a
+                    //   game UI with intentionally colored/styled text
+                    val severity = when {
+                        ratio < 2.0 -> "high"
+                        ratio < 3.0 -> "medium"
+                        else -> null
+                    }
+                    if (severity != null) {
                         issues.add(
                             Issue(
-                                severity = "high",
+                                severity = severity,
                                 type = "contrast",
                                 element = elemLabel,
                                 bounds = Rect(boundsInScreen),
-                                detail = ("Contrast ratio %.2f:1 is below the WCAG 4.5:1 threshold " +
-                                        "(fg=#%06X bg=#%06X)").format(
+                                detail = ("Contrast ratio %.2f:1 (fg=#%06X bg=#%06X)").format(
                                             ratio,
                                             fg and 0xFFFFFF,
                                             bg and 0xFFFFFF
