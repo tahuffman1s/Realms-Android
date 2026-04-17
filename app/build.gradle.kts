@@ -142,3 +142,42 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 }
+
+tasks.register("checkHardcodedColors") {
+    description = "Scans UI composables for hardcoded Color usage instead of theme tokens"
+    group = "verification"
+    // Exclude from configuration cache — this is a source-scanning task
+    notCompatibleWithConfigurationCache("Scans source files")
+    doLast {
+        val uiDir = file("src/main/kotlin/com/realmsoffate/game/ui")
+        if (!uiDir.exists()) { println("UI directory not found"); return@doLast }
+        // Theme definition files are WHERE colors are supposed to be defined — skip them
+        val skipFiles = setOf("Extended.kt", "Theme.kt", "Tokens.kt", "Type.kt", "Fonts.kt")
+        val hardcoded = listOf(
+            Regex("""Color\s*\.\s*(White|Black|Red|Green|Blue|Yellow|Cyan|Magenta|Gray|DarkGray|LightGray)"""),
+            Regex("""Color\s*\(\s*0x[0-9A-Fa-f]+\s*\)"""),
+            Regex("""Color\s*\(\s*\d+\s*,\s*\d+\s*,\s*\d+"""),
+        )
+        val allowed = listOf(
+            Regex("""MaterialTheme\.colorScheme\."""),
+            Regex("""RealmsTheme\.colors\."""),
+            Regex("""Color\.Transparent"""),
+            Regex("""Color\.Unspecified"""),
+        )
+        var total = 0
+        uiDir.walkTopDown().filter { it.extension == "kt" && it.name !in skipFiles }.forEach { file ->
+            file.readLines().forEachIndexed { lineNum, line ->
+                val t = line.trim()
+                if (t.startsWith("//") || t.startsWith("*") || t.startsWith("import")) return@forEachIndexed
+                for (p in hardcoded) {
+                    if (p.containsMatchIn(line) && allowed.none { it.containsMatchIn(line) }) {
+                        println("WARNING: ${file.relativeTo(projectDir)}:${lineNum + 1}: ${t.take(120)}")
+                        total++
+                    }
+                }
+            }
+        }
+        if (total > 0) println("\n$total hardcoded color(s) found. Use MaterialTheme.colorScheme.* or RealmsTheme.colors.* instead.")
+        else println("No hardcoded colors found.")
+    }
+}

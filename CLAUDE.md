@@ -87,13 +87,13 @@ gradle test
 
 ### Step 5 — Build and Deploy
 
-After tests pass, build and install to the phone in one step:
+After tests pass, build and install to any connected device (emulator or phone) in one step:
 
 ```bash
 gradle installDebug && adb shell am start -n com.realmsoffate.game/.MainActivity
 ```
 
-This builds the debug APK, pushes it to the connected Galaxy S23, and launches the app. If no device is connected, run `phone` (the fish function) which handles ADB reconnection automatically.
+This builds the debug APK, pushes it to the connected device, and launches the app. If no device is connected, either start the emulator (`emulator -avd Pixel7 &`) or run `phone` (the fish function) which handles ADB reconnection to the Galaxy S23 automatically.
 
 **If the build succeeds:** report success. The app is already running on the phone.
 
@@ -124,11 +124,13 @@ Do not update the README for internal refactors, bug fixes, or changes invisible
 
 ## Environment Setup
 
-First-time setup on Arch Linux (installs JDK 17/21, Android SDK, Node.js):
+First-time setup on Arch Linux (installs JDK 17/21, Android SDK, emulator, Node.js):
 
 ```bash
 ./setup-env.sh
 ```
+
+The script creates a **Pixel7** AVD (Android 16 / API 36.1, x86_64 with Google APIs) for local emulator testing. Requires KVM — AMD-V or VT-x must be enabled in BIOS.
 
 ## Build Commands
 
@@ -387,7 +389,29 @@ Context7 is an MCP server that fetches current documentation. Use it when you ne
 - DeepSeek API
 - Any library where your training data might be stale
 
-## Deploying to the phone
+## Deploying to a device
+
+Two deployment targets are available: the physical phone and the local emulator. Both use the same `gradle installDebug` pipeline.
+
+### Emulator
+
+Launch the emulator, then build and deploy:
+
+```bash
+# Start the emulator (runs in the background)
+emulator -avd Pixel7 &
+
+# Wait for boot, then deploy
+adb wait-for-device && gradle installDebug && adb shell am start -n com.realmsoffate.game/.MainActivity
+```
+
+The AVD `Pixel7` is created by `setup-env.sh`. If it doesn't exist, create it:
+
+```bash
+echo "no" | avdmanager create avd -n "Pixel7" -k "system-images;android-36.1;google_apis;x86_64" -d "pixel_7"
+```
+
+### Physical phone (Galaxy S23)
 
 The paired Android target is a Galaxy S23 (`SM-S916U`) on the local LAN. A fish function `phone` is installed at `~/.config/fish/functions/phone.fish` that wraps the full cycle: reconnect if needed → `gradle installDebug` → launch `MainActivity`. Run it from the repo root:
 
@@ -395,7 +419,7 @@ The paired Android target is a Galaxy S23 (`SM-S916U`) on the local LAN. A fish 
 phone
 ```
 
-### Under the hood
+#### Under the hood
 
 The function:
 1. Checks `adb devices` for at least one entry in `device` state.
@@ -440,6 +464,87 @@ ls -t debug-dumps/debug_*.txt 2>/dev/null | head -1
 ```
 
 Read that file directly — no need to ask the user for the path. Files are named `debug_<characterslot>_T<turn>_<epoch>.txt` so newest-by-mtime is also newest-by-turn for a given character.
+
+## Debug Bridge (debug builds only)
+
+An HTTP server on port 8735 that gives Claude Code full access to the app's state, UI, and commands. Only active in debug builds. Zero release footprint — all code lives in `app/src/debug/`.
+
+### Setup (once per session)
+
+```bash
+adb -s emulator-5554 forward tcp:8735 tcp:8735
+```
+
+For real-time events, start logcat in background:
+```bash
+adb -s emulator-5554 logcat -s RealmsDebug:V
+```
+
+### Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/state` | GET | Full game state as JSON |
+| `/state/diff` | GET | Changes since last query |
+| `/state/overlay` | GET | Active overlay + available actions |
+| `/screenshot` | GET | PNG screenshot (`?format=base64` for JSON) |
+| `/screenshot/both` | GET | Screenshots in both light and dark themes |
+| `/checks` | GET | Automated visual/accessibility issue scan |
+| `/checks/both` | GET | Issue scan in both themes |
+| `/input` | POST | Submit player action: `{"text": "..."}` |
+| `/confirm` | POST | Confirm active dice roll |
+| `/cancel` | POST | Dismiss active overlay |
+| `/navigate` | POST | Switch screen: `{"screen": "game"}` |
+| `/tap` | POST | Tap element: `{"text": "Continue"}` or `{"contentDesc": "Settings"}` |
+| `/theme` | POST | Switch theme: `{"mode": "dark"}` |
+| `/font-scale` | POST | Set font scale: `{"scale": 1.5}` |
+| `/inject` | POST | Override state: `{"character.hp": 0}` |
+| `/inject/messages` | POST | Inject test messages |
+| `/inject/reset` | POST | Restore real game state |
+| `/macro/new-game` | POST | Skip to game: `{"name":"Test","class":"fighter","race":"human","skipFirstTurn":true}` |
+| `/macro/advance` | POST | Auto-play turns: `{"turns":3,"mode":"canned"}` |
+| `/macro/death` | POST | Trigger death screen |
+
+### Post-deploy testing workflow
+
+After any UI change:
+
+```bash
+# 1. Fast-path to a testable game state
+curl -X POST localhost:8735/macro/new-game -d '{"name":"Test","class":"fighter","race":"human","skipFirstTurn":true}'
+
+# 2. Visual check
+curl localhost:8735/screenshot > screenshots/check.png
+
+# 3. Automated issue scan (both themes)
+curl localhost:8735/checks/both
+
+# 4. Test edge cases
+curl -X POST localhost:8735/inject -d '{"character.hp":0}'
+curl localhost:8735/screenshot > screenshots/zero_hp.png
+curl -X POST localhost:8735/inject/reset
+```
+
+### Build-time color check
+
+```bash
+gradle checkHardcodedColors
+```
+
+Scans `ui/` composables (excluding theme definitions) for hardcoded `Color.XXX` instead of theme tokens.
+
+### Fish function
+
+The `debug` fish function wraps all endpoints:
+
+```
+debug state | diff | overlay | screenshot | checks | checks-both
+debug input <text> | confirm | cancel | navigate <screen> | tap <label>
+debug theme <light|dark|system> | font-scale <n>
+debug inject <field> <value> | reset
+debug new-game | death | advance [n]
+debug events
+```
 
 ## Project Structure
 
