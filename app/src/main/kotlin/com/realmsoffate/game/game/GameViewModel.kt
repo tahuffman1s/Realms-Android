@@ -1298,6 +1298,11 @@ class GameViewModel(
         _screen.value = screen
     }
 
+    /** Overwrite the entire UI state. Used by the debug bridge (/inject). */
+    fun debugInjectState(state: GameUiState) {
+        _ui.value = state
+    }
+
     /** Dismiss the active pre-roll overlay without sending the action to AI. */
     fun cancelPreRoll() {
         _ui.value = _ui.value.copy(preRoll = null)
