@@ -9,17 +9,11 @@ object DebugBridge {
     private const val TAG = "RealmsDebug"
 
     var activity: Activity? = null
-        private set
     var viewModel: GameViewModel? = null
-        private set
 
     fun start(app: Application) {
         Log.i(TAG, """{"event":"bridgeStarted","port":8735}""")
-        DebugHook.onAttach = { act, vm ->
-            activity = act
-            viewModel = vm
-            Log.i(TAG, """{"event":"attached","screen":"${vm.screen.value}"}""")
-        }
+        DebugEventBus.install()  // EventBus sets onAttach
         DebugServer.start()
     }
 

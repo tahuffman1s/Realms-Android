@@ -1343,6 +1343,55 @@ class GameViewModel(
         _ui.value = s.copy(quests = s.quests.map { if (it.id == id) it.copy(status = "failed", turnCompleted = s.turns) else it })
     }
 
+    // ---- Debug helpers — used by MacroEndpoints in the debug build ----
+
+    fun debugCreateCharacter(name: String, cls: String, race: String) {
+        val char = com.realmsoffate.game.data.Character(name = name, race = race, cls = cls)
+        _ui.value = _ui.value.copy(character = char)
+        _screen.value = Screen.Game
+    }
+
+    fun debugInjectFirstTurn() {
+        val state = _ui.value
+        _ui.value = state.copy(
+            turns = 1,
+            currentScene = "town",
+            currentSceneDesc = "Debug test scenario",
+            messages = state.messages + DisplayMessage.Narration(
+                text = "You arrive in the test town. The streets are quiet.",
+                scene = "town", sceneDesc = "Debug test scenario",
+                hpBefore = state.character?.hp ?: 10, hpAfter = state.character?.hp ?: 10,
+                maxHp = state.character?.maxHp ?: 10,
+                goldBefore = state.character?.gold ?: 25, goldAfter = state.character?.gold ?: 25,
+                xpGained = 0, conditionsAdded = emptyList(), conditionsRemoved = emptyList(),
+                itemsGained = emptyList(), itemsRemoved = emptyList(),
+                moralDelta = 0, repDeltas = emptyList(), segments = emptyList()
+            ),
+            currentChoices = listOf(
+                com.realmsoffate.game.data.Choice(1, "Approach the merchant", "CHA"),
+                com.realmsoffate.game.data.Choice(2, "Talk to the guard", ""),
+                com.realmsoffate.game.data.Choice(3, "Explore the side streets", "DEX")
+            )
+        )
+    }
+
+    fun debugInjectCannedTurn(index: Int) {
+        val state = _ui.value
+        _ui.value = state.copy(
+            turns = state.turns + 1,
+            messages = state.messages + DisplayMessage.Narration(
+                text = "Debug turn ${state.turns + 1}: The story continues.",
+                scene = state.currentScene, sceneDesc = state.currentSceneDesc,
+                hpBefore = state.character?.hp ?: 10, hpAfter = state.character?.hp ?: 10,
+                maxHp = state.character?.maxHp ?: 10,
+                goldBefore = state.character?.gold ?: 25, goldAfter = state.character?.gold ?: 25,
+                xpGained = 10, conditionsAdded = emptyList(), conditionsRemoved = emptyList(),
+                itemsGained = emptyList(), itemsRemoved = emptyList(),
+                moralDelta = 0, repDeltas = emptyList(), segments = emptyList()
+            )
+        )
+    }
+
     companion object {
         val Factory = viewModelFactory {
             initializer {
