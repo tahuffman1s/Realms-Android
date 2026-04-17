@@ -27,5 +27,6 @@ internal fun RealmsProgressBar(
             .clip(MaterialTheme.shapes.extraSmall),
         color = color,
         trackColor = trackColor,
+        drawStopIndicator = {},
     )
 }

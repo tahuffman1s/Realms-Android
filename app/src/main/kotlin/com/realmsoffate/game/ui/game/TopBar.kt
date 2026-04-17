@@ -1,5 +1,8 @@
 package com.realmsoffate.game.ui.game
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -7,6 +10,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,6 +26,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import com.realmsoffate.game.game.GameUiState
@@ -44,6 +50,7 @@ internal fun GameTopBar(
     val ch = state.character ?: return
     val realms = RealmsTheme.colors
     val location = state.worldMap?.locations?.getOrNull(state.currentLoc)
+    var statsExpanded by remember { mutableStateOf(true) }
 
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -51,14 +58,14 @@ internal fun GameTopBar(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.statusBarsPadding().padding(horizontal = RealmsSpacing.m, vertical = RealmsSpacing.s)) {
-            // ----- Row 1: name | level badge | combat indicator | party icons | settings gear
+            // ----- Row 1: name | level badge | combat indicator | party icons | bookmarks | settings
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     ch.name,
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
+                    modifier = Modifier.widthIn(max = 160.dp)
                 )
                 Spacer(Modifier.width(RealmsSpacing.s))
                 LevelBadge(ch.level)
@@ -66,10 +73,11 @@ internal fun GameTopBar(
                     Spacer(Modifier.width(RealmsSpacing.xs))
                     CombatIndicator()
                 }
-                Spacer(Modifier.weight(1f))
                 if (state.party.isNotEmpty()) {
+                    Spacer(Modifier.width(RealmsSpacing.s))
                     PartyIcons(state.party.map { it.name })
                 }
+                Spacer(Modifier.weight(1f))
                 IconButton(onClick = onMemoriesClick) {
                     Icon(Icons.Outlined.BookmarkBorder, contentDescription = "Memories")
                 }
@@ -77,32 +85,61 @@ internal fun GameTopBar(
                     Icon(Icons.Default.Settings, contentDescription = "Settings")
                 }
             }
-            Spacer(Modifier.height(RealmsSpacing.s))
-            // ----- Row 2: HP text + bar | XP text + bar | gold | location chip
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                HpInline(ch.hp, ch.maxHp, Modifier.weight(1.2f))
-                Spacer(Modifier.width(RealmsSpacing.s))
-                XpInline(ch.xp, ch.level, Modifier.weight(1.1f))
-                Spacer(Modifier.width(RealmsSpacing.s))
-                GoldInline("${ch.gold}", realms.goldAccent)
-                if (location != null) {
-                    Spacer(Modifier.width(RealmsSpacing.s))
-                    LocationInline(location.icon, location.name)
+            // ----- Collapsible stats section -----
+            AnimatedVisibility(
+                visible = statsExpanded,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column {
+                    Spacer(Modifier.height(RealmsSpacing.s))
+                    // HP bar | XP bar | gold
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        HpInline(ch.hp, ch.maxHp, Modifier.weight(1f))
+                        Spacer(Modifier.width(RealmsSpacing.s))
+                        XpInline(ch.xp, ch.level, Modifier.weight(1f))
+                        Spacer(Modifier.width(RealmsSpacing.s))
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                            GoldInline("${ch.gold}", realms.goldAccent)
+                        }
+                    }
+                    // Status effects | location
+                    if (ch.conditions.isNotEmpty() || location != null) {
+                        Spacer(Modifier.height(RealmsSpacing.xs))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (ch.conditions.isNotEmpty()) {
+                                ConditionsStrip(ch.conditions, Modifier.weight(1f, fill = false))
+                            }
+                            Spacer(Modifier.weight(1f))
+                            if (location != null) {
+                                LocationInline(location.icon, location.name)
+                            }
+                        }
+                    }
                 }
             }
-            // ----- Row 3 (only when present): active conditions strip -----
-            if (ch.conditions.isNotEmpty()) {
-                Spacer(Modifier.height(RealmsSpacing.xs))
-                ConditionsStrip(ch.conditions)
+            // Collapse/expand toggle
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { statsExpanded = !statsExpanded },
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    if (statsExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (statsExpanded) "Collapse stats" else "Expand stats",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ConditionsStrip(conditions: List<String>) {
+private fun ConditionsStrip(conditions: List<String>, modifier: Modifier = Modifier) {
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -250,11 +287,11 @@ private fun XpInline(xp: Int, level: Int, modifier: Modifier = Modifier) {
             Text(
                 "$xp / $next",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary
+                color = RealmsTheme.colors.info
             )
         }
         Spacer(Modifier.height(RealmsSpacing.xxs))
-        RealmsProgressBar(progress = pct, color = MaterialTheme.colorScheme.secondary, height = 4.dp)
+        RealmsProgressBar(progress = pct, color = RealmsTheme.colors.info)
     }
 }
 

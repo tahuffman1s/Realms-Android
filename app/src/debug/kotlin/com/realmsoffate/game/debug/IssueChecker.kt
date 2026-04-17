@@ -184,8 +184,8 @@ object IssueChecker {
                                 type = "contrast",
                                 element = elemLabel,
                                 bounds = Rect(boundsInScreen),
-                                detail = "Contrast ratio %.2f:1 is below the WCAG 4.5:1 threshold " +
-                                        "(fg=#%06X bg=#%06X)".format(
+                                detail = ("Contrast ratio %.2f:1 is below the WCAG 4.5:1 threshold " +
+                                        "(fg=#%06X bg=#%06X)").format(
                                             ratio,
                                             fg and 0xFFFFFF,
                                             bg and 0xFFFFFF

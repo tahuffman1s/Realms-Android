@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -26,7 +27,9 @@ internal fun GameInputBar(
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
     onTargetPrompt: (TargetPromptSpec) -> Unit,
-    onSpellsOpen: () -> Unit = {}
+    onSpellsOpen: () -> Unit = {},
+    hasChoices: Boolean = false,
+    onChoicesOpen: () -> Unit = {}
 ) {
     Column(Modifier.fillMaxWidth()) {
         // ---- Action bar — attack/heavy/spells chips, visible during combat ----
@@ -108,11 +111,22 @@ internal fun GameInputBar(
                     singleLine = false,
                     maxLines = 5
                 )
+                if (hasChoices) {
+                    Spacer(Modifier.width(RealmsSpacing.s))
+                    FilledIconButton(
+                        onClick = onChoicesOpen,
+                        modifier = Modifier.size(52.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    ) { Icon(Icons.AutoMirrored.Filled.List, "Choices") }
+                }
                 Spacer(Modifier.width(RealmsSpacing.s))
                 FilledIconButton(
                     onClick = onSend,
                     enabled = input.isNotBlank() && !state.isGenerating,
-                    modifier = Modifier.size(52.dp),  // bigger send target
+                    modifier = Modifier.size(52.dp),
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,

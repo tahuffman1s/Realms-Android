@@ -1,0 +1,162 @@
+<h2>Design Section 4: Screen Migration Strategy</h2>
+<p class="subtitle">How each screen/file group changes once the foundation layer is in place</p>
+
+<div class="section">
+  <h3>Migration Order</h3>
+  <p>Foundation first, then files grouped by dependency. Each group can be done in parallel.</p>
+
+  <div style="display: flex; flex-direction: column; gap: 2px; margin: 20px 0;">
+    <!-- Phase 0 -->
+    <div style="display: flex; align-items: stretch; gap: 0;">
+      <div style="width: 80px; background: #E2B84A; color: #1D1B20; font-weight: bold; font-size: 12px; display: flex; align-items: center; justify-content: center; border-radius: 8px 0 0 0; padding: 12px 8px;">PHASE 0</div>
+      <div style="flex: 1; background: #1D1B20; padding: 14px 18px; border-radius: 0 8px 0 0;">
+        <div style="font-size: 14px; color: #E2B84A; font-weight: bold;">Foundation</div>
+        <div style="font-size: 12px; color: #C1BBD0; margin-top: 4px;">
+          Add <code>RealmsSpacing</code> + <code>RealmsElevation</code> to <code>ui/theme/</code><br>
+          Create <code>ui/components/</code> with all 8 shared composables<br>
+          Add <code>npcPalette</code> + <code>scrimOverlay</code> to <code>RealmsExtendedColors</code><br>
+          Delete <code>PanelShared.kt</code> (contents moved to components/)
+        </div>
+        <div style="font-size: 11px; color: #9E9AA8; margin-top: 6px;">~6 new files, 1 deleted, 2 modified</div>
+      </div>
+    </div>
+
+    <!-- Phase 1 -->
+    <div style="display: flex; align-items: stretch; gap: 0;">
+      <div style="width: 80px; background: #82B6E8; color: #1D1B20; font-weight: bold; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 12px 8px;">PHASE 1</div>
+      <div style="flex: 1; background: #1D1B20; padding: 14px 18px;">
+        <div style="font-size: 14px; color: #82B6E8; font-weight: bold;">Panels (9 files) — parallel</div>
+        <div style="font-size: 12px; color: #C1BBD0; margin-top: 4px;">
+          All panels import from <code>ui/components/</code> instead of <code>PanelShared</code><br>
+          Replace <code>Surface</code>-as-card → <code>RealmsCard</code><br>
+          Replace inline shapes → <code>MaterialTheme.shapes.*</code><br>
+          Replace inline padding → <code>RealmsSpacing.*</code><br>
+          Replace inline section headers → <code>SectionHeader</code>
+        </div>
+        <div style="font-size: 11px; color: #9E9AA8; margin-top: 6px;">InventoryPage, QuestsPage, PartyPage, LorePage, NpcJournalPage, CurrencyPage, SpellsPage, StatsPage — each is independent</div>
+      </div>
+    </div>
+
+    <!-- Phase 2 -->
+    <div style="display: flex; align-items: stretch; gap: 0;">
+      <div style="width: 80px; background: #B197FF; color: #1D1B20; font-weight: bold; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 12px 8px;">PHASE 2</div>
+      <div style="flex: 1; background: #1D1B20; padding: 14px 18px;">
+        <div style="font-size: 14px; color: #B197FF; font-weight: bold;">Game screen (10 files) — parallel</div>
+        <div style="font-size: 12px; color: #C1BBD0; margin-top: 4px;">
+          Same mechanical replacements as Phase 1<br>
+          <strong>MessageBubbles.kt</strong>: move <code>npcColorPalette</code> → <code>RealmsTheme.colors.npcPalette</code><br>
+          <strong>TopBar.kt</strong>: HP/XP bars → <code>RealmsProgressBar</code><br>
+          <strong>CombatHud.kt</strong>: Box bar → <code>RealmsProgressBar</code><br>
+          <strong>GameDialogs.kt</strong>: elevation → <code>RealmsElevation.high</code>
+        </div>
+        <div style="font-size: 11px; color: #9E9AA8; margin-top: 6px;">GameScreen, MessageBubbles, NarrationBlock, GameDialogs, GameOverlays, ChatInput, TopBar, CombatHud, ChatFeed, BottomNav</div>
+      </div>
+    </div>
+
+    <!-- Phase 3 -->
+    <div style="display: flex; align-items: stretch; gap: 0;">
+      <div style="width: 80px; background: #7DD892; color: #1D1B20; font-weight: bold; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 12px 8px;">PHASE 3</div>
+      <div style="flex: 1; background: #1D1B20; padding: 14px 18px;">
+        <div style="font-size: 14px; color: #7DD892; font-weight: bold;">Overlays (3 files) — parallel</div>
+        <div style="font-size: 12px; color: #C1BBD0; margin-top: 4px;">
+          <strong>Overlays.kt</strong>: elevation → tokens, shapes → tokens. Campfire Canvas colors <em>stay inline</em>.<br>
+          <strong>ShopOverlay.kt</strong>: Surface cards → <code>RealmsCard</code>, padding → spacing tokens<br>
+          <strong>TargetPromptDialog.kt</strong>: shapes + padding → tokens
+        </div>
+        <div style="font-size: 11px; color: #9E9AA8; margin-top: 6px;">3 files, all independent</div>
+      </div>
+    </div>
+
+    <!-- Phase 4 -->
+    <div style="display: flex; align-items: stretch; gap: 0;">
+      <div style="width: 80px; background: #FFB86B; color: #1D1B20; font-weight: bold; font-size: 12px; display: flex; align-items: center; justify-content: center; border-radius: 0 0 0 8px; padding: 12px 8px;">PHASE 4</div>
+      <div style="flex: 1; background: #1D1B20; padding: 14px 18px; border-radius: 0 0 8px 0;">
+        <div style="font-size: 14px; color: #FFB86B; font-weight: bold;">Setup + Map (5 files) — parallel</div>
+        <div style="font-size: 12px; color: #C1BBD0; margin-top: 4px;">
+          <strong>CharacterCreationScreen.kt</strong>: delete private <code>SectionHeader</code>, use shared. Shapes + padding → tokens. Button shapes → <code>shapes.medium</code>.<br>
+          <strong>TitleScreen.kt</strong>: graveyard gradient → theme colors. Shapes + padding → tokens.<br>
+          <strong>DeathScreen.kt</strong>: button shapes → tokens, section headers → <code>SectionHeader</code>.<br>
+          <strong>ApiSetupScreen.kt</strong>: purple highlight → <code>secondaryContainer</code>. Shapes → tokens.<br>
+          <strong>WorldMapScreen.kt</strong>: elevation → tokens, scrim → <code>scrimOverlay</code>. Road Canvas colors stay.
+        </div>
+        <div style="font-size: 11px; color: #9E9AA8; margin-top: 6px;">5 files, all independent</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>What Changes Per File (mechanical checklist)</h3>
+  <p>Every file in Phases 1–4 gets the same set of mechanical replacements:</p>
+
+  <div style="display: flex; flex-direction: column; gap: 6px; margin: 16px 0;">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: #1D1B20; border-radius: 8px;">
+      <span style="color: #7DD892; font-size: 16px;">1</span>
+      <span style="color: #C1BBD0; font-size: 13px;"><code>RoundedCornerShape(N.dp)</code> → <code>MaterialTheme.shapes.{extraSmall|small|medium|large|extraLarge}</code></span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: #1D1B20; border-radius: 8px;">
+      <span style="color: #7DD892; font-size: 16px;">2</span>
+      <span style="color: #C1BBD0; font-size: 13px;"><code>padding(N.dp)</code> → <code>padding(RealmsSpacing.{xxs|xs|s|m|l|xl|xxl})</code></span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: #1D1B20; border-radius: 8px;">
+      <span style="color: #7DD892; font-size: 16px;">3</span>
+      <span style="color: #C1BBD0; font-size: 13px;"><code>tonalElevation = N.dp</code> → <code>tonalElevation = RealmsElevation.{low|medium|high}</code></span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: #1D1B20; border-radius: 8px;">
+      <span style="color: #7DD892; font-size: 16px;">4</span>
+      <span style="color: #C1BBD0; font-size: 13px;"><code>Surface(shape, color, border) { Column { ... } }</code> → <code>RealmsCard(...) { ... }</code></span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: #1D1B20; border-radius: 8px;">
+      <span style="color: #7DD892; font-size: 16px;">5</span>
+      <span style="color: #C1BBD0; font-size: 13px;"><code>Color(0x...)</code> / <code>Color.Black.copy(...)</code> → theme token or <code>RealmsTheme.colors.*</code></span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: #1D1B20; border-radius: 8px;">
+      <span style="color: #7DD892; font-size: 16px;">6</span>
+      <span style="color: #C1BBD0; font-size: 13px;">Remove unused <code>import ...RoundedCornerShape</code> and <code>import ...dp</code> where possible</span>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>What Does NOT Change</h3>
+  <div style="display: flex; flex-direction: column; gap: 6px; margin: 16px 0;">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; border: 1px solid #3F3A4A; border-radius: 8px;">
+      <span style="color: #9E9AA8; font-size: 13px;">Navigation architecture — manual <code>when(screen)</code> state machine stays</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; border: 1px solid #3F3A4A; border-radius: 8px;">
+      <span style="color: #9E9AA8; font-size: 13px;">Typography — Cinzel + Crimson Text identity stays, <code>RealmsTypography</code> unchanged</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; border: 1px solid #3F3A4A; border-radius: 8px;">
+      <span style="color: #9E9AA8; font-size: 13px;">Canvas art — campfire flames, map terrain, sky gradients keep inline colors</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; border: 1px solid #3F3A4A; border-radius: 8px;">
+      <span style="color: #9E9AA8; font-size: 13px;">Game logic, ViewModel, data layer — zero changes</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 14px; border: 1px solid #3F3A4A; border-radius: 8px;">
+      <span style="color: #9E9AA8; font-size: 13px;">Message bubble composables — layout stays, only colors change to theme refs</span>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Impact Summary</h3>
+  <div style="display: flex; gap: 20px; margin: 16px 0; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 140px; text-align: center; background: #1D1B20; border-radius: 14px; padding: 20px;">
+      <div style="font-size: 28px; color: #E2B84A; font-weight: bold;">27</div>
+      <div style="font-size: 12px; color: #9E9AA8;">files modified</div>
+    </div>
+    <div style="flex: 1; min-width: 140px; text-align: center; background: #1D1B20; border-radius: 14px; padding: 20px;">
+      <div style="font-size: 28px; color: #82B6E8; font-weight: bold;">8</div>
+      <div style="font-size: 12px; color: #9E9AA8;">new component files</div>
+    </div>
+    <div style="flex: 1; min-width: 140px; text-align: center; background: #1D1B20; border-radius: 14px; padding: 20px;">
+      <div style="font-size: 28px; color: #7DD892; font-weight: bold;">1</div>
+      <div style="font-size: 12px; color: #9E9AA8;">file deleted</div>
+    </div>
+    <div style="flex: 1; min-width: 140px; text-align: center; background: #1D1B20; border-radius: 14px; padding: 20px;">
+      <div style="font-size: 28px; color: #B197FF; font-weight: bold;">0</div>
+      <div style="font-size: 12px; color: #9E9AA8;">behavior changes</div>
+    </div>
+  </div>
+  <p style="color: #9E9AA8; font-size: 13px;">This is a pure appearance + code quality refactor. Every screen looks the same (or marginally better due to consistent spacing). No functional changes, no new features, no behavior differences. Tests should pass without modification.</p>
+</div>

@@ -1,0 +1,217 @@
+<h2>Chat Feed — Redesigned with Personality</h2>
+<p class="subtitle">Turn dividers, distinct segment styles, immersive narration, expressive NPC dialog</p>
+
+<div class="split" style="gap: 24px;">
+
+  <!-- BEFORE -->
+  <div>
+    <h3 style="color: #FF6B5C;">Current</h3>
+    <div class="mockup" style="max-width: 390px;">
+      <div class="mockup-header">Chat — Before</div>
+      <div class="mockup-body" style="background: #121015; padding: 12px 8px; font-family: system-ui;">
+
+        <!-- Narrator prose — just a dark rectangle -->
+        <div style="background: #2A262F; border-radius: 14px; padding: 12px; margin-bottom: 14px;">
+          <div style="font-family: 'Georgia', serif; font-size: 13px; color: #E8E1F0; line-height: 1.7;">The tavern falls silent as you push through the heavy oak door. Rain drips from your cloak onto the straw-covered floor. A dozen pairs of eyes turn toward you — most look away quickly, but one figure at the bar holds your gaze.</div>
+        </div>
+
+        <!-- Aside — identical gray italic, no distinction -->
+        <div style="text-align: center; padding: 8px 20px; margin-bottom: 14px;">
+          <div style="font-size: 12px; color: #9E9AA8; font-style: italic;">The stranger's hand moves to the hilt of a concealed blade.</div>
+        </div>
+
+        <!-- NPC dialog — basic colored box -->
+        <div style="background: rgba(91,127,199,0.25); border-radius: 14px; padding: 8px 16px 8px 16px; max-width: 92%; margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: rgba(91,127,199,0.3); display: flex; align-items: center; justify-content: center; font-size: 11px; color: #5B7FC7; font-weight: bold; flex-shrink: 0;">M</div>
+            <div>
+              <div style="font-size: 12px; color: #5B7FC7; font-weight: bold;">Mordecai:</div>
+              <div style="font-size: 13px; color: rgba(255,255,255,0.9); font-style: italic; margin-top: 2px;">"You look like you've seen better days, traveler. Sit. Drink. We have much to discuss."</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Player — right aligned flat box -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 14px;">
+          <div style="background: rgba(58,44,85,0.5); border: 1px solid rgba(226,184,74,0.45); border-radius: 14px; padding: 8px 16px; max-width: 85%;">
+            <div style="font-size: 12px; color: #E2B84A; font-weight: bold;">You:</div>
+            <div style="font-size: 13px; color: #E8E1F0; font-style: italic; margin-top: 2px;">"I'm looking for the Silver Cipher. Word is you know where to find it."</div>
+          </div>
+        </div>
+
+        <!-- Another aside — same gray, no turn boundary -->
+        <div style="text-align: center; padding: 8px 20px;">
+          <div style="font-size: 12px; color: #9E9AA8; font-style: italic;">The room grows colder.</div>
+        </div>
+
+        <div style="text-align: center; padding: 12px; color: #3F3A4A; font-size: 11px;">[ no turn separator ]</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AFTER -->
+  <div>
+    <h3 style="color: #7DD892;">Redesigned</h3>
+    <div class="mockup" style="max-width: 390px;">
+      <div class="mockup-header">Chat — After</div>
+      <div class="mockup-body" style="background: #121015; padding: 0; font-family: system-ui;">
+
+        <!-- Turn divider -->
+        <div style="display: flex; align-items: center; gap: 10px; padding: 16px 16px 8px;">
+          <div style="flex: 1; height: 1px; background: linear-gradient(to right, transparent, #3F3A4A);"></div>
+          <div style="font-size: 9px; color: #6A6378; letter-spacing: 2px; font-family: serif;">TURN 14</div>
+          <div style="flex: 1; height: 1px; background: linear-gradient(to left, transparent, #3F3A4A);"></div>
+        </div>
+
+        <!-- Scene transition banner -->
+        <div style="margin: 4px 12px 10px; background: linear-gradient(135deg, rgba(58,44,85,0.3), rgba(30,42,58,0.3)); border-radius: 14px; padding: 10px 14px; border-left: 3px solid #B197FF;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 18px;">&#127866;</span>
+            <div>
+              <div style="font-size: 11px; color: #B197FF; font-weight: bold; letter-spacing: 1px;">THE RUSTY TANKARD</div>
+              <div style="font-size: 10px; color: #9E9AA8;">A weathered tavern at the crossroads of the Northern Road</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Narrator prose — wider, bookish feel with subtle left accent -->
+        <div style="margin: 0 8px 6px; background: #2A262F; border-radius: 14px; padding: 14px 16px; border-left: 3px solid rgba(177,151,255,0.3);">
+          <div style="font-family: 'Georgia', serif; font-size: 13.5px; color: #E8E1F0; line-height: 1.8; letter-spacing: 0.2px;">The tavern falls silent as you push through the heavy oak door. Rain drips from your cloak onto the straw-covered floor. A dozen pairs of eyes turn toward you — most look away quickly, but one figure at the bar holds your gaze.</div>
+        </div>
+
+        <!-- NPC action — distinct from aside: has NPC color accent, left-aligned -->
+        <div style="margin: 0 8px 6px; padding: 4px 16px 4px 20px;">
+          <div style="font-size: 12px; color: rgba(91,127,199,0.8); font-style: italic; border-left: 2px solid rgba(91,127,199,0.3); padding-left: 10px;">The stranger's hand moves to the hilt of a concealed blade.</div>
+        </div>
+
+        <!-- NPC dialog — speech-bubble feel with accent bar and larger avatar -->
+        <div style="margin: 0 8px 6px; display: flex; gap: 8px; align-items: flex-start;">
+          <!-- Avatar column -->
+          <div style="flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, rgba(91,127,199,0.4), rgba(91,127,199,0.15)); display: flex; align-items: center; justify-content: center; font-size: 14px; color: #5B7FC7; font-weight: bold; font-family: serif; border: 1.5px solid rgba(91,127,199,0.4);">M</div>
+          </div>
+          <!-- Bubble -->
+          <div style="flex: 1; background: rgba(91,127,199,0.12); border-radius: 4px 14px 14px 14px; padding: 10px 14px; border: 1px solid rgba(91,127,199,0.2);">
+            <div style="font-size: 11px; color: #5B7FC7; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 4px;">MORDECAI</div>
+            <div style="font-size: 13.5px; color: rgba(208,224,240,0.95); font-style: italic; line-height: 1.6;">"You look like you've seen better days, traveler. Sit. Drink. We have much to discuss."</div>
+          </div>
+        </div>
+
+        <!-- Player dialog — right-aligned with avatar, distinct shape -->
+        <div style="margin: 0 8px 6px; display: flex; gap: 8px; justify-content: flex-end; align-items: flex-start;">
+          <!-- Bubble -->
+          <div style="max-width: 82%; background: rgba(58,44,85,0.4); border-radius: 14px 4px 14px 14px; padding: 10px 14px; border: 1px solid rgba(226,184,74,0.3);">
+            <div style="font-size: 13.5px; color: #E4D7FF; font-style: italic; line-height: 1.6;">"I'm looking for the Silver Cipher. Word is you know where to find it."</div>
+          </div>
+          <!-- Avatar -->
+          <div style="flex-shrink: 0;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, rgba(226,184,74,0.3), rgba(226,184,74,0.1)); display: flex; align-items: center; justify-content: center; font-size: 14px; color: #E2B84A; font-weight: bold; font-family: serif; border: 1.5px solid rgba(226,184,74,0.35);">V</div>
+          </div>
+        </div>
+
+        <!-- Narrator aside — visually distinct from NPC action -->
+        <div style="margin: 2px 8px 6px; text-align: center; padding: 6px 24px;">
+          <div style="font-size: 11.5px; color: #B197FF; font-style: italic; opacity: 0.7;">~ The room grows colder ~</div>
+        </div>
+
+        <!-- Stat change pills — more expressive -->
+        <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; padding: 4px 16px 8px;">
+          <div style="display: flex; align-items: center; gap: 3px; background: rgba(125,216,146,0.15); padding: 3px 10px; border-radius: 20px;">
+            <span style="font-size: 10px;">&#9829;</span>
+            <span style="font-size: 11px; color: #7DD892; font-weight: bold;">+5 HP</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 3px; background: rgba(226,184,74,0.15); padding: 3px 10px; border-radius: 20px;">
+            <span style="font-size: 10px;">&#9733;</span>
+            <span style="font-size: 11px; color: #E2B84A; font-weight: bold;">+50 XP</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 3px; background: rgba(130,182,232,0.15); padding: 3px 10px; border-radius: 20px;">
+            <span style="font-size: 10px;">&#128161;</span>
+            <span style="font-size: 11px; color: #82B6E8; font-weight: bold;">+1 Rep</span>
+          </div>
+        </div>
+
+        <!-- Turn divider for next turn -->
+        <div style="display: flex; align-items: center; gap: 10px; padding: 4px 16px 8px;">
+          <div style="flex: 1; height: 1px; background: linear-gradient(to right, transparent, #3F3A4A);"></div>
+          <div style="font-size: 9px; color: #6A6378; letter-spacing: 2px; font-family: serif;">TURN 15</div>
+          <div style="flex: 1; height: 1px; background: linear-gradient(to left, transparent, #3F3A4A);"></div>
+        </div>
+
+        <!-- Choices -->
+        <div style="padding: 4px 12px 12px;">
+          <div style="background: rgba(193,187,208,0.06); border: 1px solid #3F3A4A; border-radius: 14px; padding: 12px 14px; margin-bottom: 6px; display: flex; align-items: center; gap: 12px;">
+            <div style="width: 26px; height: 26px; border-radius: 50%; background: rgba(226,184,74,0.15); display: flex; align-items: center; justify-content: center; font-size: 12px; color: #E2B84A; font-weight: bold; font-family: serif; flex-shrink: 0;">1</div>
+            <div style="font-size: 13px; color: #C1BBD0;">Press Mordecai for the cipher's location</div>
+          </div>
+          <div style="background: rgba(193,187,208,0.06); border: 1px solid #3F3A4A; border-radius: 14px; padding: 12px 14px; margin-bottom: 6px; display: flex; align-items: center; gap: 12px;">
+            <div style="width: 26px; height: 26px; border-radius: 50%; background: rgba(226,184,74,0.15); display: flex; align-items: center; justify-content: center; font-size: 12px; color: #E2B84A; font-weight: bold; font-family: serif; flex-shrink: 0;">2</div>
+            <div style="font-size: 13px; color: #C1BBD0;">Accept his offer to sit and listen</div>
+          </div>
+          <div style="background: rgba(193,187,208,0.06); border: 1px solid #3F3A4A; border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 12px;">
+            <div style="width: 26px; height: 26px; border-radius: 50%; background: rgba(226,184,74,0.15); display: flex; align-items: center; justify-content: center; font-size: 12px; color: #E2B84A; font-weight: bold; font-family: serif; flex-shrink: 0;">3</div>
+            <div style="font-size: 13px; color: #C1BBD0;">Leave — this feels like a trap</div>
+            <div style="background: rgba(199,157,255,0.15); padding: 2px 6px; border-radius: 4px; margin-left: auto; flex-shrink: 0;">
+              <span style="font-size: 9px; color: #C79DFF; font-weight: bold;">WIS</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>What Changed</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+    <thead>
+      <tr style="border-bottom: 2px solid #3F3A4A;">
+        <th style="text-align: left; padding: 8px; color: #E2B84A;">Element</th>
+        <th style="text-align: left; padding: 8px; color: #FF6B5C;">Before</th>
+        <th style="text-align: left; padding: 8px; color: #7DD892;">After</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid #2A262F;">
+        <td style="padding: 8px; color: #82B6E8;">Turn boundary</td>
+        <td style="padding: 8px; color: #9E9AA8;">14dp spacer (invisible)</td>
+        <td style="padding: 8px; color: #C1BBD0;">Ornamental divider with <code>TURN N</code> label + gradient lines</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #2A262F;">
+        <td style="padding: 8px; color: #82B6E8;">Prose narration</td>
+        <td style="padding: 8px; color: #9E9AA8;">Plain dark rectangle</td>
+        <td style="padding: 8px; color: #C1BBD0;">Left accent bar (aside color, 30% alpha) — feels like a book margin</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #2A262F;">
+        <td style="padding: 8px; color: #82B6E8;">NPC action</td>
+        <td style="padding: 8px; color: #9E9AA8;">Same as aside (gray italic centered)</td>
+        <td style="padding: 8px; color: #C1BBD0;">Left-aligned with NPC color accent bar — clearly attributed to a character</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #2A262F;">
+        <td style="padding: 8px; color: #82B6E8;">Aside</td>
+        <td style="padding: 8px; color: #9E9AA8;">Same as NPC action</td>
+        <td style="padding: 8px; color: #C1BBD0;">Centered with <code>~ tildes ~</code> in aside purple, distinct from NPC actions</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #2A262F;">
+        <td style="padding: 8px; color: #82B6E8;">NPC dialog bubble</td>
+        <td style="padding: 8px; color: #9E9AA8;">Small 24dp avatar inline with text</td>
+        <td style="padding: 8px; color: #C1BBD0;">32dp avatar in its own column, gradient border, speech-bubble tail shape (4dp top-left corner)</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #2A262F;">
+        <td style="padding: 8px; color: #82B6E8;">Player dialog</td>
+        <td style="padding: 8px; color: #9E9AA8;">Right-aligned box, "You:" label</td>
+        <td style="padding: 8px; color: #C1BBD0;">Right-aligned with avatar column, mirrored tail shape (4dp top-right), no "You:" label (avatar is enough)</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #2A262F;">
+        <td style="padding: 8px; color: #82B6E8;">Scene banner</td>
+        <td style="padding: 8px; color: #9E9AA8;">secondaryContainer Surface, flat</td>
+        <td style="padding: 8px; color: #C1BBD0;">Gradient background with left accent bar, more dramatic scene-entry feel</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px; color: #82B6E8;">Player action</td>
+        <td style="padding: 8px; color: #9E9AA8;">Same as aside (gray italic centered)</td>
+        <td style="padding: 8px; color: #C1BBD0;">Right-aligned with gold accent bar — mirrors NPC action but on the player side</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

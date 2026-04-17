@@ -1,0 +1,130 @@
+<h2>Design Section 3: Color Cleanup</h2>
+<p class="subtitle">Move hardcoded colors into theme tokens. Dynamic color handles chrome; extended tokens handle game content.</p>
+
+<div class="section">
+  <h3>The Split: Dynamic vs Fixed</h3>
+  <p>Material You dynamic color drives app chrome. Fantasy-specific extended tokens stay fixed.</p>
+
+  <div style="display: flex; gap: 20px; margin: 20px 0; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 280px; background: #1D1B20; border-radius: 14px; padding: 20px;">
+      <div style="font-size: 11px; letter-spacing: 2px; color: #82B6E8; font-weight: bold; margin-bottom: 12px;">DYNAMIC (from wallpaper)</div>
+      <div style="font-size: 13px; color: #C1BBD0; line-height: 1.8;">
+        <code>primary</code> / <code>secondary</code> / <code>tertiary</code><br>
+        <code>surface</code> / <code>surfaceVariant</code> / <code>background</code><br>
+        <code>primaryContainer</code> / <code>secondaryContainer</code><br>
+        <code>outline</code> / <code>outlineVariant</code><br>
+        <code>error</code> / <code>errorContainer</code>
+      </div>
+      <div style="font-size: 12px; color: #9E9AA8; margin-top: 12px;">
+        Used for: top bar, bottom nav, FAB, buttons, dialogs, scaffolds, input fields, cards backgrounds, dividers
+      </div>
+    </div>
+    <div style="flex: 1; min-width: 280px; border: 1px solid #3F3A4A; border-radius: 14px; padding: 20px;">
+      <div style="font-size: 11px; letter-spacing: 2px; color: #E2B84A; font-weight: bold; margin-bottom: 12px;">FIXED (RealmsExtendedColors)</div>
+      <div style="font-size: 13px; color: #C1BBD0; line-height: 1.8;">
+        Crit/fumble, success/warning/info<br>
+        Gold accent, rarity tiers<br>
+        Bubble pairs (narrator/NPC/player/aside/system)<br>
+        <span style="color: #7DD892;">+ NEW: NPC dialogue palette</span><br>
+        <span style="color: #7DD892;">+ NEW: scrim overlay color</span>
+      </div>
+      <div style="font-size: 12px; color: #9E9AA8; margin-top: 12px;">
+        Used for: message bubbles, dice results, item rarity borders, NPC name colors, status effects, lore era dividers
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Hardcoded Colors to Migrate (~39 instances)</h3>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
+    <thead>
+      <tr style="border-bottom: 2px solid #3F3A4A;">
+        <th style="text-align: left; padding: 8px 12px; color: #E2B84A;">File</th>
+        <th style="text-align: center; padding: 8px 12px; color: #E2B84A;">Count</th>
+        <th style="text-align: left; padding: 8px 12px; color: #E2B84A;">What</th>
+        <th style="text-align: left; padding: 8px 12px; color: #E2B84A;">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid #2A262F;">
+        <td style="padding: 8px 12px; color: #82B6E8;">MessageBubbles.kt</td>
+        <td style="padding: 8px 12px; text-align: center; color: #FFB86B; font-weight: bold;">20</td>
+        <td style="padding: 8px 12px; color: #C1BBD0;">NPC dialogue palette — 10 color pairs for per-NPC tinting</td>
+        <td style="padding: 8px 12px; color: #7DD892;">Move to <code>RealmsExtendedColors</code> as <code>npcPalette: List&lt;Pair&lt;Color, Color&gt;&gt;</code></td>
+      </tr>
+      <tr style="border-bottom: 1px solid #2A262F;">
+        <td style="padding: 8px 12px; color: #82B6E8;">Overlays.kt</td>
+        <td style="padding: 8px 12px; text-align: center; color: #FFB86B; font-weight: bold;">13</td>
+        <td style="padding: 8px 12px; color: #C1BBD0;">Campfire/sky Canvas animation (flame orange, ember red, sky gradient)</td>
+        <td style="padding: 8px 12px; color: #9E9AA8;"><em>Keep inline</em> — pure Canvas painting, not semantic UI</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #2A262F;">
+        <td style="padding: 8px 12px; color: #82B6E8;">TitleScreen.kt</td>
+        <td style="padding: 8px 12px; text-align: center; color: #FFB86B; font-weight: bold;">2</td>
+        <td style="padding: 8px 12px; color: #C1BBD0;">Graveyard entry gradient background</td>
+        <td style="padding: 8px 12px; color: #7DD892;">Replace with <code>errorContainer</code> → <code>surface</code> gradient</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #2A262F;">
+        <td style="padding: 8px 12px; color: #82B6E8;">ApiSetupScreen.kt</td>
+        <td style="padding: 8px 12px; text-align: center; color: #FFB86B; font-weight: bold;">2</td>
+        <td style="padding: 8px 12px; color: #C1BBD0;">Purple highlight for provider tile</td>
+        <td style="padding: 8px 12px; color: #7DD892;">Replace with <code>secondaryContainer</code></td>
+      </tr>
+      <tr style="border-bottom: 1px solid #2A262F;">
+        <td style="padding: 8px 12px; color: #82B6E8;">WorldMapScreen.kt</td>
+        <td style="padding: 8px 12px; text-align: center; color: #FFB86B; font-weight: bold;">2</td>
+        <td style="padding: 8px 12px; color: #C1BBD0;">Road fill/case colors for terrain painting</td>
+        <td style="padding: 8px 12px; color: #9E9AA8;"><em>Keep inline</em> — terrain Canvas, not semantic UI</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #2A262F; background: rgba(226,184,74,0.05);">
+        <td style="padding: 8px 12px; color: #82B6E8;">Various (10+ files)</td>
+        <td style="padding: 8px 12px; text-align: center; color: #FFB86B; font-weight: bold;">~15</td>
+        <td style="padding: 8px 12px; color: #C1BBD0;"><code>Color.Black.copy(alpha)</code> for scrim overlays</td>
+        <td style="padding: 8px 12px; color: #7DD892;">Add <code>scrimOverlay</code> to extended colors</td>
+      </tr>
+      <tr style="background: rgba(226,184,74,0.05);">
+        <td style="padding: 8px 12px; color: #82B6E8;">Various</td>
+        <td style="padding: 8px 12px; text-align: center; color: #FFB86B; font-weight: bold;">~8</td>
+        <td style="padding: 8px 12px; color: #C1BBD0;"><code>Color.White</code> in text-over-image contexts</td>
+        <td style="padding: 8px 12px; color: #7DD892;">Replace with <code>colorScheme.inverseOnSurface</code> or keep where truly absolute</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+    <div style="background: rgba(125,216,146,0.1); border: 1px solid rgba(125,216,146,0.3); border-radius: 10px; padding: 10px 16px; font-size: 13px;">
+      <span style="color: #7DD892; font-weight: bold;">~24</span> <span style="color: #9E9AA8;">→ theme tokens</span>
+    </div>
+    <div style="background: rgba(158,154,168,0.1); border: 1px solid rgba(158,154,168,0.3); border-radius: 10px; padding: 10px 16px; font-size: 13px;">
+      <span style="color: #9E9AA8; font-weight: bold;">~15</span> <span style="color: #9E9AA8;">→ keep inline (Canvas art)</span>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>New Extended Color Tokens</h3>
+  <p>Added to <code>RealmsExtendedColors</code>:</p>
+
+  <div style="display: flex; flex-direction: column; gap: 8px; margin: 16px 0;">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #1D1B20; border-radius: 8px;">
+      <div style="width: 20px; height: 20px; border-radius: 4px; background: rgba(0,0,0,0.7); border: 1px solid #3F3A4A;"></div>
+      <code style="color: #82B6E8; font-size: 13px;">scrimOverlay</code>
+      <span style="color: #9E9AA8; font-size: 12px;">— replaces <code>Color.Black.copy(alpha = 0.7f)</code> across 10+ files</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #1D1B20; border-radius: 8px;">
+      <div style="display: flex; gap: 3px;">
+        <div style="width: 12px; height: 12px; border-radius: 3px; background: #4A6A8A;"></div>
+        <div style="width: 12px; height: 12px; border-radius: 3px; background: #6A4A5A;"></div>
+        <div style="width: 12px; height: 12px; border-radius: 3px; background: #5A6A4A;"></div>
+        <div style="width: 12px; height: 12px; border-radius: 3px; background: #7A5A3A;"></div>
+        <div style="width: 12px; height: 12px; border-radius: 3px; background: #4A5A7A;"></div>
+      </div>
+      <code style="color: #82B6E8; font-size: 13px;">npcPalette: List&lt;Pair&lt;Color, Color&gt;&gt;</code>
+      <span style="color: #9E9AA8; font-size: 12px;">— 10 NPC dialogue bubble/text pairs, dark + light variants</span>
+    </div>
+  </div>
+
+  <p style="color: #9E9AA8; font-size: 13px; margin-top: 12px;">Total extended tokens: 25 existing + 2 new = 27 (plus the palette list). The <code>npcPalette</code> is a <code>List</code> rather than 20 individual fields because NPCs are assigned by index hash, not by name.</p>
+</div>

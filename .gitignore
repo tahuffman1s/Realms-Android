@@ -33,5 +33,7 @@ keystore.properties
 
 # Debug dumps pulled via the `pulldebug` fish function
 /debug-dumps/
+# Screenshots pulled via the `screenshot` fish function
+/screenshots/
 # Stray debug dumps that landed in the repo root from manual exports
 debug_*.txt

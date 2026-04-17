@@ -1,24 +1,24 @@
 package com.realmsoffate.game.ui.game
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.QueryStats
-import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -67,7 +67,11 @@ internal fun NarrationBlock(
                         )
                     }
                     is NarrationSegmentData.Aside -> {
-                        NarratorAsideLine(text = seg.text)
+                        NarratorAsideLine(
+                            text = seg.text,
+                            isBookmarked = bookmarks.any { it.take(300) == seg.text.take(300) },
+                            onToggleBookmark = { onToggleBookmark(seg.text.take(300)) }
+                        )
                     }
                     is NarrationSegmentData.NpcDialog -> {
                         val displayName = resolveNpcDisplayName(seg.name, npcLog)
@@ -146,7 +150,11 @@ internal fun NarrationBlock(
             nonProseSegments.forEach { seg ->
                 when (seg) {
                     is NarrationSegment.NarratorQuip -> {
-                        NarratorQuipBubble(text = seg.text)
+                        NarratorAsideLine(
+                            text = seg.text,
+                            isBookmarked = bookmarks.any { it.take(300) == seg.text.take(300) },
+                            onToggleBookmark = { onToggleBookmark(seg.text.take(300)) }
+                        )
                     }
                     is NarrationSegment.Dialogue -> {
                         SwipeableMessage(
@@ -185,7 +193,11 @@ internal fun NarrationBlock(
                         }
                     }
                     is NarrationSegment.Action -> {
-                        NarratorQuipBubble(text = seg.text)
+                        NarratorAsideLine(
+                            text = seg.text,
+                            isBookmarked = bookmarks.any { it.take(300) == seg.text.take(300) },
+                            onToggleBookmark = { onToggleBookmark(seg.text.take(300)) }
+                        )
                     }
                     else -> {}
                 }
@@ -207,81 +219,54 @@ internal fun NarrationBlock(
 internal fun NarratorProseBubble(
     text: String,
     isLatestTurn: Boolean,
-    isBookmarked: Boolean,
-    onToggleBookmark: () -> Unit
+    isBookmarked: Boolean = false,
+    onToggleBookmark: () -> Unit = {}
 ) {
     val realms = RealmsTheme.colors
     var expanded by remember { mutableStateOf(isLatestTurn) }
+    val borderColor = realms.asideOnBubble.copy(alpha = 0.25f)
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        if (isLatestTurn || expanded) {
-            // Full prose — render with markdown
-            val asideAccent = realms.asideOnBubble.copy(alpha = 0.3f)
-            Surface(
-                color = realms.narratorBubble,
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .drawBehind {
-                        drawRect(
-                            color = asideAccent,
-                            topLeft = Offset.Zero,
-                            size = Size(3.dp.toPx(), size.height)
-                        )
-                    }
-            ) {
-                Column(Modifier.padding(RealmsSpacing.m)) {
+    val fontSize = (15f * LocalFontScale.current).sp
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(
+            onClick = { expanded = !expanded },
+            color = if (expanded) realms.narratorBubble else realms.narratorBubble.copy(alpha = 0.7f),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, borderColor),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(RealmsSpacing.m)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.MenuBook,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = realms.asideOnBubble.copy(alpha = 0.7f)
+                    )
+                    Spacer(Modifier.width(RealmsSpacing.xs))
+                    Text(
+                        "NARRATOR",
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.5.sp),
+                        color = realms.asideOnBubble.copy(alpha = 0.7f)
+                    )
+                    Spacer(Modifier.width(RealmsSpacing.xs))
+                    Icon(
+                        if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = if (expanded) "Collapse" else "Expand",
+                        modifier = Modifier.size(16.dp),
+                        tint = realms.asideOnBubble.copy(alpha = 0.5f)
+                    )
+                }
+                if (expanded) {
+                    Spacer(Modifier.height(RealmsSpacing.s))
                     NarrationMarkdown(
                         text = text,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    // Bookmark icon
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        IconButton(onClick = onToggleBookmark, modifier = Modifier.size(48.dp)) {
-                            Icon(
-                                if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                                contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
-                                tint = realms.goldAccent.copy(alpha = 0.6f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-            }
-            // Collapse affordance for older turns when expanded
-            if (!isLatestTurn) {
-                Text(
-                    "Tap to collapse",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { expanded = false }
-                        .padding(vertical = RealmsSpacing.xs),
-                    textAlign = TextAlign.Center
-                )
-            }
-        } else {
-            // Collapsed preview for older turns
-            Surface(
-                onClick = { expanded = true },
-                color = realms.narratorBubble.copy(alpha = 0.7f),
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(Modifier.padding(RealmsSpacing.m)) {
-                    Text(
-                        text = summarizeProse(text),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = realms.narratorOnBubble.copy(alpha = 0.7f),
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        "Tap to expand",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = RealmsSpacing.xs)
+                        modifier = Modifier.fillMaxWidth(),
+                        baseStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = fontSize)
                     )
                 }
             }
@@ -509,71 +494,69 @@ private fun splitNarration(text: String, characterName: String? = null): List<Na
 // ============================================================
 
 @Composable
-private fun NpcActionLine(text: String, accentColor: Color) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xs),
-        verticalAlignment = Alignment.Top
+private fun ActionPill(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    accent: Color,
+    isBookmarked: Boolean = false,
+    onToggleBookmark: (() -> Unit)? = null
+) {
+    Surface(
+        color = accent.copy(alpha = 0.12f),
+        shape = MaterialTheme.shapes.large,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Box(
-            Modifier
-                .width(2.dp)
-                .defaultMinSize(minHeight = 16.dp)
-                .background(accentColor.copy(alpha = 0.3f))
-        )
-        Text(
-            text,
-            style = MaterialTheme.typography.bodySmall.copy(
-                fontStyle = FontStyle.Italic,
-                fontSize = (13f * LocalFontScale.current).sp
-            ),
-            color = accentColor.copy(alpha = 0.8f),
-            modifier = Modifier.padding(start = RealmsSpacing.s)
-        )
+        Row(
+            Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(12.dp),
+                tint = accent.copy(alpha = 0.7f)
+            )
+            Spacer(Modifier.width(RealmsSpacing.s))
+            Text(
+                text,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontStyle = FontStyle.Italic,
+                    fontSize = 10.sp
+                ),
+                color = accent.copy(alpha = 0.8f),
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center
+            )
+            if (onToggleBookmark != null) {
+                InlineBookmark(
+                    isBookmarked, onToggleBookmark,
+                    inactiveTint = accent.copy(alpha = 0.35f)
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun NarratorAsideLine(text: String) {
-    Text(
-        "~ $text ~",
-        style = MaterialTheme.typography.bodySmall.copy(
-            fontStyle = FontStyle.Italic,
-            fontSize = (13f * LocalFontScale.current).sp
-        ),
-        color = RealmsTheme.colors.asideOnBubble.copy(alpha = 0.7f),
-        textAlign = TextAlign.Center,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = RealmsSpacing.xxl, vertical = RealmsSpacing.xs)
-    )
-}
+private fun NpcActionLine(text: String, accentColor: Color) =
+    ActionPill(text = text, icon = Icons.Filled.DirectionsRun, accent = accentColor)
 
 @Composable
-private fun PlayerActionLine(text: String) {
-    val realms = RealmsTheme.colors
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xs),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.Top
-    ) {
-        Text(
-            text,
-            style = MaterialTheme.typography.bodySmall.copy(
-                fontStyle = FontStyle.Italic,
-                fontSize = (13f * LocalFontScale.current).sp
-            ),
-            color = realms.goldAccent.copy(alpha = 0.8f),
-            modifier = Modifier.padding(end = RealmsSpacing.s),
-            textAlign = TextAlign.End
-        )
-        Box(
-            Modifier
-                .width(2.dp)
-                .defaultMinSize(minHeight = 16.dp)
-                .background(realms.goldAccent.copy(alpha = 0.3f))
-        )
-    }
-}
+internal fun NarratorAsideLine(
+    text: String,
+    isBookmarked: Boolean = false,
+    onToggleBookmark: () -> Unit = {}
+) = ActionPill(
+    text = text,
+    icon = Icons.Filled.AutoAwesome,
+    accent = RealmsTheme.colors.asideOnBubble,
+    isBookmarked = isBookmarked,
+    onToggleBookmark = onToggleBookmark
+)
+
+@Composable
+private fun PlayerActionLine(text: String) =
+    ActionPill(text = text, icon = Icons.Filled.Bolt, accent = RealmsTheme.colors.goldAccent)
 
 /** Extracts a 1-3 sentence summary from the full prose text. */
 private fun summarizeProse(text: String): String {
