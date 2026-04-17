@@ -1293,6 +1293,16 @@ class GameViewModel(
         return clsDef.proficiencies.any { it.equals(skill, true) }
     }
 
+    /** Navigate directly to any screen. Used by the debug bridge (/navigate). */
+    fun setScreen(screen: Screen) {
+        _screen.value = screen
+    }
+
+    /** Dismiss the active pre-roll overlay without sending the action to AI. */
+    fun cancelPreRoll() {
+        _ui.value = _ui.value.copy(preRoll = null)
+    }
+
     fun dismissLastCheck() {
         _ui.value = _ui.value.copy(lastCheck = null)
     }
