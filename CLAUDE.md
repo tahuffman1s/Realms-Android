@@ -85,17 +85,19 @@ gradle test
 - If you added new game mechanics, reducers, or parser logic, **write new tests** for them (see Testing section below).
 - Re-run `gradle test` after fixes. Cap at 3 retry cycles; if still failing, stop and present the remaining failures to the user.
 
-### Step 5 — Build and Deploy
+### Step 5 — Build, Deploy, and Verify Visually
 
-After tests pass, build and install to any connected device (emulator or phone) in one step:
+After tests pass, build, deploy, connect the Debug Bridge, and verify visually:
 
 ```bash
-gradle installDebug && adb shell am start -n com.realmsoffate.game/.MainActivity
+# Build and deploy
+gradle installDebug && adb -s emulator-5554 shell am start -n com.realmsoffate.game/.MainActivity
+
+# Ensure Debug Bridge port is forwarded (idempotent)
+adb -s emulator-5554 forward tcp:8735 tcp:8735
 ```
 
-This builds the debug APK, pushes it to the connected device, and launches the app. If no device is connected, either start the emulator (`emulator -avd Pixel7 &`) or run `phone` (the fish function) which handles ADB reconnection to the Galaxy S23 automatically.
-
-**If the build succeeds:** report success. The app is already running on the phone.
+If no device is connected, either start the emulator (`emulator -avd Pixel7 &`) or run `phone` for the Galaxy S23.
 
 **If the build fails:** read the full error output, then:
 - Diagnose each error.
@@ -104,9 +106,50 @@ This builds the debug APK, pushes it to the connected device, and launches the a
 - Repeat this diagnose-fix-rebuild loop until the build succeeds.
 - Cap at 5 retry cycles. If still failing after 5 attempts, stop and present the remaining errors to the user.
 
-### Step 6 — Verify and Finish
+**After successful deploy, run the visual verification protocol:**
 
-- Use `superpowers:verification-before-completion` before claiming work is done — run tests and build, confirm output, then report.
+1. **Navigate to the relevant screen** via the Debug Bridge:
+   ```bash
+   # For UI changes — skip straight to a game state (no AI, instant)
+   curl -X POST localhost:8735/macro/new-game -d '{"name":"Test","class":"fighter","race":"human","skipFirstTurn":true}'
+   # For specific screens:
+   curl -X POST localhost:8735/navigate -d '{"screen":"death"}'
+   ```
+
+2. **Screenshot and visually inspect:**
+   ```bash
+   curl localhost:8735/screenshot > screenshots/verify.png
+   ```
+   Read the screenshot. Look for layout issues, text readability, alignment, and anything that looks off.
+
+3. **Run automated checks in both themes:**
+   ```bash
+   curl localhost:8735/checks/both
+   ```
+   Review all `high` severity issues. Fix any WCAG contrast failures, touch target violations, or overflow problems before proceeding.
+
+4. **Test edge cases if the change touches UI:**
+   ```bash
+   # Long names, zero HP, max gold, many conditions
+   curl -X POST localhost:8735/inject -d '{"character.hp":0}'
+   curl localhost:8735/screenshot > screenshots/edge_zero_hp.png
+   curl -X POST localhost:8735/inject -d '{"character.name":"Bartholomew Fitzgerald Worthington III","character.gold":999999}'
+   curl localhost:8735/screenshot > screenshots/edge_long_name.png
+   curl -X POST localhost:8735/inject/reset
+   ```
+
+5. **Check the other theme** if the change touches colors or backgrounds:
+   ```bash
+   curl -X POST localhost:8735/theme -d '{"mode":"dark"}'
+   curl localhost:8735/screenshot > screenshots/verify_dark.png
+   curl -X POST localhost:8735/theme -d '{"mode":"system"}'
+   ```
+
+**Skip visual verification only for:** test-only changes, build config changes, prompt text changes, or non-UI game logic.
+
+### Step 6 — Finish
+
+- Use `superpowers:verification-before-completion` before claiming work is done — run tests, build, and visual verification (Step 5), then report.
 - Use `commit-commands:commit` or `commit-commands:commit-push-pr` for git operations when the user asks to commit or create a PR.
 - Use `superpowers:requesting-code-review` after completing a major feature or before merging.
 - Use `superpowers:finishing-a-development-branch` when implementation is complete and you need to decide how to integrate.
@@ -391,152 +434,98 @@ Context7 is an MCP server that fetches current documentation. Use it when you ne
 
 ## Deploying to a device
 
-Two deployment targets are available: the physical phone and the local emulator. Both use the same `gradle installDebug` pipeline.
+Two deployment targets are available. The **emulator is preferred** for development — it supports the Debug Bridge for visual testing.
 
-### Emulator
-
-Launch the emulator, then build and deploy:
+### Emulator (preferred)
 
 ```bash
-# Start the emulator (runs in the background)
+# Start the emulator if not running
 emulator -avd Pixel7 &
 
-# Wait for boot, then deploy
-adb wait-for-device && gradle installDebug && adb shell am start -n com.realmsoffate.game/.MainActivity
+# Deploy, launch, and connect Debug Bridge
+adb wait-for-device && gradle installDebug && adb -s emulator-5554 shell am start -n com.realmsoffate.game/.MainActivity
+adb -s emulator-5554 forward tcp:8735 tcp:8735
 ```
 
-The AVD `Pixel7` is created by `setup-env.sh`. If it doesn't exist, create it:
-
-```bash
-echo "no" | avdmanager create avd -n "Pixel7" -k "system-images;android-36.1;google_apis;x86_64" -d "pixel_7"
-```
+After this, all Debug Bridge endpoints are available at `localhost:8735`. The AVD `Pixel7` is created by `setup-env.sh`.
 
 ### Physical phone (Galaxy S23)
 
-The paired Android target is a Galaxy S23 (`SM-S916U`) on the local LAN. A fish function `phone` is installed at `~/.config/fish/functions/phone.fish` that wraps the full cycle: reconnect if needed → `gradle installDebug` → launch `MainActivity`. Run it from the repo root:
+The fish function `phone` handles wireless ADB reconnection + deploy + launch:
 
 ```
 phone
 ```
 
-#### Under the hood
+The phone is a Galaxy S23 (`SM-S916U`) on the LAN at `192.168.68.64`. The Debug Bridge also works on the phone — just forward the port to the phone's serial instead: `adb -s <phone-serial> forward tcp:8735 tcp:8735`.
 
-The function:
-1. Checks `adb devices` for at least one entry in `device` state.
-2. If none, runs `adb connect 192.168.68.64:44547` (the last-known ADB port).
-3. If still no device, prints reconnection instructions and exits non-zero.
-4. Runs `gradle installDebug`.
-5. Runs `adb shell am start -n com.realmsoffate.game/.MainActivity`.
-
-### When the port rotates
-
-Android's wireless ADB port changes on reboots, Wi-Fi drops, or toggling the Wireless debugging switch. When `phone` reports it can't reach the phone:
-
-1. Open **Settings → System → Developer options → Wireless debugging** on the phone.
-2. Note the current port shown at the top of that screen.
-3. Either run once-off: `adb connect 192.168.68.64:<new-port>`
-4. Or edit `~/.config/fish/functions/phone.fish` and update `phone_port` so the reconnect path stays automatic.
-
-The one-time pairing (via **Pair device with pairing code**) does NOT need to be redone — pairing identity persists across ports. Only re-pair if you wipe the phone, reset developer options, or hit "Revoke authorizations".
+**When the ADB port rotates** (reboots, Wi-Fi drops): open **Settings → Developer options → Wireless debugging** on the phone, note the new port, then `adb connect 192.168.68.64:<new-port>` or update `phone.fish`.
 
 ## Debugging workflow
 
-The in-game Debug button (More menu → Debug) dumps the full game state + AI exchange log to the app's scoped external storage on the phone:
+**Primary:** Use the Debug Bridge (`curl localhost:8735/state`, `/screenshot`, `/checks`). See Step 5 for the full visual verification protocol.
 
-```
-/sdcard/Android/data/com.realmsoffate.game/files/debug/debug_<character>_T<turn>_<epoch>.txt
-```
-
-No file picker — one tap writes the dump. To pull it to the PC, run the fish function from anywhere inside the repo:
+**For AI exchange logs:** The in-game Debug button (More menu → Debug) dumps full game state + AI exchange log to the device. Pull with:
 
 ```
 pulldebug
 ```
 
-It yanks the newest file into `<repo-root>/debug-dumps/` (gitignored) and prints the local path. Falls back to `~/Downloads/` only when run from outside a git repo. Needs the same wireless ADB pairing that `phone` uses.
-
-### For Claude sessions
-
-When the user asks to "check the latest debug dump" or similar, the freshest dump is always at:
-
+Yanks the newest dump into `<repo-root>/debug-dumps/` (gitignored). The freshest dump is:
 ```
 ls -t debug-dumps/debug_*.txt 2>/dev/null | head -1
 ```
 
-Read that file directly — no need to ask the user for the path. Files are named `debug_<characterslot>_T<turn>_<epoch>.txt` so newest-by-mtime is also newest-by-turn for a given character.
-
 ## Debug Bridge (debug builds only)
 
-An HTTP server on port 8735 that gives Claude Code full access to the app's state, UI, and commands. Only active in debug builds. Zero release footprint — all code lives in `app/src/debug/`.
+HTTP server on port 8735 — full access to app state, UI, and commands. Code lives in `app/src/debug/`. Zero release footprint. The visual verification workflow in Step 5 uses this.
 
-### Setup (once per session)
+### Setup
 
+Port forwarding (idempotent, include in deploy commands):
 ```bash
 adb -s emulator-5554 forward tcp:8735 tcp:8735
 ```
 
-For real-time events, start logcat in background:
+Real-time events (run in background):
 ```bash
 adb -s emulator-5554 logcat -s RealmsDebug:V
 ```
 
-### Endpoints
+### Endpoint Reference
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/state` | GET | Full game state as JSON |
-| `/state/diff` | GET | Changes since last query |
-| `/state/overlay` | GET | Active overlay + available actions |
-| `/screenshot` | GET | PNG screenshot (`?format=base64` for JSON) |
-| `/screenshot/both` | GET | Screenshots in both light and dark themes |
-| `/checks` | GET | Automated visual/accessibility issue scan |
-| `/checks/both` | GET | Issue scan in both themes |
-| `/input` | POST | Submit player action: `{"text": "..."}` |
-| `/confirm` | POST | Confirm active dice roll |
-| `/cancel` | POST | Dismiss active overlay |
-| `/navigate` | POST | Switch screen: `{"screen": "game"}` |
-| `/tap` | POST | Tap element: `{"text": "Continue"}` or `{"contentDesc": "Settings"}` |
-| `/theme` | POST | Switch theme: `{"mode": "dark"}` |
-| `/font-scale` | POST | Set font scale: `{"scale": 1.5}` |
-| `/inject` | POST | Override state: `{"character.hp": 0}` |
-| `/inject/messages` | POST | Inject test messages |
-| `/inject/reset` | POST | Restore real game state |
-| `/macro/new-game` | POST | Skip to game: `{"name":"Test","class":"fighter","race":"human","skipFirstTurn":true}` |
-| `/macro/advance` | POST | Auto-play turns: `{"turns":3,"mode":"canned"}` |
-| `/macro/death` | POST | Trigger death screen |
+**State:** `GET /state` · `/state/diff` · `/state/overlay`
 
-### Post-deploy testing workflow
+**Visual:** `GET /screenshot` (`?format=base64`) · `/screenshot/both` · `/checks` · `/checks/both`
 
-After any UI change:
+**Commands:** `POST /input {"text":"..."}` · `/confirm` · `/cancel` · `/navigate {"screen":"game"}` · `/tap {"text":"Continue"}`
 
+**Theme:** `POST /theme {"mode":"dark"}` · `/font-scale {"scale":1.5}`
+
+**Injection:** `POST /inject {"character.hp":0}` · `/inject/messages {"messages":[...]}` · `/inject/reset`
+
+**Macros:** `POST /macro/new-game {"name":"Test","class":"fighter","race":"human","skipFirstTurn":true}` · `/macro/advance {"turns":3,"mode":"canned"}` · `/macro/death`
+
+### Key interactions
+
+**Navigate without coordinate guessing:**
 ```bash
-# 1. Fast-path to a testable game state
-curl -X POST localhost:8735/macro/new-game -d '{"name":"Test","class":"fighter","race":"human","skipFirstTurn":true}'
-
-# 2. Visual check
-curl localhost:8735/screenshot > screenshots/check.png
-
-# 3. Automated issue scan (both themes)
-curl localhost:8735/checks/both
-
-# 4. Test edge cases
-curl -X POST localhost:8735/inject -d '{"character.hp":0}'
-curl localhost:8735/screenshot > screenshots/zero_hp.png
-curl -X POST localhost:8735/inject/reset
+curl -X POST localhost:8735/tap -d '{"text":"Continue"}'   # tap by label
+curl -X POST localhost:8735/navigate -d '{"screen":"game"}' # switch screen directly
+curl -X POST localhost:8735/input -d '{"text":"I attack"}'  # submit player input
+curl localhost:8735/state/overlay                            # check if dice roll is pending
+curl -X POST localhost:8735/confirm                          # confirm dice roll
 ```
 
-### Build-time color check
-
+**Check visual health:**
 ```bash
-gradle checkHardcodedColors
+curl localhost:8735/checks/both   # contrast, touch targets, overflow — both themes
+gradle checkHardcodedColors       # build-time scan for Color.XXX in composables
 ```
-
-Scans `ui/` composables (excluding theme definitions) for hardcoded `Color.XXX` instead of theme tokens.
 
 ### Fish function
 
 The `debug` fish function wraps all endpoints:
-
 ```
 debug state | diff | overlay | screenshot | checks | checks-both
 debug input <text> | confirm | cancel | navigate <screen> | tap <label>
@@ -554,4 +543,5 @@ debug events
 - `app/src/main/kotlin/com/realmsoffate/game/game/handlers/` — VM-level domain handlers (merchant, rest, save, progression)
 - `app/src/main/kotlin/com/realmsoffate/game/ui/` — UI layer (game screen, map, overlays, panels, setup screens)
 - `app/src/main/kotlin/com/realmsoffate/game/util/` — Utilities (markdown rendering)
+- `app/src/debug/kotlin/com/realmsoffate/game/debug/` — Debug Bridge (HTTP server, issue checker, event bus, macros — debug builds only)
 - `app/src/test/kotlin/com/realmsoffate/game/` — Tests (tag parser, integration, handler tests, fixtures)
