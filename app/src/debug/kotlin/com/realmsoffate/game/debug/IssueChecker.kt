@@ -182,7 +182,10 @@ object IssueChecker {
 
             // ── Check 1: WCAG contrast (text nodes only) ───────────────────
             val nodeTextContent = ComposeTreeHelper.nodeText(node)
-            if (nodeTextContent != null && isVisible &&
+            // Skip emoji-only nodes — their colors are system-rendered, not ours
+            val isEmojiOnly = nodeTextContent != null &&
+                nodeTextContent.all { it.isSurrogate() || it.code > 0x2600 || it.isWhitespace() }
+            if (nodeTextContent != null && !isEmojiOnly && isVisible &&
                 Rect.intersects(boundsInScreen, bitmapRect)
             ) {
                 val fgBg = sampleFgBg(bitmap, boundsInScreen)

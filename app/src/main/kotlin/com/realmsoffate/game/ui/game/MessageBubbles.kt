@@ -143,6 +143,7 @@ internal fun SceneBanner(scene: String, desc: String) {
         shape = MaterialTheme.shapes.medium,
         modifier = Modifier
             .fillMaxWidth()
+            .defaultMinSize(minHeight = 48.dp)
             .padding(horizontal = RealmsSpacing.m)
             .background(
                 Brush.linearGradient(

@@ -122,8 +122,10 @@ internal fun GameTopBar(
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .defaultMinSize(minHeight = 48.dp)
                     .clickable { statsExpanded = !statsExpanded },
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     if (statsExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
@@ -193,15 +195,14 @@ private fun ConditionChip(name: String) {
 
 @Composable
 private fun LevelBadge(level: Int) {
-    val realms = RealmsTheme.colors
     Surface(
-        color = realms.goldAccent.copy(alpha = 0.18f),
+        color = MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.extraSmall
     ) {
         Text(
             "L$level",
             style = MaterialTheme.typography.labelMedium,
-            color = realms.goldAccent,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.xxs)
         )

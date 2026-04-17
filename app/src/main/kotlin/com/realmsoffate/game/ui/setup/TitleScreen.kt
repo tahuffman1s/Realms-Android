@@ -187,7 +187,7 @@ fun TitleScreen(vm: GameViewModel) {
             Text(
                 "AI Game Master · Compose Dice · Dynamic World",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(48.dp))
