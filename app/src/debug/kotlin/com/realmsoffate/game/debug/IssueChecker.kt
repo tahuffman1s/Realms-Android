@@ -3,7 +3,7 @@ package com.realmsoffate.game.debug
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Rect
-import android.view.accessibility.AccessibilityNodeInfo
+import androidx.compose.ui.semantics.SemanticsNode
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -103,46 +103,19 @@ object IssueChecker {
             .maxByOrNull { contrastRatio(it, background) }
     }
 
-    // ── Node traversal ─────────────────────────────────────────────────────
-
-    /** Collect all nodes in the tree, null-checking every child. */
-    private fun flatten(root: AccessibilityNodeInfo): List<AccessibilityNodeInfo> {
-        val result = mutableListOf<AccessibilityNodeInfo>()
-        val queue = ArrayDeque<AccessibilityNodeInfo>()
-        queue.add(root)
-        while (queue.isNotEmpty()) {
-            val node = queue.removeFirst()
-            result.add(node)
-            for (i in 0 until node.childCount) {
-                val child = node.getChild(i) ?: continue
-                queue.add(child)
-            }
-        }
-        return result
-    }
-
-    /** Human-readable label for a node. */
-    private fun label(node: AccessibilityNodeInfo): String =
-        node.text?.toString()?.take(60)
-            ?: node.contentDescription?.toString()?.take(60)
-            ?: node.className?.toString()?.substringAfterLast('.')?.take(40)
-            ?: "<unknown>"
-
     // ── Public API ─────────────────────────────────────────────────────────
 
-    fun runChecks(rootNode: AccessibilityNodeInfo, bitmap: Bitmap, density: Float): List<Issue> {
+    fun runChecks(nodes: List<SemanticsNode>, bitmap: Bitmap, density: Float): List<Issue> {
         val issues = mutableListOf<Issue>()
-        val nodes = flatten(rootNode)
         val bitmapRect = Rect(0, 0, bitmap.width, bitmap.height)
 
         for (node in nodes) {
-            val boundsInScreen = Rect()
-            node.getBoundsInScreen(boundsInScreen)
-
-            val elemLabel = label(node)
+            val boundsInScreen = ComposeTreeHelper.boundsInWindow(node)
+            val elemLabel = ComposeTreeHelper.nodeLabel(node).take(60)
 
             // ── Check 3: Zero-size elements ────────────────────────────────
-            val hasContent = !node.text.isNullOrEmpty() || !node.contentDescription.isNullOrEmpty()
+            val hasContent = ComposeTreeHelper.nodeText(node) != null ||
+                    ComposeTreeHelper.nodeContentDesc(node) != null
             if (hasContent && (boundsInScreen.width() == 0 || boundsInScreen.height() == 0)) {
                 issues.add(
                     Issue(
@@ -157,8 +130,8 @@ object IssueChecker {
                 continue // no point running other checks on a zero-size node
             }
 
-            val isInteractive = node.isClickable || node.isCheckable
-            val isVisible = node.isVisibleToUser
+            val isInteractive = ComposeTreeHelper.isClickable(node)
+            val isVisible = ComposeTreeHelper.isVisible(node)
 
             // ── Check 4: Off-screen interactive elements ───────────────────
             if (isInteractive && isVisible && !Rect.intersects(boundsInScreen, bitmapRect)) {
@@ -195,7 +168,8 @@ object IssueChecker {
             }
 
             // ── Check 1: WCAG contrast (text nodes only) ───────────────────
-            if (!node.text.isNullOrEmpty() && isVisible &&
+            val nodeTextContent = ComposeTreeHelper.nodeText(node)
+            if (nodeTextContent != null && isVisible &&
                 Rect.intersects(boundsInScreen, bitmapRect)
             ) {
                 val bg = sampleBackground(bitmap, boundsInScreen)

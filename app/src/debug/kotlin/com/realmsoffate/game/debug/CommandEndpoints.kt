@@ -1,11 +1,9 @@
 package com.realmsoffate.game.debug
 
-import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.MotionEvent
-import android.view.accessibility.AccessibilityNodeInfo
 import com.realmsoffate.game.game.Screen
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeout
@@ -116,65 +114,44 @@ object CommandEndpoints {
 
             val targetText = body["text"]?.jsonPrimitive?.content
             val targetDesc = body["contentDesc"]?.jsonPrimitive?.content
-
-            if (targetText == null && targetDesc == null) {
-                return@route HttpResponse.error(400, "Provide 'text' or 'contentDesc' to identify the element")
-            }
+            val target = targetText ?: targetDesc
+                ?: return@route HttpResponse.error(400, "Provide 'text' or 'contentDesc' to identify the element")
 
             val activity = DebugBridge.requireActivity()
 
-            // Walk the accessibility node tree on the main thread
-            data class TapTarget(val label: String, val bounds: Rect)
+            // Find Compose semantics tree
+            val owner = onMain { ComposeTreeHelper.findSemanticsOwner(activity.window.decorView) }
+                ?: return@route HttpResponse.error(500, "Could not find Compose semantics owner")
 
-            val target: TapTarget? = onMain {
-                val rootView = activity.window.decorView
-                val rootNode = rootView.createAccessibilityNodeInfo()
-                    ?: return@onMain null
+            val allNodes = onMain { ComposeTreeHelper.getAllNodes(owner) }
 
-                fun findNode(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-                    // Check this node
-                    val nodeText = node.text?.toString()
-                    val nodeDesc = node.contentDescription?.toString()
-                    if (targetText != null && nodeText != null && nodeText.contains(targetText, ignoreCase = true)) return node
-                    if (targetDesc != null && nodeDesc != null && nodeDesc.contains(targetDesc, ignoreCase = true)) return node
-                    // Recurse into children
-                    for (i in 0 until node.childCount) {
-                        val child = node.getChild(i) ?: continue
-                        val found = findNode(child)
-                        if (found != null) return found
-                    }
-                    return null
-                }
+            // Search for matching node (case-insensitive contains match)
+            val targetLower = target.lowercase()
+            val matchedNode = allNodes.firstOrNull { node ->
+                val nodeText = ComposeTreeHelper.nodeText(node)?.lowercase()
+                val nodeDesc = ComposeTreeHelper.nodeContentDesc(node)?.lowercase()
+                (nodeText != null && targetLower in nodeText) || (nodeDesc != null && targetLower in nodeDesc)
+            } ?: return@route HttpResponse.error(404, "Element not found: '$target'")
 
-                val found = findNode(rootNode) ?: return@onMain null
-                val bounds = Rect()
-                found.getBoundsInScreen(bounds)
-                val label = targetText ?: targetDesc ?: "unknown"
-                TapTarget(label, bounds)
-            }
-
-            if (target == null) {
-                val query = targetText ?: targetDesc
-                return@route HttpResponse.error(404, "Element not found: '$query'")
-            }
-
-            val cx = target.bounds.centerX().toFloat()
-            val cy = target.bounds.centerY().toFloat()
-            val b = target.bounds
+            val bounds = onMain { ComposeTreeHelper.boundsInWindow(matchedNode) }
+            val cx = bounds.centerX().toFloat()
+            val cy = bounds.centerY().toFloat()
 
             // Dispatch touch events on the main thread
             onMain {
+                val rootView = activity.window.decorView
                 val downTime = SystemClock.uptimeMillis()
                 val down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, cx, cy, 0)
                 val up = MotionEvent.obtain(downTime, downTime + 50, MotionEvent.ACTION_UP, cx, cy, 0)
-                activity.window.decorView.dispatchTouchEvent(down)
-                activity.window.decorView.dispatchTouchEvent(up)
+                rootView.dispatchTouchEvent(down)
+                rootView.dispatchTouchEvent(up)
                 down.recycle()
                 up.recycle()
             }
 
+            val label = ComposeTreeHelper.nodeLabel(matchedNode)
             HttpResponse.json(
-                """{"ok":true,"tapped":"${target.label}","bounds":[${b.left},${b.top},${b.right},${b.bottom}]}"""
+                """{"ok":true,"tapped":"$label","bounds":[${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}]}"""
             )
         }
     }
