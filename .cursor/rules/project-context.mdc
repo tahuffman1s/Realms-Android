@@ -1,0 +1,21 @@
+---
+description: Realms Android — stack, package, directory map
+alwaysApply: false
+---
+
+# Realms of Fate — Android
+
+Kotlin + Jetpack Compose RPG. Package: **`com.realmsoffate.game`**. Build: **Gradle Kotlin DSL**.
+
+## Layout
+
+- `app/src/main/kotlin/com/realmsoffate/game/data/` — AI providers, models, preferences, prompts, tag parsing
+- `app/src/main/kotlin/com/realmsoffate/game/game/` — ViewModel, classes, races, scenarios, world events, lore, feats
+- `app/src/main/kotlin/com/realmsoffate/game/game/reducers/` — Pure reducers (character, combat, NPC log, quest/party, world)
+- `app/src/main/kotlin/com/realmsoffate/game/game/handlers/` — Merchant, rest, save, progression
+- `app/src/main/kotlin/com/realmsoffate/game/ui/` — Game shell, overlays, panels, setup screens
+- `app/src/main/kotlin/com/realmsoffate/game/util/` — Markdown and helpers
+- `app/src/debug/kotlin/com/realmsoffate/game/debug/` — Debug Bridge (HTTP, macros, describe) — **debug builds only**
+- `app/src/test/kotlin/com/realmsoffate/game/` — JVM tests (Robolectric); see `testing.mdc`
+
+Canonical agent workflow: **`task-workflow.mdc`**. Build/deploy/verify: **`build-deploy.mdc`**, **`debug-bridge-verify.mdc`**, **`debug-bridge-test-procedures.mdc`**, **`commit-after-verify.mdc`**.

@@ -1,6 +1,6 @@
 ---
 description: Commit workspace changes after verification succeeds (unless opted out)
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Commit after verification

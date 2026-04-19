@@ -1,0 +1,71 @@
+---
+description: Task triage, execution order, tests, finish — Cursor-oriented workflow
+alwaysApply: false
+---
+
+# Task workflow
+
+Use this when the user assigns work. Pair with **`project-context.mdc`** and the deploy/verify rules in `.cursor/rules/`.
+
+## Planning vs execution
+
+- **Planning and architecture** — reason in this session; split large work into clear steps.
+- **Implementation** — prefer direct edits for normal/low tasks; use **parallel subagents** (or focused exploration) for independent chunks of high-priority work. Prompts should be literal: paths, intent, acceptance checks.
+- **Low-priority** (typos, one-liners) — do inline without extra orchestration.
+
+## Step 1 — Triage
+
+Classify tasks:
+
+| Priority | Criteria | Examples |
+|----------|----------|---------|
+| **High** | Architecture, multi-file refactors, 3+ files, deep bugs | New system, data rework, complex UI flow |
+| **Normal** | 1–2 files, straightforward fixes, new screen/component | Button, crash fix, prompt tweak |
+| **Low** | Cosmetic, copy, tiny cleanup | Typo, padding |
+
+Present a short checklist before starting:
+
+```markdown
+## Task Plan
+### High — [ ] …
+### Normal — [ ] …
+### Low — [ ] …
+```
+
+## Step 2 — Execute
+
+- **High first** — subdivide by layer (data / VM / UI). Parallelize only where dependencies allow.
+- **Normal next** — sequential unless independent.
+- **Low last** — quick passes.
+
+Optional: read **`skills-and-tools.mdc`** for Superpowers / frontend-design / debugging skills when the task fits.
+
+## Step 3 — Checklist updates
+
+Mark items done as you finish; end with a short summary of what changed.
+
+## Step 4 — Tests
+
+After substantive changes:
+
+```bash
+gradle test
+```
+
+If failures: diagnose (your change vs pre-existing). Fix code or update tests to match intended behavior — **do not delete tests** to green. Add regression tests for logic bugs. Retry up to ~3 cycles; then stop and report.
+
+See **`testing.mdc`** for what to test by change type.
+
+## Step 5 — Deploy and verify
+
+Follow **`build-deploy.mdc`**, **`debug-bridge-verify.mdc`**, and **`debug-bridge-test-procedures.mdc`** (minimum **P0–P1** after app changes; add contextual procedures). **`shell-permissions.mdc`** for non-`sudo` commands.
+
+Do not claim runtime verification from compile/tests alone when app sources or app Gradle changed.
+
+## Step 6 — Finish
+
+Confirm tests + deploy/verification (when required) before saying work is complete. If the user asked to commit, follow **`commit-after-verify.mdc`**.
+
+## Step 7 — README
+
+Update **`README.md`** only when user-visible structure, game systems, build requirements, or stack changed — not for internal refactors invisible to readers.

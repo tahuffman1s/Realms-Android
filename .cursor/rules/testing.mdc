@@ -1,0 +1,75 @@
+---
+description: JVM test layout, when to add tests, fixtures — Realms Android
+globs: app/src/test/**/*.kt
+alwaysApply: false
+---
+
+# Testing (Realms Android)
+
+Tests run on **Robolectric** (SDK 34), **JUnit 4**, **JVM only** (no instrumented tests).
+
+## Layout
+
+```
+app/src/test/kotlin/com/realmsoffate/game/
+├── data/
+│   └── TagParserTest.kt              — tokenizer + segment parser
+└── game/
+    ├── ApplyParsedIntegrationTest.kt — turn pipeline / reducers
+    ├── MerchantHandlerTest.kt
+    ├── RestHandlerTest.kt
+    ├── SaveServiceTest.kt
+    ├── ProgressionHandlerTest.kt
+    ├── GameStateFixture.kt           — character(), baseState(), viewModelWithState()
+    └── ParsedReplyBuilder.kt        — ParsedReply builders
+```
+
+## When to write tests
+
+| Changed | Action |
+|---------|--------|
+| Reducer / `applyParsed` behavior | Extend **`ApplyParsedIntegrationTest`** + `ParsedReplyBuilder` |
+| Tag parsing / tokenizer | Extend **`TagParserTest`** |
+| Merchant / Rest / Save / Progression handlers | Extend that handler’s test class |
+| Bug in game logic | Add a **regression** test |
+| UI-only, copy, cosmetics | Usually **no** new test |
+
+## Reducer-style example
+
+```kotlin
+@Test fun `your test name`() {
+    val vm = viewModelWithState(baseState(
+        character = character(hp = 50, maxHp = 100)
+    ))
+    val parsed = ParsedReplyBuilder()
+        .heal(20)
+        .narration("You feel restored.")
+        .build()
+
+    vm.applyParsed(parsed, diceResult = null)
+
+    val state = vm.readUiState()
+    assertEquals(70, state.character.hp)
+}
+```
+
+## Tag parser example
+
+```kotlin
+@Test fun `your test name`() {
+    val segments = tokenize("[NPC_DIALOG:merchant]\"Fresh wares!\"/[NPC_DIALOG]")
+    assertEquals(1, segments.size)
+    assertEquals(SegmentType.NPC_DIALOG, segments[0].type)
+    assertEquals("merchant", segments[0].speaker)
+}
+```
+
+## Commands
+
+```bash
+gradle test
+gradle test --tests "com.realmsoffate.game.data.TagParserTest"
+gradle test --tests "com.realmsoffate.game.game.ApplyParsedIntegrationTest"
+```
+
+Full-suite runs apply after multi-area changes — see **`task-workflow.mdc`**.

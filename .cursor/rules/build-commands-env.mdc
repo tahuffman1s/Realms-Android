@@ -1,0 +1,27 @@
+---
+description: Local env setup and common Gradle commands — Realms Android
+globs: ["build.gradle.kts", "settings.gradle.kts", "setup-env.sh", "gradle/**"]
+alwaysApply: false
+---
+
+# Environment and Gradle
+
+## First-time setup (Arch Linux script)
+
+Installs JDK, Android SDK, emulator, Node.js; creates **Pixel7** AVD (API 36.1 x86_64 Google APIs). Requires **KVM** (VT-x / AMD-V).
+
+```bash
+./setup-env.sh
+```
+
+## Common commands
+
+```bash
+gradle assembleDebug
+gradle assembleRelease
+gradle lint
+gradle test
+gradle clean
+```
+
+If Gradle cannot write `~/.android`, use **`ANDROID_USER_HOME=<project>/.android-user`** (see **`build-deploy.mdc`**).

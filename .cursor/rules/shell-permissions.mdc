@@ -1,6 +1,6 @@
 ---
 description: Terminal commands — prefer execution without sudo unless user asks
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Shell execution
@@ -8,3 +8,11 @@ alwaysApply: true
 The user allows and expects the agent to **run any shell command that does not require elevated privileges** (`sudo`). Prefer executing commands directly rather than only suggesting them.
 
 Do **not** assume permission for `sudo` or password prompts unless the user explicitly requests something that requires root.
+
+## Cursor terminal allowlist (global)
+
+Auto-run for Agent uses **`~/.cursor/permissions.json`** → `terminalAllowlist` ([reference](https://cursor.com/docs/reference/permissions.md)). This machine keeps a **broad prefix allowlist** of common dev binaries (`gradle`, `adb`, `git`, `curl`, shells, build tools, etc.). **`sudo` is intentionally not listed** so elevated commands still require explicit approval.
+
+That file **replaces** the in-app terminal allowlist when the key is set—restart Cursor or rely on hot-reload when the file changes. **Auto-run mode** must not be **Ask Every Time**, or allowlists are ignored.
+
+Commands whose first token is unusual (e.g. a one-off `./scripts/foo.sh`) may still prompt; add a matching prefix entry to `permissions.json` if it recurs, or use Cursor’s **Add to allowlist** once when prompted.
