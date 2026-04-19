@@ -1,0 +1,56 @@
+---
+description: Semver, release tags, CI keystore env — Realms Android
+globs: app/build.gradle.kts
+alwaysApply: false
+---
+
+# Versioning and releases
+
+[Semantic Versioning](https://semver.org): **`MAJOR.MINOR.PATCH`**.
+
+- **MAJOR** — breaking / first Play Store–style milestone (`1.0.0`)
+- **MINOR** — features, systems, significant UI
+- **PATCH** — fixes, balance, prompts, cosmetics
+
+## Source of truth
+
+**`app/build.gradle.kts`**: `versionName` (string) and `versionCode` (integer).
+
+```
+versionCode = MAJOR * 10000 + MINOR * 100 + PATCH
+```
+
+Never set `versionCode` arbitrarily — derive from `versionName`.
+
+**Bump versions on release only**, when the user asks for a release — not on every commit.
+
+## Release protocol
+
+When the user says release / cut release / tag:
+
+1. Decide bump from work since last `v*` tag (`git log`); ask if unclear.
+2. Compute new `versionName` / `versionCode`; update **`app/build.gradle.kts`**.
+3. Commit: `Release vX.Y.Z`
+4. Tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`
+5. Push commit + tags: `git push && git push --tags`
+
+Tag push runs **`.github/workflows/release.yml`** (tests, release APK, GitHub Release).
+
+## Release signing
+
+Signing reads **`keystore.properties`** (gitignored, local):
+
+```properties
+storeFile=../realms-upload.jks
+storePassword=<password>
+keyAlias=realms
+keyPassword=<password>
+```
+
+**CI:** GitHub Secrets — `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
+
+Without credentials, release builds may be **unsigned**.
+
+Encode keystore for Secrets: `base64 -w0 realms-upload.jks` (pipe to clipboard on Linux).
+
+Release APK name pattern: **`realms-of-fate-vX.Y.Z-release.apk`** via `archivesBaseName` in Gradle.

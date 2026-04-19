@@ -72,6 +72,10 @@ gradle lint
 gradle test
 ```
 
+## Cursor / AI agents
+
+Detailed workflow, deploy checks, and testing policies live in **`.cursor/rules/`** (`*.mdc`). **`CLAUDE.md`** is a short index to those rules.
+
 ## First run
 
 1. Launch the app.

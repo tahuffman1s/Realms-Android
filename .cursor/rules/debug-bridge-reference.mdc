@@ -1,0 +1,64 @@
+---
+description: Debug Bridge endpoints, devices, pulldebug — supplements verify procedures
+alwaysApply: true
+---
+
+# Debug Bridge reference
+
+**Port `8735`**, debug builds only, code in **`app/src/debug/`**. Detailed verification steps: **`debug-bridge-verify.mdc`**, **`debug-bridge-test-procedures.mdc`**.
+
+## Port forward
+
+```bash
+adb -s emulator-5554 forward tcp:8735 tcp:8735
+```
+
+Use `adb devices` for the real serial (emulator vs phone).
+
+## Deploy targets
+
+**Emulator (preferred)** — Pixel7 AVD from `setup-env.sh`:
+
+```bash
+emulator -avd Pixel7 &
+adb wait-for-device && gradle installDebug && adb -s emulator-5554 shell am start -n com.realmsoffate.game/.MainActivity
+adb -s emulator-5554 forward tcp:8735 tcp:8735
+```
+
+**Physical phone (Galaxy S23)** — user `phone` fish function: wireless ADB + deploy + launch. Forward **`tcp:8735`** to the device serial. LAN `192.168.68.64`; if wireless port changes, reconnect with `adb connect 192.168.68.64:<port>`.
+
+## Logs
+
+```bash
+adb -s emulator-5554 logcat -s RealmsDebug:V
+```
+
+## In-app AI / state dump
+
+**More → Debug** dumps state + AI log. Pull via user’s **`pulldebug`** → **`debug-dumps/`** (gitignored). Newest:
+
+```bash
+ls -t debug-dumps/debug_*.txt 2>/dev/null | head -1
+```
+
+## HTTP API (sketch)
+
+| Area | Paths |
+|------|--------|
+| State | `GET /state`, `/state/diff`, `/state/overlay` |
+| Visual | `GET /screenshot`, `/screenshot/both`, `/describe`, `/describe/ui`, `/describe/annotated` |
+| Commands | `POST /input`, `/confirm`, `/cancel`, `/navigate`, `/tap` |
+| Theme | `POST /theme`, `/font-scale` |
+| Inject | `POST /inject`, `/inject/messages`, `/inject/reset` |
+| Macros | `POST /macro/new-game`, `/macro/advance`, `/macro/death`, `/macro/simulate-gameplay` |
+
+## Fish helper (`debug`)
+
+```
+debug state | diff | overlay | screenshot | describe
+debug input <text> | confirm | cancel | navigate <screen> | tap <label>
+debug theme <light|dark|system> | font-scale <n>
+debug inject <field> <value> | reset
+debug new-game | death | advance [n]
+debug events
+```

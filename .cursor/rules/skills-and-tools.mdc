@@ -1,0 +1,33 @@
+---
+description: Optional Claude skills / MCP routing — use when relevant
+alwaysApply: true
+---
+
+# Skills and external tools
+
+Realms tooling lives under **`~/.claude/plugins/...`** (Superpowers, frontend-design, etc.). **Read the skill file** when the task matches — do not cargo-cult skill names without opening them.
+
+## Quick routing
+
+| Situation | Skill / tool |
+|-----------|----------------|
+| New feature or system design | `superpowers:brainstorming` → `writing-plans` |
+| Bug / failing test | `superpowers:systematic-debugging` |
+| Compose UI build or redesign | `frontend-design:frontend-design` |
+| Multi-file feature | `feature-dev:feature-dev` or `writing-plans` |
+| Parallel independent tasks | `dispatching-parallel-agents` / subagents |
+| Game mechanics / reducers / parser | `test-driven-development` |
+| Before claiming done | `verification-before-completion` (align with project verify rules) |
+| User asks to commit / PR | `commit-commands:*` if available |
+| Major feature / merge | `requesting-code-review`, `finishing-a-development-branch` |
+| PR feedback | `receiving-code-review` |
+| Git isolation | `using-git-worktrees` |
+| Live library docs | **Context7** MCP (`plugin-context7-context7`) when APIs may be stale |
+
+## Code review / hooks (optional)
+
+`code-review:code-review`, `pr-review-toolkit:review-pr`, `hookify:*` — use when the user wants automation or hooks, not by default.
+
+## Context7 MCP
+
+Use for up-to-date docs: Compose, Kotlin serialization, Robolectric, Gradle Kotlin DSL, provider APIs, etc.
