@@ -1,11 +1,6 @@
 package com.realmsoffate.game.ui.game
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -14,98 +9,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.data.Choice
-import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.ui.theme.RealmsElevation
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
-
-// ============================================================
-// MEMORIES PANEL — bookmarked narration/event moments
-// ============================================================
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun MemoriesPanel(state: GameUiState, onClose: () -> Unit, onDelete: (String) -> Unit = {}) {
-    val realms = RealmsTheme.colors
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = onClose,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-    ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = RealmsSpacing.s)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Bookmark, null, Modifier.size(20.dp), tint = realms.goldAccent)
-                Spacer(Modifier.width(RealmsSpacing.s))
-                Text("MEMORIES", style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Close") }
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            Spacer(Modifier.height(RealmsSpacing.s))
-            if (state.bookmarks.isEmpty()) {
-                Text(
-                    "No moments pinned yet.\nTap the bookmark icon on any message bubble to save it.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(RealmsSpacing.xxl)
-                )
-            } else {
-                LazyColumn(
-                    Modifier.heightIn(max = 500.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(state.bookmarks) { text ->
-                        Surface(
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            shape = MaterialTheme.shapes.medium,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                Modifier.padding(RealmsSpacing.m),
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Icon(
-                                    Icons.Filled.Bookmark,
-                                    null,
-                                    Modifier.size(16.dp).padding(top = 2.dp),
-                                    tint = realms.goldAccent
-                                )
-                                Spacer(Modifier.width(RealmsSpacing.s))
-                                Text(
-                                    text,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 6,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                IconButton(
-                                    onClick = { onDelete(text) },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Delete,
-                                        "Remove",
-                                        Modifier.size(16.dp),
-                                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.navigationBarsPadding().height(RealmsSpacing.m))
-        }
-    }
-}
 
 // ============================================================
 // SETTINGS PANEL — bubble size + text size
@@ -123,7 +33,6 @@ internal fun SettingsPanel(
     onDebugDump: () -> Unit = {},
     onReturnToTitle: () -> Unit = {}
 ) {
-    val realms = RealmsTheme.colors
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onClose,
@@ -132,19 +41,19 @@ internal fun SettingsPanel(
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = RealmsSpacing.s)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Tune, null, Modifier.size(20.dp), tint = realms.goldAccent)
+                Icon(Icons.Filled.Tune, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.tertiary)
                 Spacer(Modifier.width(RealmsSpacing.s))
                 Text("SETTINGS", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Close") }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(Modifier.height(RealmsSpacing.xl))
 
             Text(
                 "FONT SIZE",
                 style = MaterialTheme.typography.labelLarge,
-                color = realms.goldAccent,
+                color = MaterialTheme.colorScheme.tertiary,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(RealmsSpacing.xs))
@@ -157,7 +66,7 @@ internal fun SettingsPanel(
 
             // Preview text at current scale
             Surface(
-                color = realms.asideBubble.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -249,111 +158,6 @@ internal fun SettingsPanel(
             ) { Text("Return to Title") }
 
             Spacer(Modifier.navigationBarsPadding().height(RealmsSpacing.m))
-        }
-    }
-}
-
-// ============================================================
-// TUTORIAL OVERLAY — guided first-play walkthrough
-// ============================================================
-
-@Composable
-internal fun TutorialOverlay(step: Int, onNext: () -> Unit, onDismiss: () -> Unit) {
-    val realms = RealmsTheme.colors
-
-    data class TutStep(val title: String, val message: String, val icon: String, val alignment: Alignment)
-
-    val steps = listOf(
-        TutStep("Welcome, Adventurer", "Welcome to Realms! The narrator will tell your story. Each turn, the world reacts to your choices. Let's learn the basics.", "\u2694\uFE0F", Alignment.Center),
-        TutStep("The Story Feed", "This is the story feed. The narrator describes the world, NPCs talk in colored bubbles, and your choices play out here.", "\uD83D\uDCDC", Alignment.Center),
-        TutStep("Your Actions", "Type what you want to do here. Say anything — talk to NPCs, examine objects, cast spells, or just explore.", "\u270D\uFE0F", Alignment.BottomCenter),
-        TutStep("Choices", "After each turn, you'll get choices. Tap the choices button to see them — or type your own action!", "\uD83C\uDFAD", Alignment.BottomEnd),
-        TutStep("Dice Rolls", "When you pick a skill-based action, you'll roll a d20. Watch it spin — the narrator decides if you pass based on the total.", "\uD83C\uDFB2", Alignment.Center),
-        TutStep("Navigation", "Use the bottom tabs to check your inventory, stats, map, and more.", "\uD83E\uDDED", Alignment.BottomCenter),
-        TutStep("Swipe Actions", "Swipe right on any message to examine. Swipe left on NPC dialogue to attack.", "\uD83D\uDC46", Alignment.Center),
-        TutStep("Bookmarks", "Tap the bookmark icon on any bubble to save favourite moments to your Memories.", "\uD83D\uDD16", Alignment.Center),
-        TutStep("You're Ready!", "Go forth, adventurer. Make choices. Face consequences. Try not to die on the first turn.\n\n...No promises from the narrator.", "\uD83C\uDF1F", Alignment.Center)
-    )
-
-    val current = steps.getOrNull(step) ?: return
-    val isLast = step == steps.lastIndex
-
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(realms.scrimOverlay)
-            .clickable(onClick = onNext),
-        contentAlignment = current.alignment
-    ) {
-        Surface(
-            shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = RealmsElevation.medium,
-            modifier = Modifier
-                .padding(RealmsSpacing.xxl)
-                .widthIn(max = 340.dp)
-        ) {
-            Column(
-                Modifier.padding(RealmsSpacing.xl),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(current.icon, fontSize = 40.sp)
-                Spacer(Modifier.height(RealmsSpacing.m))
-                Text(
-                    current.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = realms.goldAccent,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(RealmsSpacing.s))
-                Text(
-                    current.message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(RealmsSpacing.l))
-                // Progress dots
-                Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)) {
-                    steps.indices.forEach { i ->
-                        Box(
-                            Modifier
-                                .size(if (i == step) 8.dp else 6.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    when {
-                                        i == step -> realms.goldAccent
-                                        i < step  -> realms.goldAccent.copy(alpha = 0.4f)
-                                        else      -> MaterialTheme.colorScheme.outlineVariant
-                                    }
-                                )
-                        )
-                    }
-                }
-                Spacer(Modifier.height(14.dp))
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
-                ) {
-                    TextButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Skip", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Button(
-                        onClick = if (isLast) onDismiss else onNext,
-                        modifier = Modifier.weight(1.5f),
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Text(
-                            if (isLast) "Begin!" else "Next",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
         }
     }
 }

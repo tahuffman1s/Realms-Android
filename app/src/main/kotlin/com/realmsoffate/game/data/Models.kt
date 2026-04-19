@@ -145,20 +145,6 @@ data class WorldMap(
 data class PlayerPos(val x: Float, val y: Float)
 
 @Serializable
-data class TravelState(
-    /** Destination location index in WorldMap.locations. */
-    val destId: Int,
-    /** Total road distance in leagues. */
-    val totalLeagues: Int,
-    /** Leagues already traveled. */
-    val leaguesTraveled: Int = 0,
-    /** Road path: list of location IDs from source to destination. */
-    val roadPath: List<Int> = emptyList(),
-    /** The name of the destination for display. */
-    val destName: String = ""
-)
-
-@Serializable
 data class PastRuler(
     val name: String,
     val yearsAgo: Int,
@@ -374,11 +360,8 @@ data class SaveData(
     val displayMessages: List<com.realmsoffate.game.game.DisplayMessage> = emptyList(),
     /** In-flight death-save tracker — non-null if the player was bleeding out at save time. */
     val deathSave: com.realmsoffate.game.game.DeathSaveState? = null,
-    /** Non-null when the player was mid-journey at save time. */
-    val travelState: TravelState? = null,
     // ---- diagnostic trail: last ~50 AI exchanges, preserved across reloads ----
     val debugLog: List<DebugTurn> = emptyList(),
-    val bookmarks: List<String> = emptyList(),
     val availableMerchants: List<String> = emptyList()
 )
 

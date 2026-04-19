@@ -35,6 +35,18 @@ object ComposeTreeHelper {
         return null
     }
 
+    /** Find the first AbstractComposeView in the view hierarchy. */
+    fun findAbstractComposeView(root: View): AbstractComposeView? {
+        if (root is AbstractComposeView) return root
+        if (root is ViewGroup) {
+            for (i in 0 until root.childCount) {
+                val found = findAbstractComposeView(root.getChildAt(i))
+                if (found != null) return found
+            }
+        }
+        return null
+    }
+
     /** Get ALL semantics nodes in the Compose tree (merged, skip deactivated). */
     fun getAllNodes(owner: SemanticsOwner): List<SemanticsNode> {
         return owner.getAllSemanticsNodes(mergingEnabled = true, skipDeactivatedNodes = true)

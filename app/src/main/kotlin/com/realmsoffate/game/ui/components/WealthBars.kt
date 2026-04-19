@@ -12,11 +12,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
 
 @Composable
 internal fun WealthBars(wealth: Int) {
-    val realms = RealmsTheme.colors
     Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xxs)) {
         repeat(5) { i ->
             Box(
@@ -25,8 +23,8 @@ internal fun WealthBars(wealth: Int) {
                     .height(6.dp)
                     .clip(MaterialTheme.shapes.extraSmall)
                     .background(
-                        if (i < wealth) realms.goldAccent
-                        else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        if (i < wealth) MaterialTheme.colorScheme.tertiary
+                        else MaterialTheme.colorScheme.outlineVariant
                     )
             )
         }

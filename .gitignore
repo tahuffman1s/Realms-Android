@@ -31,6 +31,9 @@ keystore.properties
 # Kotlin compiler sessions (per-build, not source)
 .kotlin/
 
+# Generated source index (built by generateDebugSourceIndex Gradle task)
+app/src/debug/kotlin/com/realmsoffate/game/debug/SourceIndex.kt
+
 # Debug dumps pulled via the `pulldebug` fish function
 /debug-dumps/
 # Screenshots pulled via the `screenshot` fish function

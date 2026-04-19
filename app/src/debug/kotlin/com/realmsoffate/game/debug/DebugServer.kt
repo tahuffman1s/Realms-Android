@@ -60,7 +60,7 @@ object DebugServer {
         ThemeEndpoints.register()
         InjectionEndpoints.register()
         MacroEndpoints.register()
-        IssueCheckerEndpoints.register()
+        DescribeEndpoints.register()
 
         scope.launch {
             try {

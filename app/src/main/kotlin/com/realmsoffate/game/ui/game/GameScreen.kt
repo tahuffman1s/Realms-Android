@@ -3,11 +3,6 @@ package com.realmsoffate.game.ui.game
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -22,7 +17,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.game.GameViewModel
-import com.realmsoffate.game.ui.map.WorldMapScreen
 import com.realmsoffate.game.ui.overlays.FeatSelectionOverlay
 import com.realmsoffate.game.ui.overlays.InitiativeOverlay
 import com.realmsoffate.game.ui.overlays.LevelUpOverlay
@@ -36,7 +30,7 @@ import com.realmsoffate.game.ui.panels.*
 val LocalFontScale = compositionLocalOf { 1.0f }
 
 /** Which panel (or fullscreen page) is active. */
-enum class Panel { None, Inventory, Quests, Party, Lore, Journal, Currency, Spells, Stats, Map, Memories, Settings }
+enum class Panel { None, Inventory, Quests, Party, Lore, Journal, Currency, Spells, Stats, Settings }
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -103,13 +97,12 @@ fun GameScreen(vm: GameViewModel) {
     LaunchedEffect(tab) {
         when (tab) {
             GameTab.Chat -> panel = Panel.None
-            GameTab.Map -> panel = Panel.Map
             GameTab.Character -> panel = Panel.None
             GameTab.Journal -> panel = Panel.None
         }
     }
 
-    // When a slash command sets a panel now handled by a pager, redirect to the correct tab.
+    // When a transient panel (settings/spells sheet) targets a pager tab, sync tab then clear `panel`.
     LaunchedEffect(panel) {
         when (panel) {
             Panel.Inventory, Panel.Spells, Panel.Stats, Panel.Party, Panel.Currency -> {
@@ -120,20 +113,8 @@ fun GameScreen(vm: GameViewModel) {
                 tab = GameTab.Journal
                 panel = Panel.None
             }
-            else -> {} // Memories, Settings, Map, None — handled elsewhere
+            else -> {} // Settings, None — handled elsewhere
         }
-    }
-
-    // Full-screen map takes over the whole screen.
-    if (panel == Panel.Map) {
-        WorldMapScreen(
-            state = state,
-            onClose = { panel = Panel.None; tab = GameTab.Chat },
-            onTravel = { loc -> vm.startTravel(loc.id); panel = Panel.None; tab = GameTab.Chat },
-            onCancelTravel = { vm.cancelTravel() },
-            isTraveling = state.travelState != null
-        )
-        return
     }
 
     val systemFontScale = LocalConfiguration.current.fontScale
@@ -145,8 +126,10 @@ fun GameScreen(vm: GameViewModel) {
         topBar = {
             GameTopBar(
                 state,
-                onSettingsClick = { panel = Panel.Settings },
-                onMemoriesClick = { panel = Panel.Memories }
+                showSceneContext = tab == GameTab.Chat &&
+                    state.currentScene != "default" &&
+                    state.combat == null,
+                onSettingsClick = { panel = Panel.Settings }
             )
         },
         bottomBar = {
@@ -159,8 +142,7 @@ fun GameScreen(vm: GameViewModel) {
                         onInputChange = { input = it },
                         onSend = {
                             if (input.isNotBlank() && !state.isGenerating) {
-                                val handled = handleSlashCommand(input, vm) { panel = it }
-                                if (!handled) vm.submitAction(input)
+                                vm.submitAction(input)
                                 input = ""
                                 focus.clearFocus()
                             }
@@ -207,36 +189,14 @@ fun GameScreen(vm: GameViewModel) {
         Column(Modifier.padding(pad).fillMaxSize()) {
             when (tab) {
                 GameTab.Chat -> {
-                    AnimatedVisibility(visible = state.currentScene != "default" && state.combat == null) {
-                        SceneBanner(state.currentScene, state.currentSceneDesc)
-                    }
                     // Combat HUD — visible only during battle scenes.
                     state.combat?.let { combat -> CombatHud(combat, state.npcLog, state.turns) }
                     ChatFeed(
                         state = state,
                         listState = listState,
-                        bookmarks = state.bookmarks,
-                        onToggleBookmark = { vm.toggleBookmark(it) },
                         onNpcReply = { npcName ->
                             // Pre-fill input with reply context; keep keyboard open
                             input = "I say to $npcName: "
-                        },
-                        onNpcReaction = { npcName, npcQuote, reaction ->
-                            val ctx = npcQuote.take(120)
-                            val reactionText = if (reaction.startsWith("emoji:")) {
-                                val emoji = reaction.removePrefix("emoji:")
-                                "I react to $npcName saying \"$ctx\" with $emoji (interpret this emoji's real-world cultural meaning and roleplay my character's reaction)"
-                            } else when (reaction) {
-                                "approve" -> "I nod approvingly at $npcName's words: \"$ctx\""
-                                "disapprove" -> "I shake my head at $npcName after hearing: \"$ctx\""
-                                "laugh" -> "I laugh at $npcName saying: \"$ctx\""
-                                "angry" -> "I glare angrily at $npcName for saying: \"$ctx\""
-                                "question" -> "I question what $npcName meant by: \"$ctx\""
-                                "shocked" -> "I stare at $npcName in shock after hearing: \"$ctx\""
-                                "suspicious" -> "I narrow my eyes suspiciously at $npcName after: \"$ctx\""
-                                else -> "I react to $npcName saying: \"$ctx\""
-                            }
-                            vm.submitAction(reactionText)
                         },
                         onAttackNpc = { npcName ->
                             vm.requestTargetPrompt(com.realmsoffate.game.ui.overlays.TargetPromptSpec(
@@ -293,9 +253,6 @@ fun GameScreen(vm: GameViewModel) {
                         onAbandon = vm::abandonQuest,
                         focusNpc = journalFocusNpc
                     )
-                }
-                GameTab.Map -> {
-                    // Map is handled by the Panel.Map early return above; this is a safety fallback.
                 }
             }
         }
@@ -390,11 +347,6 @@ fun GameScreen(vm: GameViewModel) {
     }
 
     when (panel) {
-        Panel.Memories -> MemoriesPanel(
-            state,
-            onClose = { panel = Panel.None; tab = GameTab.Chat },
-            onDelete = { vm.removeBookmark(it) }
-        )
         Panel.Settings -> SettingsPanel(
             fontScale = fontScale,
             onFontScaleChange = { vm.setFontScale(it) },
@@ -414,15 +366,6 @@ fun GameScreen(vm: GameViewModel) {
             onReturnToTitle = { vm.returnToTitle() }
         )
         else -> {}
-    }
-
-    val tutorialStep by vm.tutorialStep.collectAsState()
-    tutorialStep?.let { step ->
-        TutorialOverlay(
-            step = step,
-            onNext = { vm.advanceTutorial() },
-            onDismiss = { vm.dismissTutorial() }
-        )
     }
 
     } // end CompositionLocalProvider

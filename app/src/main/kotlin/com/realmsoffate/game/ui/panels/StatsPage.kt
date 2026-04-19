@@ -22,7 +22,6 @@ import com.realmsoffate.game.ui.components.PanelSheet
 import com.realmsoffate.game.ui.components.RealmsProgressBar
 import com.realmsoffate.game.ui.components.SectionHeader
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
 import com.realmsoffate.game.util.formatSigned
 
 // ----------------- STATS -----------------
@@ -30,7 +29,6 @@ import com.realmsoffate.game.util.formatSigned
 @Composable
 internal fun StatsContent(state: GameUiState) {
     val ch = state.character ?: return
-    val realms = RealmsTheme.colors
     Column(
         Modifier
             .verticalScroll(rememberScrollState())
@@ -45,10 +43,10 @@ internal fun StatsContent(state: GameUiState) {
         Spacer(Modifier.height(RealmsSpacing.m))
 
         Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s), modifier = Modifier.fillMaxWidth()) {
-            StatTile(label = "HP", value = "${ch.hp}/${ch.maxHp}", color = realms.success, modifier = Modifier.weight(1f))
+            StatTile(label = "HP", value = "${ch.hp}/${ch.maxHp}", color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
             StatTile(label = "AC", value = "${ch.ac}", color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
             StatTile(label = "PROF", value = "+${ch.proficiency}", color = MaterialTheme.colorScheme.secondary, modifier = Modifier.weight(1f))
-            StatTile(label = "XP", value = "${ch.xp}", color = realms.goldAccent, modifier = Modifier.weight(1f))
+            StatTile(label = "XP", value = "${ch.xp}", color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(RealmsSpacing.m))
@@ -70,8 +68,8 @@ internal fun StatsContent(state: GameUiState) {
         Spacer(Modifier.height(RealmsSpacing.m))
         SectionHeader("MORALITY")
         val mcolor = when {
-            state.morality >= 30 -> realms.success
-            state.morality <= -30 -> realms.fumbleRed
+            state.morality >= 30 -> MaterialTheme.colorScheme.primary
+            state.morality <= -30 -> MaterialTheme.colorScheme.error
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
         val pct = (state.morality + 100) / 200f
@@ -93,14 +91,14 @@ internal fun StatsContent(state: GameUiState) {
             ) {
                 ch.conditions.forEach { cond ->
                     Surface(
-                        color = realms.warning.copy(alpha = 0.14f),
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
                         shape = MaterialTheme.shapes.small,
-                        modifier = Modifier.border(1.dp, realms.warning.copy(alpha = 0.5f), MaterialTheme.shapes.small)
+                        modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.tertiary, MaterialTheme.shapes.small)
                     ) {
                         Text(
                             cond,
                             style = MaterialTheme.typography.labelMedium,
-                            color = realms.warning,
+                            color = MaterialTheme.colorScheme.tertiary,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs)
                         )
@@ -113,13 +111,13 @@ internal fun StatsContent(state: GameUiState) {
             Spacer(Modifier.height(RealmsSpacing.m))
             SectionHeader("BACKSTORY")
             Column(verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)) {
-                BackstoryCard("\uD83C\uDF05", "Origin", bs.origin, realms.info)
-                BackstoryCard("\uD83C\uDFAF", "Motivation", bs.motivation, realms.goldAccent)
-                BackstoryCard("\uD83D\uDC94", "Flaw", bs.flaw, realms.fumbleRed)
-                BackstoryCard("\uD83D\uDD17", "Bond", bs.bond, realms.success)
+                BackstoryCard("\uD83C\uDF05", "Origin", bs.origin, MaterialTheme.colorScheme.secondary)
+                BackstoryCard("\uD83C\uDFAF", "Motivation", bs.motivation, MaterialTheme.colorScheme.tertiary)
+                BackstoryCard("\uD83D\uDC94", "Flaw", bs.flaw, MaterialTheme.colorScheme.error)
+                BackstoryCard("\uD83D\uDD17", "Bond", bs.bond, MaterialTheme.colorScheme.primary)
                 BackstoryCard("\uD83D\uDD73\uFE0F", "Dark Secret", bs.darkSecret, MaterialTheme.colorScheme.secondary)
-                BackstoryCard("\uD83D\uDD0D", "Lost Item", bs.lostItem, realms.goldAccent)
-                BackstoryCard("\u2620\uFE0F", "Personal Enemy", bs.personalEnemy, realms.fumbleRed)
+                BackstoryCard("\uD83D\uDD0D", "Lost Item", bs.lostItem, MaterialTheme.colorScheme.tertiary)
+                BackstoryCard("\u2620\uFE0F", "Personal Enemy", bs.personalEnemy, MaterialTheme.colorScheme.error)
                 bs.prophecy?.let { p ->
                     if (p.isNotBlank()) BackstoryCard("\uD83D\uDD2E", "Prophecy", p, MaterialTheme.colorScheme.secondary)
                 }
@@ -200,7 +198,7 @@ private fun AbilityTile(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.medium,
         modifier = modifier
     ) {
@@ -215,7 +213,7 @@ private fun AbilityTile(
             Text(
                 formatSigned(mod),
                 style = MaterialTheme.typography.labelMedium,
-                color = if (mod >= 0) RealmsTheme.colors.success else MaterialTheme.colorScheme.error
+                color = if (mod >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
             )
             Text(
                 full,

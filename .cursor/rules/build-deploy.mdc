@@ -1,0 +1,20 @@
+---
+description: Always build and deploy debug APK to emulator after app changes
+alwaysApply: true
+---
+
+# Build and deploy (always)
+
+Unless the user explicitly skips deploy:
+
+1. After edits under `app/src/main/`, `app/src/debug/`, `app/build.gradle.kts`, Android resources, or project Gradle/settings that affect `app`, run deploy at the **end** of that work session (same response if possible), then run **Debug Bridge** verification per `debug-bridge-test-procedures.mdc` (minimum **P0 + P1** after any such change; add contextual steps from the table there):
+
+```bash
+cd /path/to/RealmsAndroid && gradle installDebug && adb -s emulator-5554 shell am start -n com.realmsoffate.game/.MainActivity && adb -s emulator-5554 forward tcp:8735 tcp:8735
+```
+
+2. If Gradle cannot write `~/.android`, use `ANDROID_USER_HOME=<project>/.android-user` for the Gradle commands.
+
+3. Use `adb devices` first; if no emulator, mention starting the Pixel7 AVD (`emulator -avd Pixel7`) or the user's phone workflow—the user asked for deploy whenever possible.
+
+4. Do **not** stop at `assembleDebug` or compile-only when the changes touch runnable app code.

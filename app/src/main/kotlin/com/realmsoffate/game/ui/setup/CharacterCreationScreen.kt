@@ -33,7 +33,6 @@ import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.game.Races
 import com.realmsoffate.game.ui.components.SectionHeader
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
 
 /**
  * 6-step character creation wizard — mirrors the web source of truth:
@@ -66,7 +65,6 @@ fun CharacterCreationScreen(vm: GameViewModel) {
     var secondaryBonus by rememberSaveable { mutableIntStateOf(1) }
 
     val totalSteps = 6
-    val realms = RealmsTheme.colors
     val stepValid = remember(step, name, race, cls, baseStats.value, primaryBonus, secondaryBonus) {
         when (step) {
             0 -> name.isNotBlank()
@@ -377,7 +375,6 @@ private fun StatsStep(
     val spent = pointCost(baseStats)
     val remaining = 27 - spent
     val labels = listOf("STR", "DEX", "CON", "INT", "WIS", "CHA")
-    val realms = RealmsTheme.colors
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -430,12 +427,12 @@ private fun StatsStep(
     )
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Column {
-            Text("+2 to", style = MaterialTheme.typography.labelMedium, color = realms.goldAccent)
+            Text("+2 to", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
             Spacer(Modifier.height(4.dp))
             BonusSelector(labels, primaryBonus, onPrimary, exclude = secondaryBonus)
         }
         Column {
-            Text("+1 to", style = MaterialTheme.typography.labelMedium, color = realms.goldAccent)
+            Text("+1 to", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
             Spacer(Modifier.height(4.dp))
             BonusSelector(labels, secondaryBonus, onSecondary, exclude = primaryBonus)
         }
@@ -459,11 +456,10 @@ private fun ConfirmStep(
     val labels = listOf("STR", "DEX", "CON", "INT", "WIS", "CHA")
     val clsDef = Classes.find(cls)
     val hp = (clsDef?.hitDie ?: 8) + mod(finalStats[2])
-    val realms = RealmsTheme.colors
 
     SectionHeader("\uD83D\uDD0D  CONFIRM")
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -482,7 +478,7 @@ private fun ConfirmStep(
                         name.take(1).uppercase().ifBlank { "?" },
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Black,
-                        color = Color.Black.copy(alpha = 0.65f)
+                        color = MaterialTheme.colorScheme.scrim
                     )
                 }
                 Spacer(Modifier.width(RealmsSpacing.m))
@@ -496,13 +492,13 @@ private fun ConfirmStep(
                     Text(
                         "L1 $race $cls",
                         style = MaterialTheme.typography.labelLarge,
-                        color = realms.goldAccent
+                        color = MaterialTheme.colorScheme.tertiary
                     )
                 }
             }
             Spacer(Modifier.height(RealmsSpacing.m))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                InfoPill("HP", "$hp", realms.success, Modifier.weight(1f))
+                InfoPill("HP", "$hp", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
                 InfoPill("AC", "${10 + mod(finalStats[1])}", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
                 InfoPill("BUILD", build, MaterialTheme.colorScheme.secondary, Modifier.weight(1f))
             }
@@ -539,7 +535,7 @@ private fun ProgressDots(step: Int, total: Int) {
                     .clip(CircleShape)
                     .background(
                         if (i == step) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        else MaterialTheme.colorScheme.outline
                     )
             )
         }
@@ -598,8 +594,8 @@ private fun GridCard(
     hint: String
 ) {
     val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-    val bg = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    val bg = if (selected) MaterialTheme.colorScheme.primaryContainer
+             else MaterialTheme.colorScheme.surfaceContainerLow
     Column(
         Modifier
             .clip(MaterialTheme.shapes.medium)
@@ -637,7 +633,7 @@ private fun GridCard(
             Text(
                 hint,
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 modifier = Modifier.fillMaxWidth()
@@ -649,7 +645,7 @@ private fun GridCard(
 @Composable
 private fun DetailCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -666,7 +662,7 @@ private fun StatRow(
     val mod = mod(final)
     val modLabel = if (mod >= 0) "+$mod" else mod.toString()
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -681,7 +677,7 @@ private fun StatRow(
                     if (bonus > 0) Text(
                         "  (+$bonus)",
                         style = MaterialTheme.typography.labelSmall,
-                        color = RealmsTheme.colors.goldAccent
+                        color = MaterialTheme.colorScheme.tertiary
                     )
                 }
                 Text(
@@ -708,15 +704,15 @@ private fun BonusSelector(labels: List<String>, selected: Int, onSelect: (Int) -
             Surface(
                 onClick = { if (enabled) onSelect(i) },
                 enabled = enabled,
-                color = if (sel) RealmsTheme.colors.goldAccent.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                color = if (sel) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainer,
                 shape = MaterialTheme.shapes.extraSmall
             ) {
                 Text(
                     l,
                     style = MaterialTheme.typography.labelMedium,
                     color = when {
-                        !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                        sel -> RealmsTheme.colors.goldAccent
+                        !enabled -> MaterialTheme.colorScheme.outline
+                        sel -> MaterialTheme.colorScheme.tertiary
                         else -> MaterialTheme.colorScheme.onSurface
                     },
                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
@@ -749,7 +745,7 @@ private fun FinalAbility(label: String, score: Int, modifier: Modifier = Modifie
     val mod = mod(score)
     val modLabel = if (mod >= 0) "+$mod" else mod.toString()
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.medium,
         modifier = modifier
     ) {
@@ -766,7 +762,6 @@ private fun FinalAbility(label: String, score: Int, modifier: Modifier = Modifie
 
 @Composable
 private fun GradientBeginButton(enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val realms = RealmsTheme.colors
     Surface(
         onClick = onClick,
         enabled = enabled,
@@ -777,7 +772,7 @@ private fun GradientBeginButton(enabled: Boolean, onClick: () -> Unit, modifier:
     ) {
         Box(
             modifier = if (enabled) Modifier.background(
-                Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary, realms.goldAccent))
+                Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary))
             ) else Modifier,
             contentAlignment = Alignment.Center
         ) {

@@ -15,9 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.game.GameUiState
-import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.ui.overlays.TargetPromptSpec
-import com.realmsoffate.game.ui.theme.RealmsElevation
 import com.realmsoffate.game.ui.theme.RealmsSpacing
 
 @Composable
@@ -51,19 +49,19 @@ internal fun GameInputBar(
                     (nearbyNpcs + state.party.map { it.name }).distinct().take(8)
                 }
                 Surface(
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = RealmsElevation.low,
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    tonalElevation = 0.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         Modifier
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 10.dp, vertical = RealmsSpacing.s),
+                            .padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.s),
                         horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        ActionChip(Icons.Filled.GpsFixed, "Attack", onClick = {
+                        CombatAssistChip(Icons.Filled.GpsFixed, "Attack", onClick = {
                             onTargetPrompt(
                                 TargetPromptSpec(
                                     title = "Light Attack",
@@ -72,7 +70,7 @@ internal fun GameInputBar(
                                 )
                             )
                         })
-                        ActionChip(Icons.Filled.Bolt, "Heavy", onClick = {
+                        CombatAssistChip(Icons.Filled.Bolt, "Heavy", onClick = {
                             onTargetPrompt(
                                 TargetPromptSpec(
                                     title = "Heavy Attack",
@@ -81,7 +79,7 @@ internal fun GameInputBar(
                                 )
                             )
                         })
-                        ActionChip(Icons.Filled.AutoAwesome, "Spells", onClick = { onSpellsOpen() })
+                        CombatAssistChip(Icons.Filled.AutoAwesome, "Spells", onClick = { onSpellsOpen() })
                     }
                 }
             }
@@ -89,11 +87,12 @@ internal fun GameInputBar(
         // ---- Input row (its own surface so the divider between hotbar +
         //      input is visually obvious on mobile) ----
         Surface(
-            tonalElevation = RealmsElevation.low,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            tonalElevation = 0.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
-                Modifier.padding(horizontal = 10.dp, vertical = RealmsSpacing.s),
+                Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.s),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
@@ -109,7 +108,14 @@ internal fun GameInputBar(
                     },
                     shape = MaterialTheme.shapes.large,
                     singleLine = false,
-                    maxLines = 5
+                    maxLines = 5,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        focusedBorderColor = MaterialTheme.colorScheme.outline,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                    )
                 )
                 if (hasChoices) {
                     Spacer(Modifier.width(RealmsSpacing.s))
@@ -140,27 +146,25 @@ internal fun GameInputBar(
 }
 
 @Composable
-private fun ActionChip(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    Surface(
+private fun CombatAssistChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    AssistChip(
         onClick = onClick,
-        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
-        shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.height(46.dp)  // bigger touch target
-    ) {
-        Row(
-            Modifier.padding(horizontal = RealmsSpacing.m, vertical = RealmsSpacing.s),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)
-        ) {
-            Icon(icon, null, Modifier.size(20.dp))
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
+        label = {
+            Text(label, fontWeight = FontWeight.Medium)
+        },
+        leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
+        colors = AssistChipDefaults.assistChipColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            labelColor = MaterialTheme.colorScheme.onTertiaryContainer,
+            leadingIconContentColor = MaterialTheme.colorScheme.onTertiaryContainer
+        ),
+        border = AssistChipDefaults.assistChipBorder(enabled = true),
+        modifier = Modifier.heightIn(min = 48.dp)
+    )
 }
 
 /**
@@ -179,37 +183,3 @@ internal fun isSelfCastable(spell: com.realmsoffate.game.game.Spell): Boolean {
     return "yourself" in desc || "you gain" in desc || "you heal" in desc
 }
 
-/**
- * Handles /commands. Returns true if the input was consumed.
- */
-internal fun handleSlashCommand(
-    input: String,
-    vm: GameViewModel,
-    openPanel: (Panel) -> Unit
-): Boolean {
-    val cmd = input.trim()
-    if (!cmd.startsWith("/")) return false
-    val tokens = cmd.removePrefix("/").lowercase().trim().split(Regex("\\s+"))
-    val root = tokens.firstOrNull() ?: return true
-    when (root) {
-        "help" -> vm.postSystemMessage(
-            "Commands: /save /map /inv /stats /spells /lore /journal /currency /party /quest /rest /shortrest /memories /menu /help"
-        )
-        "save" -> { vm.saveToSlot(); vm.postSystemMessage("Saved.") }
-        "map" -> openPanel(Panel.Map)
-        "inv", "bag", "items" -> openPanel(Panel.Inventory)
-        "stats", "sheet" -> openPanel(Panel.Stats)
-        "spells" -> openPanel(Panel.Spells)
-        "lore" -> openPanel(Panel.Lore)
-        "journal", "npcs" -> openPanel(Panel.Journal)
-        "currency", "coin", "money" -> openPanel(Panel.Currency)
-        "party" -> openPanel(Panel.Party)
-        "quest", "quests" -> openPanel(Panel.Quests)
-        "rest", "longrest" -> vm.longRest()
-        "shortrest" -> vm.shortRest()
-        "memories", "bookmarks" -> openPanel(Panel.Memories)
-        "menu", "title" -> vm.returnToTitle()
-        else -> vm.postSystemMessage("Unknown command: /$root. Type /help.")
-    }
-    return true
-}

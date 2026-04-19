@@ -31,7 +31,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.realmsoffate.game.ui.theme.RealmsElevation
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
 import kotlinx.coroutines.delay
 
 /**
@@ -41,7 +40,6 @@ import kotlinx.coroutines.delay
  */
 @Composable
 fun LevelUpOverlay(level: Int, statPoints: Int, onAssignStat: (String) -> Unit, onDismiss: () -> Unit) {
-    val realms = RealmsTheme.colors
     val scale = remember { Animatable(0.4f) }
 
     LaunchedEffect(level) {
@@ -56,14 +54,14 @@ fun LevelUpOverlay(level: Int, statPoints: Int, onAssignStat: (String) -> Unit, 
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.72f)),
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.72f)),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     "LEVEL UP",
                     style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 8.sp),
-                    color = realms.goldAccent
+                    color = MaterialTheme.colorScheme.tertiary
                 )
                 Spacer(Modifier.height(RealmsSpacing.s))
                 Box(
@@ -78,7 +76,7 @@ fun LevelUpOverlay(level: Int, statPoints: Int, onAssignStat: (String) -> Unit, 
                             .clip(CircleShape)
                             .background(
                                 Brush.radialGradient(
-                                    listOf(realms.goldAccent.copy(alpha = 0.6f), Color.Transparent)
+                                    listOf(MaterialTheme.colorScheme.tertiary, Color.Transparent)
                                 )
                             )
                     )
@@ -87,14 +85,14 @@ fun LevelUpOverlay(level: Int, statPoints: Int, onAssignStat: (String) -> Unit, 
                             .size(120.dp)
                             .clip(CircleShape)
                             .background(Color.Black)
-                            .border(3.dp, realms.goldAccent, CircleShape),
+                            .border(3.dp, MaterialTheme.colorScheme.tertiary, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             "$level",
                             fontSize = 64.sp,
                             fontWeight = FontWeight.Black,
-                            color = realms.goldAccent
+                            color = MaterialTheme.colorScheme.tertiary
                         )
                     }
                 }
@@ -102,12 +100,12 @@ fun LevelUpOverlay(level: Int, statPoints: Int, onAssignStat: (String) -> Unit, 
                 Text(
                     "You feel stronger.",
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.White.copy(alpha = 0.9f)
+                    color = MaterialTheme.colorScheme.inverseOnSurface
                 )
                 Text(
                     "HP +, slots restored.",
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.outline
                 )
                 Spacer(Modifier.height(RealmsSpacing.l))
                 if (statPoints > 0) {
@@ -149,7 +147,6 @@ fun LevelUpOverlay(level: Int, statPoints: Int, onAssignStat: (String) -> Unit, 
  */
 @Composable
 fun InitiativeOverlay(onDismiss: () -> Unit) {
-    val realms = RealmsTheme.colors
     val scale = remember { Animatable(0f) }
     val alpha = remember { Animatable(0f) }
     val glow = remember { Animatable(0f) }
@@ -175,7 +172,7 @@ fun InitiativeOverlay(onDismiss: () -> Unit) {
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.55f * alpha.value)),
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f * alpha.value)),
             contentAlignment = Alignment.Center
         ) {
             Box(
@@ -189,7 +186,7 @@ fun InitiativeOverlay(onDismiss: () -> Unit) {
                         .background(
                             Brush.radialGradient(
                                 listOf(
-                                    realms.fumbleRed.copy(alpha = 0.6f * glow.value),
+                                    MaterialTheme.colorScheme.error.copy(alpha = 0.6f * glow.value),
                                     Color.Transparent
                                 )
                             )
@@ -204,14 +201,14 @@ fun InitiativeOverlay(onDismiss: () -> Unit) {
                             letterSpacing = 10.sp,
                             fontWeight = FontWeight.Black
                         ),
-                        color = realms.fumbleRed.copy(alpha = alpha.value),
+                        color = MaterialTheme.colorScheme.error.copy(alpha = alpha.value),
                         textAlign = TextAlign.Center
                     )
                     Spacer(Modifier.height(RealmsSpacing.xs))
                     Text(
                         "ROLL FOR BLOOD",
                         style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 4.sp),
-                        color = Color.White.copy(alpha = 0.7f * alpha.value)
+                        color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = alpha.value)
                     )
                 }
             }
@@ -228,7 +225,6 @@ fun InitiativeOverlay(onDismiss: () -> Unit) {
  */
 @Composable
 fun RestOverlay(kind: String, onDismiss: () -> Unit) {
-    val realms = RealmsTheme.colors
     val long = kind == "long"
     val healed = if (!long) kind.substringAfter(":").toIntOrNull() ?: 0 else 0
 
@@ -247,7 +243,7 @@ fun RestOverlay(kind: String, onDismiss: () -> Unit) {
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.85f)),
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.85f)),
             contentAlignment = Alignment.Center
         ) {
             Surface(
@@ -265,7 +261,7 @@ fun RestOverlay(kind: String, onDismiss: () -> Unit) {
                     Text(
                         if (long) "LONG REST" else "SHORT REST",
                         style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 4.sp),
-                        color = realms.goldAccent
+                        color = MaterialTheme.colorScheme.tertiary
                     )
                     Spacer(Modifier.height(RealmsSpacing.s))
                     Text(
@@ -456,7 +452,6 @@ fun FeatSelectionOverlay(
     onSelect: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val realms = RealmsTheme.colors
     val available = Feats.list.filter { it.name !in currentFeats }
 
     Dialog(
@@ -474,7 +469,7 @@ fun FeatSelectionOverlay(
                 Text(
                     "CHOOSE A FEAT",
                     style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 3.sp),
-                    color = realms.goldAccent,
+                    color = MaterialTheme.colorScheme.tertiary,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -490,7 +485,7 @@ fun FeatSelectionOverlay(
                     items(available) { feat ->
                         Surface(
                             onClick = { onSelect(feat.name) },
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             shape = MaterialTheme.shapes.medium,
                             modifier = Modifier.fillMaxWidth()
                         ) {

@@ -23,7 +23,6 @@ import com.realmsoffate.game.ui.components.EmptyState
 import com.realmsoffate.game.ui.components.PanelSheet
 import com.realmsoffate.game.ui.components.RealmsCard
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
 
 // ----------------- SPELLS (slot diamonds + grouped grid + detail) -----------------
 
@@ -120,7 +119,6 @@ internal fun SpellsPanel(
 
 @Composable
 private fun SpellSlotStrip(ch: com.realmsoffate.game.data.Character) {
-    val realms = RealmsTheme.colors
     val levels = ch.maxSpellSlots.keys.sorted()
     if (levels.isEmpty()) return
     Row(
@@ -139,7 +137,7 @@ private fun SpellSlotStrip(ch: com.realmsoffate.game.data.Character) {
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                     repeat(max) { i ->
-                        SlotDiamond(filled = i < cur, color = realms.info)
+                        SlotDiamond(filled = i < cur, color = MaterialTheme.colorScheme.secondary)
                     }
                 }
             }
@@ -205,7 +203,6 @@ private fun SpellDetailCard(
     canCast: Boolean,
     onCast: () -> Unit
 ) {
-    val realms = RealmsTheme.colors
     RealmsCard(
         outlined = true,
         accentColor = MaterialTheme.colorScheme.primary,
@@ -227,7 +224,7 @@ private fun SpellDetailCard(
                     Text(
                         spell.classes.joinToString(" · "),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -237,13 +234,13 @@ private fun SpellDetailCard(
         if (spell.damage != "-") {
             Spacer(Modifier.height(RealmsSpacing.xs))
             Surface(
-                color = realms.fumbleRed.copy(alpha = 0.14f),
+                color = MaterialTheme.colorScheme.errorContainer,
                 shape = MaterialTheme.shapes.extraSmall
             ) {
                 Text(
                     "\uD83D\uDDE1\uFE0F ${spell.damage}",
                     style = MaterialTheme.typography.labelMedium,
-                    color = realms.fumbleRed,
+                    color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                 )

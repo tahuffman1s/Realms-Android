@@ -3,43 +3,32 @@ package com.realmsoffate.game.ui.game
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -96,115 +85,13 @@ internal fun resolveNpcDisplayName(
 internal fun formatSignedRoll(n: Int) = if (n >= 0) "+$n" else n.toString()
 
 // ============================================================
-// SHARED BOOKMARK ICON
-// ============================================================
-
-@Composable
-internal fun InlineBookmark(
-    isBookmarked: Boolean,
-    onToggle: () -> Unit,
-    modifier: Modifier = Modifier,
-    tint: Color = RealmsTheme.colors.goldAccent,
-    inactiveTint: Color = tint.copy(alpha = 0.35f)
-) {
-    IconButton(
-        onClick = onToggle,
-        modifier = modifier.size(44.dp)
-    ) {
-        Icon(
-            if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-            contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
-            modifier = Modifier.size(22.dp),
-            tint = if (isBookmarked) tint else inactiveTint
-        )
-    }
-}
-
-// ============================================================
 // COMPOSABLES
 // ============================================================
 
 @Composable
-internal fun SceneBanner(scene: String, desc: String) {
-    var expanded by remember(scene, desc) { mutableStateOf(false) }
-    // Heuristic: if the description is short enough to fit, no need for the
-    // expand affordance — keeps the chevron from showing on one-liners.
-    val isLong = desc.length > 80
-    val rotation by animateFloatAsState(
-        targetValue = if (expanded) 180f else 0f,
-        animationSpec = tween(220),
-        label = "scene-chevron-rotation"
-    )
-    val secondary = MaterialTheme.colorScheme.secondary
-    Surface(
-        onClick = { if (isLong) expanded = !expanded },
-        enabled = isLong,
-        color = Color.Transparent,
-        shape = MaterialTheme.shapes.medium,
-        modifier = Modifier
-            .fillMaxWidth()
-            .defaultMinSize(minHeight = 48.dp)
-            .padding(horizontal = RealmsSpacing.m)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
-                    )
-                ),
-                MaterialTheme.shapes.medium
-            )
-            .drawBehind {
-                drawRect(
-                    color = secondary,
-                    topLeft = Offset.Zero,
-                    size = Size(3.dp.toPx(), size.height)
-                )
-            }
-    ) {
-        Row(
-            Modifier
-                .padding(horizontal = RealmsSpacing.xl, vertical = RealmsSpacing.s)
-                .animateContentSize(animationSpec = tween(220)),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(sceneEmoji(scene), style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    scene.uppercase(),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-                if (desc.isNotBlank()) Text(
-                    desc,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    maxLines = if (expanded) Int.MAX_VALUE else 2,
-                    overflow = if (expanded) TextOverflow.Visible else TextOverflow.Ellipsis
-                )
-            }
-            if (isLong) {
-                Spacer(Modifier.width(8.dp))
-                Icon(
-                    Icons.Default.ExpandMore,
-                    contentDescription = if (expanded) "Collapse" else "Expand",
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
-                    modifier = Modifier
-                        .size(20.dp)
-                        .rotate(rotation)
-                )
-            }
-        }
-    }
-}
-
-@Composable
 internal fun PlayerBubble(
     text: String,
-    characterName: String?,
-    isBookmarked: Boolean = false,
-    onToggleBookmark: () -> Unit = {}
+    characterName: String?
 ) {
     val realms = RealmsTheme.colors
     val (accent, bgTint) = npcColor(characterName ?: "You", realms.npcPalette)
@@ -225,11 +112,6 @@ internal fun PlayerBubble(
                 Modifier.padding(12.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                InlineBookmark(
-                    isBookmarked, onToggleBookmark,
-                    modifier = Modifier.padding(end = RealmsSpacing.s),
-                    inactiveTint = accent.copy(alpha = 0.4f)
-                )
                 Column(Modifier.weight(1f)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         Text(
@@ -251,7 +133,7 @@ internal fun PlayerBubble(
                         text = com.realmsoffate.game.util.parseInline(
                             cleanText,
                             boldColor = accent,
-                            codeBackground = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            codeBackground = MaterialTheme.colorScheme.surfaceContainerHigh,
                             codeText = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
                         style = MaterialTheme.typography.bodyMedium.copy(
@@ -292,7 +174,6 @@ internal fun PlayerBubble(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun StatChangePills(msg: DisplayMessage.Narration) {
-    val realms = RealmsTheme.colors
     val pills = mutableListOf<Triple<String, Color, Color>>() // text, bg, fg
 
     if (msg.hpBefore != msg.hpAfter) {
@@ -300,22 +181,22 @@ internal fun StatChangePills(msg: DisplayMessage.Narration) {
         val lost = hpDiff < 0
         pills.add(Triple(
             "♥ ${if (hpDiff > 0) "+" else ""}$hpDiff HP",
-            if (lost) realms.fumbleRed.copy(alpha = 0.2f) else realms.success.copy(alpha = 0.2f),
-            if (lost) realms.fumbleRed else realms.success
+            if (lost) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
+            if (lost) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
         ))
     }
     if (msg.goldBefore != msg.goldAfter) {
         val diff = msg.goldAfter - msg.goldBefore
         pills.add(Triple(
             "💰 ${if (diff > 0) "+" else ""}${diff}g",
-            realms.goldAccent.copy(alpha = 0.2f),
-            realms.goldAccent
+            MaterialTheme.colorScheme.tertiaryContainer,
+            MaterialTheme.colorScheme.tertiary
         ))
     }
     if (msg.xpGained > 0) {
         pills.add(Triple(
             "★ +${msg.xpGained} XP",
-            MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
+            MaterialTheme.colorScheme.secondaryContainer,
             MaterialTheme.colorScheme.secondary
         ))
     }
@@ -323,7 +204,7 @@ internal fun StatChangePills(msg: DisplayMessage.Narration) {
     msg.conditionsAdded.forEach { condition ->
         pills.add(Triple(
             "+$condition",
-            MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
+            MaterialTheme.colorScheme.secondaryContainer,
             MaterialTheme.colorScheme.secondary
         ))
     }
@@ -331,7 +212,7 @@ internal fun StatChangePills(msg: DisplayMessage.Narration) {
     msg.conditionsRemoved.forEach { condition ->
         pills.add(Triple(
             "-$condition",
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            MaterialTheme.colorScheme.surfaceContainerHigh,
             MaterialTheme.colorScheme.onSurfaceVariant
         ))
     }
@@ -339,16 +220,16 @@ internal fun StatChangePills(msg: DisplayMessage.Narration) {
     msg.itemsGained.forEach { item ->
         pills.add(Triple(
             "+$item",
-            realms.success.copy(alpha = 0.15f),
-            realms.success
+            MaterialTheme.colorScheme.primaryContainer,
+            MaterialTheme.colorScheme.primary
         ))
     }
     // Items lost
     msg.itemsRemoved.forEach { item ->
         pills.add(Triple(
             "-$item",
-            realms.fumbleRed.copy(alpha = 0.15f),
-            realms.fumbleRed
+            MaterialTheme.colorScheme.errorContainer,
+            MaterialTheme.colorScheme.error
         ))
     }
     // Morality shift
@@ -356,8 +237,8 @@ internal fun StatChangePills(msg: DisplayMessage.Narration) {
         val good = msg.moralDelta > 0
         pills.add(Triple(
             "⚖ ${if (good) "+" else ""}${msg.moralDelta} Moral",
-            if (good) realms.success.copy(alpha = 0.2f) else realms.fumbleRed.copy(alpha = 0.2f),
-            if (good) realms.success else realms.fumbleRed
+            if (good) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
+            if (good) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
         ))
     }
     // Faction reputation changes
@@ -365,8 +246,8 @@ internal fun StatChangePills(msg: DisplayMessage.Narration) {
         val positive = delta > 0
         pills.add(Triple(
             "💡 ${if (positive) "+" else ""}$delta $faction",
-            if (positive) realms.info.copy(alpha = 0.2f) else realms.warning.copy(alpha = 0.2f),
-            if (positive) realms.info else realms.warning
+            if (positive) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.secondaryContainer,
+            if (positive) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary
         ))
     }
 
@@ -394,213 +275,87 @@ internal fun StatChangePills(msg: DisplayMessage.Narration) {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun NpcDialogueBubble(
     name: String,
     quote: String,
-    isBookmarked: Boolean = false,
-    onToggleBookmark: () -> Unit = {},
     onTap: () -> Unit = {},
-    onReaction: (String) -> Unit = {},
     isInteractive: Boolean = true
 ) {
     val (accent, bgTint) = npcColor(name, RealmsTheme.colors.npcPalette)
-    var showReactions by remember { mutableStateOf(false) }
-    var appliedReaction by remember { mutableStateOf<String?>(null) }
 
-    Column {
-        // Bubble + overlapping reaction pill
-        Box(Modifier.padding(bottom = if (appliedReaction != null) 8.dp else 0.dp)) {
-            Row(
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = isInteractive) { onTap() },
+        verticalAlignment = Alignment.Top
+    ) {
+        // Left: 32dp avatar circle with gradient background
+        if (name.isNotBlank()) {
+            Box(
                 Modifier
-                    .fillMaxWidth()
-                    .combinedClickable(
-                        onClick = { if (isInteractive) onTap() },
-                        onLongClick = { if (isInteractive) showReactions = !showReactions }
-                    ),
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(accent.copy(alpha = 0.4f), accent.copy(alpha = 0.15f))
+                        )
+                    )
+                    .border(1.dp, accent.copy(alpha = 0.5f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    name.take(1).uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = accent,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+        }
+        // Right: bubble with asymmetric corners (small top-left = speech tail)
+        Surface(
+            color = bgTint.copy(alpha = 0.12f),
+            shape = RoundedCornerShape(4.dp, 14.dp, 14.dp, 14.dp),
+            border = BorderStroke(1.dp, accent.copy(alpha = 0.2f)),
+            modifier = Modifier.weight(1f)
+        ) {
+            Row(
+                Modifier.padding(12.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                // Left: 32dp avatar circle with gradient background
-                if (name.isNotBlank()) {
-                    Box(
-                        Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(accent.copy(alpha = 0.4f), accent.copy(alpha = 0.15f))
-                                )
-                            )
-                            .border(1.dp, accent.copy(alpha = 0.5f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
+                Column(Modifier.weight(1f)) {
+                    if (name.isNotBlank()) {
                         Text(
-                            name.take(1).uppercase(),
-                            style = MaterialTheme.typography.labelMedium,
+                            name.uppercase(),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                letterSpacing = 0.5.sp
+                            ),
                             color = accent,
-                            fontWeight = FontWeight.Bold
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
+                        Spacer(Modifier.height(4.dp))
                     }
-                    Spacer(Modifier.width(8.dp))
-                }
-                // Right: bubble with asymmetric corners (small top-left = speech tail)
-                Surface(
-                    color = bgTint.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(4.dp, 14.dp, 14.dp, 14.dp),
-                    border = BorderStroke(1.dp, accent.copy(alpha = 0.2f)),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Row(
-                        Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            if (name.isNotBlank()) {
-                                Text(
-                                    name.uppercase(),
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        letterSpacing = 0.5.sp
-                                    ),
-                                    color = accent,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Spacer(Modifier.height(4.dp))
-                            }
-                            val cleanQuote = quote
-                                .removeSurrounding("\"")
-                                .removeSurrounding("\u201C", "\u201D")
-                                .removeSurrounding("'")
-                                .removeSurrounding("\u2018", "\u2019")
-                                .trim()
-                            Text(
-                                text = com.realmsoffate.game.util.parseInline(
-                                    cleanQuote,
-                                    boldColor = accent,
-                                    codeBackground = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    codeText = MaterialTheme.colorScheme.onSurfaceVariant
-                                ),
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontStyle = FontStyle.Italic,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontSize = (15f * LocalFontScale.current).sp
-                                )
-                            )
-                        }
-                        InlineBookmark(
-                            isBookmarked, onToggleBookmark,
-                            modifier = Modifier.padding(start = RealmsSpacing.s),
-                            inactiveTint = accent.copy(alpha = 0.4f)
+                    val cleanQuote = quote
+                        .removeSurrounding("\"")
+                        .removeSurrounding("\u201C", "\u201D")
+                        .removeSurrounding("'")
+                        .removeSurrounding("\u2018", "\u2019")
+                        .trim()
+                    Text(
+                        text = com.realmsoffate.game.util.parseInline(
+                            cleanQuote,
+                            boldColor = accent,
+                            codeBackground = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            codeText = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontStyle = FontStyle.Italic,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = (15f * LocalFontScale.current).sp
                         )
-                    }
-                }
-            }
-            // Applied reaction pill — overlapping bottom-right
-            appliedReaction?.let { emoji ->
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    border = BorderStroke(
-                        1.dp,
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
-                    ),
-                    tonalElevation = 2.dp,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .offset(x = (-12).dp, y = 10.dp)
-                        .height(26.dp)
-                        .widthIn(min = 34.dp)
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.padding(horizontal = RealmsSpacing.xs)
-                    ) {
-                        Text(emoji, fontSize = 14.sp)
-                    }
-                }
-            }
-        }
-
-        // Reaction picker — compact row below bubble, appears on long-press
-        AnimatedVisibility(
-            visible = showReactions,
-            enter = fadeIn(animationSpec = tween(150)) + expandVertically(animationSpec = tween(150)),
-            exit = fadeOut(animationSpec = tween(100)) + shrinkVertically(animationSpec = tween(100))
-        ) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = MaterialTheme.shapes.large,
-                tonalElevation = 3.dp,
-                shadowElevation = 2.dp,
-                modifier = Modifier.padding(start = RealmsSpacing.s, top = RealmsSpacing.xs)
-            ) {
-                Row(
-                    Modifier.padding(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.xxs),
-                    horizontalArrangement = Arrangement.spacedBy(0.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val reactions = listOf(
-                        "\uD83D\uDC4D" to "approve",
-                        "\uD83D\uDC4E" to "disapprove",
-                        "\uD83D\uDE02" to "laugh",
-                        "\uD83D\uDE20" to "angry",
-                        "\u2753" to "question",
-                        "\uD83D\uDE31" to "shocked",
-                        "\uD83E\uDD14" to "suspicious"
                     )
-                    reactions.forEach { (emoji, action) ->
-                        Surface(
-                            onClick = {
-                                appliedReaction = emoji
-                                showReactions = false
-                                onReaction(action)
-                            },
-                            color = Color.Transparent,
-                            shape = CircleShape,
-                            modifier = Modifier.size(34.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                Text(emoji, fontSize = 18.sp)
-                            }
-                        }
-                    }
-                    // "+" button for custom emoji via system keyboard
-                    Box {
-                        var emojiCapture by remember { mutableStateOf("") }
-                        val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
-                        val keyboardController = LocalSoftwareKeyboardController.current
-                        Surface(
-                            onClick = {
-                                focusRequester.requestFocus()
-                                keyboardController?.show()
-                            },
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                            shape = CircleShape,
-                            modifier = Modifier.size(34.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                Text("+", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                        // Invisible text field — captures emoji from keyboard
-                        BasicTextField(
-                            value = emojiCapture,
-                            onValueChange = { v ->
-                                if (v.isNotBlank()) {
-                                    appliedReaction = v
-                                    showReactions = false
-                                    emojiCapture = ""
-                                    onReaction("emoji:$v")
-                                }
-                            },
-                            modifier = Modifier
-                                .size(1.dp)
-                                .alpha(0f)
-                                .focusRequester(focusRequester),
-                            singleLine = true
-                        )
-                    }
                 }
             }
         }
@@ -686,11 +441,14 @@ internal fun SwipeableMessage(
 
 @Composable
 internal fun EventCard(icon: String, title: String, text: String) {
-    val realms = RealmsTheme.colors
-    Surface(
-        color = realms.warning.copy(alpha = 0.14f),
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.fillMaxWidth().border(1.dp, realms.warning.copy(alpha = 0.5f), MaterialTheme.shapes.medium)
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.s)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -699,28 +457,28 @@ internal fun EventCard(icon: String, title: String, text: String) {
                 Text(
                     "WORLD EVENT · ${title.uppercase()}",
                     style = MaterialTheme.typography.labelLarge,
-                    color = realms.warning
+                    color = MaterialTheme.colorScheme.secondary
                 )
             }
             Spacer(Modifier.height(8.dp))
-            Text(text, style = com.realmsoffate.game.ui.theme.NarrationBodyStyle, color = MaterialTheme.colorScheme.onSurface)
+            Text(text, style = com.realmsoffate.game.ui.theme.NarrationBodyStyle, color = MaterialTheme.colorScheme.onSecondaryContainer)
         }
     }
 }
 
 @Composable
 internal fun SystemLine(text: String) {
-    val realms = RealmsTheme.colors
     // Colorize check-result lines so PASS/FAIL pops in the chat feed.
     val (bg, fg) = when {
-        text.startsWith("✓") -> realms.success.copy(alpha = 0.18f) to realms.success
-        text.startsWith("✗") -> realms.fumbleRed.copy(alpha = 0.18f) to realms.fumbleRed
-        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) to MaterialTheme.colorScheme.onSurfaceVariant
+        text.startsWith("✓") -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+        text.startsWith("✗") -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+        else -> MaterialTheme.colorScheme.surfaceContainerHighest to MaterialTheme.colorScheme.onSurfaceVariant
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
         Surface(
             color = bg,
-            shape = MaterialTheme.shapes.large
+            shape = MaterialTheme.shapes.large,
+            tonalElevation = 0.dp
         ) {
             Text(
                 text,
@@ -760,7 +518,7 @@ internal fun NarratorThinking() {
 internal fun ChoiceTile(c: Choice, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
     ) {
@@ -769,7 +527,7 @@ internal fun ChoiceTile(c: Choice, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                Modifier.size(26.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                Modifier.size(26.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Text("${c.n}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -787,36 +545,6 @@ internal fun ChoiceTile(c: Choice, onClick: () -> Unit) {
                     )
                 }
             }
-        }
-    }
-}
-
-/** Wraps any bubble with a small bookmark reaction button floating at bottom-right. */
-@Composable
-internal fun BubbleWithReaction(
-    isBookmarked: Boolean,
-    onToggle: () -> Unit,
-    content: @Composable () -> Unit
-) {
-    Box {
-        content()
-        Surface(
-            onClick = onToggle,
-            color = if (isBookmarked) RealmsTheme.colors.goldAccent.copy(alpha = 0.22f)
-                    else MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-            shape = CircleShape,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(4.dp)
-                .size(24.dp)
-        ) {
-            Icon(
-                if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                contentDescription = "Bookmark",
-                modifier = Modifier.padding(4.dp),
-                tint = if (isBookmarked) RealmsTheme.colors.goldAccent
-                       else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-            )
         }
     }
 }

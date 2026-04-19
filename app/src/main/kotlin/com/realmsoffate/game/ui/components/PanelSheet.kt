@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,7 +36,10 @@ internal fun PanelSheet(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = BottomSheetDefaults.ExpandedShape,
+        tonalElevation = BottomSheetDefaults.Elevation,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.s),
@@ -53,7 +57,7 @@ internal fun PanelSheet(
             }
             IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Close") }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Spacer(Modifier.height(RealmsSpacing.xs))
         content()
         Spacer(Modifier.navigationBarsPadding().height(RealmsSpacing.m))

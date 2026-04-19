@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
 
 /**
  * API setup screen — mirrors the web's provider picker pattern:
@@ -38,7 +37,6 @@ fun ApiSetupScreen(vm: GameViewModel) {
     LaunchedEffect(apiKey) { if (localKey.isEmpty() && apiKey.isNotEmpty()) localKey = apiKey }
 
     val valid = provider.validate(localKey)
-    val realms = RealmsTheme.colors
 
     Scaffold(containerColor = MaterialTheme.colorScheme.background) { pad ->
         Column(
@@ -67,7 +65,7 @@ fun ApiSetupScreen(vm: GameViewModel) {
             // DeepSeek provider header
             Spacer(Modifier.height(14.dp))
             Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -87,7 +85,7 @@ fun ApiSetupScreen(vm: GameViewModel) {
                     Text(
                         "platform.deepseek.com/api_keys",
                         style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
-                        color = realms.goldAccent
+                        color = MaterialTheme.colorScheme.tertiary
                     )
                 }
             }
@@ -103,7 +101,7 @@ fun ApiSetupScreen(vm: GameViewModel) {
                 singleLine = true,
                 leadingIcon = { Icon(Icons.Default.Key, null, tint = MaterialTheme.colorScheme.secondary) },
                 trailingIcon = {
-                    if (valid) Icon(Icons.Default.Lock, null, tint = realms.success)
+                    if (valid) Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary)
                 },
                 supportingText = { Text("DeepSeek keys start with sk-") },
                 shape = MaterialTheme.shapes.medium,
@@ -119,7 +117,7 @@ fun ApiSetupScreen(vm: GameViewModel) {
             Text(
                 "Your key stays on this device via EncryptedDataStore. Never sent anywhere except the provider you pick.",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(48.dp))
@@ -139,7 +137,6 @@ private fun SectionLabel(text: String) {
 
 @Composable
 private fun StartButton(valid: Boolean, onClick: () -> Unit) {
-    val realms = RealmsTheme.colors
     Surface(
         onClick = onClick,
         enabled = valid,
@@ -150,7 +147,7 @@ private fun StartButton(valid: Boolean, onClick: () -> Unit) {
     ) {
         Box(
             modifier = if (valid) Modifier.background(
-                Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary, realms.goldAccent))
+                Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary))
             ) else Modifier,
             contentAlignment = Alignment.Center
         ) {

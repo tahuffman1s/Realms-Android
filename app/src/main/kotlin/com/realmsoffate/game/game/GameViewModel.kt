@@ -16,7 +16,6 @@ import com.realmsoffate.game.data.Item
 import com.realmsoffate.game.data.LogNpc
 import com.realmsoffate.game.data.ParsedReply
 import com.realmsoffate.game.data.PlayerPos
-import com.realmsoffate.game.data.TravelState
 import com.realmsoffate.game.data.PreferencesStore
 import com.realmsoffate.game.data.Prompts
 import com.realmsoffate.game.data.Quest
@@ -30,6 +29,7 @@ import com.realmsoffate.game.data.TimelineEntry
 import com.realmsoffate.game.data.WorldEvent
 import com.realmsoffate.game.data.WorldLore
 import com.realmsoffate.game.data.WorldMap
+import com.realmsoffate.game.data.deepCopy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -91,10 +91,6 @@ data class GameUiState(
      * jumping to the bottom of the narration.
      */
     val turnStartIndex: Int = 0,
-    /** Bookmarked text snippets from individual bubbles. */
-    val bookmarks: List<String> = emptyList(),
-    /** Non-null when the player is actively traveling between locations. */
-    val travelState: TravelState? = null,
     /**
      * Memoized per-game stable system-prompt suffix. Null until first AI call;
      * cleared on level-up, mutation change, character replacement, or load. See
@@ -395,25 +391,6 @@ class GameViewModel(
         }
     }
 
-    /** Tutorial step — null means tutorial is complete or dismissed. */
-    private val _tutorialStep = MutableStateFlow<Int?>(null)
-    val tutorialStep: StateFlow<Int?> = _tutorialStep.asStateFlow()
-
-    fun advanceTutorial() {
-        val current = _tutorialStep.value ?: return
-        val next = current + 1
-        _tutorialStep.value = if (next > 8) null else next
-    }
-
-    fun dismissTutorial() {
-        _tutorialStep.value = null
-        viewModelScope.launch { prefs.setTutorialComplete() }
-    }
-
-    fun resetTutorial() {
-        viewModelScope.launch { prefs.resetTutorial() }
-    }
-
     private val restHandler = RestHandler(
         _ui, _restOverlay, _screen, _lastDeath,
         ::logTimeline, viewModelScope, { saveService.refreshSlots() }, timeline
@@ -422,40 +399,6 @@ class GameViewModel(
     fun shortRest() = restHandler.shortRest()
     fun longRest() = restHandler.longRest()
     fun dismissRest() = restHandler.dismissRest()
-
-    /** Start traveling to a destination. Calculates road distance and begins turn-by-turn travel. */
-    fun startTravel(destId: Int) {
-        val s = _ui.value
-        val wm = s.worldMap ?: return
-        val dest = wm.locations.getOrNull(destId) ?: return
-        if (destId == s.currentLoc) return
-
-        // Find direct road
-        val road = wm.roads.firstOrNull {
-            (it.from == s.currentLoc && it.to == destId) ||
-            (it.to == s.currentLoc && it.from == destId)
-        } ?: return
-
-        val travel = TravelState(
-            destId = destId,
-            totalLeagues = road.dist,
-            leaguesTraveled = 0,
-            roadPath = listOf(s.currentLoc, destId),
-            destName = dest.name
-        )
-        _ui.value = s.copy(travelState = travel)
-
-        // Submit the first travel turn
-        submitAction("I begin traveling to ${dest.name}. The road stretches ${road.dist} leagues ahead.")
-    }
-
-    fun cancelTravel() {
-        val s = _ui.value
-        if (s.travelState != null) {
-            _ui.value = s.copy(travelState = null)
-            postSystemMessage("Travel cancelled. You stop on the road.")
-        }
-    }
 
     /** Current target-prompt spec — null when no picker is showing. */
     private val _targetPrompt = MutableStateFlow<com.realmsoffate.game.ui.overlays.TargetPromptSpec?>(null)
@@ -597,13 +540,6 @@ class GameViewModel(
                 )
             )
             _screen.value = Screen.Game
-
-            // Start tutorial on first game.
-            viewModelScope.launch {
-                if (!prefs.isTutorialComplete()) {
-                    _tutorialStep.value = 0
-                }
-            }
 
             // Seed opening narration with the scenario prompt template.
             val nearby = WorldGen.connected(wm, wm.startId).joinToString(", ") { (d, dist) -> "${d.icon} ${d.name} (${dist}lg)" }
@@ -909,21 +845,7 @@ class GameViewModel(
 
     fun pickChoice(c: Choice) = submitAction(c.text, skill = c.skill)
 
-    fun toggleBookmark(text: String) {
-        val s = _ui.value
-        val current = s.bookmarks.toMutableList()
-        val trimmed = text.take(300)
-        if (current.any { it == trimmed }) current.remove(trimmed)
-        else current.add(trimmed)
-        _ui.value = s.copy(bookmarks = current)
-    }
-
-    fun removeBookmark(text: String) {
-        val s = _ui.value
-        _ui.value = s.copy(bookmarks = s.bookmarks.filter { it != text })
-    }
-
-    /** Slash-command helper — inserts a system line into the message feed. */
+    /** Inserts a system line into the chat feed (settings, exports, debug, etc.). */
     fun postSystemMessage(text: String) {
         val s = _ui.value
         _ui.value = s.copy(messages = s.messages + DisplayMessage.System(text))
@@ -1016,10 +938,6 @@ class GameViewModel(
             localFaction?.let { append("\nLOCAL FACTION: ${it.name} (${it.type}); currency: ${it.currency}") }
             append("\nNEARBY: ${nearby.joinToString(", ") { "${it.first.name} (${it.second}lg)" }}")
             append("\nTURN: ${s.turns + 1}")
-            s.travelState?.let { t ->
-                append("\nTRAVELING: You are on the road to ${t.destName}. ${t.leaguesTraveled}/${t.totalLeagues} leagues traveled. ${t.totalLeagues - t.leaguesTraveled} leagues remaining.")
-                append("\nNarrate the journey — describe the road, encounters, weather, terrain. The player is actively traveling, not at a settled location.")
-            }
             append(partyCtx); append(questCtx); append(npcCtx); append(knownNpcsCtx); append(eventCtx)
             append("\nEquipped: $inv")
             append("\nInventory: ${invAll.ifBlank { "empty" }}")
@@ -1097,47 +1015,12 @@ class GameViewModel(
             parsed.repDeltas.forEach { (f, d) -> it[f] = (it.getOrDefault(f, 0) + d).coerceIn(-100, 100) }
         }
 
-        // Travel — turn-by-turn progression.
+        // Location — AI [TRAVEL:] tag moves the marker when the parser supplies a destination name.
         var currentLoc = state.currentLoc
         var worldMap = state.worldMap
         var playerPos = state.playerPos
-        var travelState = state.travelState
 
-        if (travelState != null && worldMap != null) {
-            val leaguesThisTurn = 3
-            val newTraveled = (travelState.leaguesTraveled + leaguesThisTurn)
-                .coerceAtMost(travelState.totalLeagues)
-
-            if (newTraveled >= travelState.totalLeagues) {
-                // Arrived at destination
-                val dest = worldMap.locations.getOrNull(travelState.destId)
-                if (dest != null) {
-                    if (!dest.discovered) {
-                        val newLocs = worldMap.locations.toMutableList().also { it[travelState.destId] = dest.copy(discovered = true) }
-                        worldMap = worldMap.copy(locations = newLocs)
-                    }
-                    currentLoc = travelState.destId
-                    playerPos = PlayerPos(dest.x.toFloat(), dest.y.toFloat())
-                    newMsgs.add(DisplayMessage.System("You arrive at ${dest.icon} ${dest.name}"))
-                    logTimeline("travel", "Arrived at ${dest.name}")
-                }
-                travelState = null // Travel complete
-            } else {
-                // Still traveling — interpolate position along the road
-                val progress = newTraveled.toFloat() / travelState.totalLeagues.toFloat()
-                val fromLoc = worldMap.locations.getOrNull(state.currentLoc)
-                val toLoc = worldMap.locations.getOrNull(travelState.destId)
-                if (fromLoc != null && toLoc != null) {
-                    val interpX = fromLoc.x + (toLoc.x - fromLoc.x) * progress
-                    val interpY = fromLoc.y + (toLoc.y - fromLoc.y) * progress
-                    playerPos = PlayerPos(interpX, interpY)
-                }
-                travelState = travelState.copy(leaguesTraveled = newTraveled)
-                val remaining = travelState.totalLeagues - newTraveled
-                newMsgs.add(DisplayMessage.System("Traveled $leaguesThisTurn leagues. $remaining leagues remain to ${travelState.destName}."))
-            }
-        } else if (parsed.travelTo != null && worldMap != null) {
-            // Legacy instant travel from AI [TRAVEL:] tag (when not using map travel)
+        if (parsed.travelTo != null && worldMap != null) {
             val idx = worldMap.locations.indexOfFirst { it.name.equals(parsed.travelTo, true) }
             if (idx >= 0) {
                 val dest = worldMap.locations[idx]
@@ -1252,8 +1135,7 @@ class GameViewModel(
             messages = newMsgs,
             lastCheck = check,
             lastDice = roll,
-            combat = combatState,
-            travelState = travelState
+            combat = combatState
         )
     }
 
@@ -1298,7 +1180,12 @@ class GameViewModel(
         _screen.value = screen
     }
 
-    /** Overwrite the entire UI state. Used by the debug bridge (/inject). */
+    /**
+     * Overwrite the entire UI state. Used by the debug bridge (`/inject`).
+     * Assign a structurally distinct [GameUiState] from the previous value whenever
+     * fields change — [MutableStateFlow] suppresses collectors if `new == old`,
+     * which prevents Compose from recomposing after in-place mutations.
+     */
     fun debugInjectState(state: GameUiState) {
         _ui.value = state
     }
@@ -1390,6 +1277,270 @@ class GameViewModel(
                 moralDelta = 0, repDeltas = emptyList(), segments = emptyList()
             )
         )
+    }
+
+    /**
+     * Dense in-game snapshot for QA / screenshots: fresh world + lore, multi-turn chat,
+     * quests, NPC journal, party, merchants, faction rep, and scene choices.
+     * Does not call the AI.
+     */
+    fun debugSimulateGameplay() {
+        val prev = _ui.value
+        val wm = WorldGen.generate()
+        val lore = LoreGen.generate(wm)
+        val startId = wm.startId
+        val startLoc = wm.locations[startId]
+        startLoc.discovered = true
+
+        val seed = prev.character ?: Character(name = "Riven Ashmark", race = "half-elf", cls = "rogue")
+        val ch = seed.deepCopy().copy(
+            level = 7,
+            xp = 23_000,
+            hp = 42,
+            maxHp = 52,
+            ac = 17,
+            gold = 438,
+            conditions = mutableListOf("Blessed", "Poisoned"),
+            feats = mutableListOf("Sharpshooter")
+        )
+
+        val scene = "tavern"
+        val sceneDesc = "Low beams, spilled ale, dice skittering across grit—Captain Vance wants a word."
+
+        val messages = buildList {
+            add(DisplayMessage.System("🎭 Simulated session — no AI calls; safe for layout / screenshot QA."))
+            add(DisplayMessage.Player("I watch the door while Mira counts coin."))
+            add(
+                DisplayMessage.Narration(
+                    text = "Rain hammers the shutters. A one-eyed regular mutters about lights in the marsh.",
+                    scene = scene,
+                    sceneDesc = sceneDesc,
+                    hpBefore = 45,
+                    hpAfter = 42,
+                    maxHp = 52,
+                    goldBefore = 420,
+                    goldAfter = 438,
+                    xpGained = 250,
+                    conditionsAdded = listOf("Poisoned"),
+                    conditionsRemoved = emptyList(),
+                    itemsGained = listOf("Silver Signet Ring"),
+                    itemsRemoved = emptyList(),
+                    moralDelta = 2,
+                    repDeltas = listOf("town-guard" to 5, "shadow-court" to -2),
+                    segments = emptyList()
+                )
+            )
+            add(DisplayMessage.System("🎲 Stealth check — you succeed; the back room goes quiet."))
+            add(DisplayMessage.Player("Slip Vance the sealed letter. If he bites, we follow."))
+            add(
+                DisplayMessage.Narration(
+                    text = "Vance turns the wax seal toward the hearth light. \"The heir's alive,\" he breathes. \"Docks. Midnight. Come armed.\"",
+                    scene = scene,
+                    sceneDesc = sceneDesc,
+                    hpBefore = 42,
+                    hpAfter = 42,
+                    maxHp = 52,
+                    goldBefore = 438,
+                    goldAfter = 438,
+                    xpGained = 0,
+                    conditionsAdded = emptyList(),
+                    conditionsRemoved = emptyList(),
+                    itemsGained = emptyList(),
+                    itemsRemoved = emptyList(),
+                    moralDelta = 0,
+                    repDeltas = emptyList(),
+                    segments = emptyList()
+                )
+            )
+            add(
+                DisplayMessage.Event(
+                    icon = "⚓",
+                    title = "Dockside rumor",
+                    text = "Longshoremen whisper of a crown galley riding black water toward the bay."
+                )
+            )
+            add(DisplayMessage.Player("We move before the tide turns."))
+            add(
+                DisplayMessage.Narration(
+                    text = "Fog rolls between the pilings. Somewhere a bell tolls twice—signal or warning, you can't tell.",
+                    scene = scene,
+                    sceneDesc = "Salt wind off the bay; rigging groans overhead.",
+                    hpBefore = 42,
+                    hpAfter = 42,
+                    maxHp = 52,
+                    goldBefore = 438,
+                    goldAfter = 438,
+                    xpGained = 75,
+                    conditionsAdded = emptyList(),
+                    conditionsRemoved = emptyList(),
+                    itemsGained = emptyList(),
+                    itemsRemoved = emptyList(),
+                    moralDelta = -1,
+                    repDeltas = emptyList(),
+                    segments = emptyList()
+                )
+            )
+        }
+
+        val turnStart = messages.indexOfLast { it is DisplayMessage.Player }.coerceAtLeast(0)
+
+        val npcLog = listOf(
+            LogNpc(
+                id = "npc-mira-cole",
+                name = "Mira Cole",
+                race = "human",
+                role = "merchant",
+                relationship = "friendly",
+                appearance = "Sharp eyes, ink-stained cuffs.",
+                personality = "Talks fast, counts faster.",
+                faction = "guild-merchants",
+                lastLocation = startLoc.name,
+                metTurn = 3,
+                lastSeenTurn = 24,
+                dialogueHistory = mutableListOf(
+                    "T5: \"You want rumors, you buy the second drink.\""
+                ),
+                memorableQuotes = mutableListOf("T18: \"The heir isn't dead—just buried in paperwork.\""),
+                relationshipNote = "Owes you for the dock fire cover-up.",
+                status = "alive"
+            ),
+            LogNpc(
+                id = "npc-captain-vance",
+                name = "Captain Denvers Vance",
+                race = "human",
+                role = "watch captain",
+                relationship = "wary",
+                appearance = "Grey cloak, harbor seal brooch.",
+                personality = "By-the-book until gold or leverage appears.",
+                faction = "town-guard",
+                lastLocation = startLoc.name,
+                metTurn = 9,
+                lastSeenTurn = 23,
+                dialogueHistory = mutableListOf(
+                    "T12: \"Marsh lights mean smugglers—or worse.\""
+                ),
+                memorableQuotes = mutableListOf(),
+                relationshipNote = "Suspicious of your crew but needs informants.",
+                status = "alive"
+            )
+        )
+
+        val party = listOf(
+            PartyCompanion(
+                name = "Sera Quickstep",
+                race = "halfling",
+                role = "bard",
+                level = 6,
+                hp = 38,
+                maxHp = 44,
+                appearance = "Lute case dented from brawls.",
+                personality = "Jokes when nervous.",
+                faction = null,
+                homeLocation = startLoc.name,
+                joinedTurn = 11,
+                age = "Young"
+            )
+        )
+
+        val quests = listOf(
+            Quest(
+                id = "sim-heir",
+                title = "The Missing Heir",
+                type = "main",
+                desc = "House Malver wants proof the heir lives before the regency vote.",
+                giver = "Seneschal Aldwin",
+                location = startLoc.name,
+                objectives = mutableListOf(
+                    "Deliver the sealed letter to Captain Vance",
+                    "Survive the midnight dock meet",
+                    "Extract the heir from Old Harbor Row"
+                ),
+                reward = "1500 gp + charter",
+                status = "active",
+                turnStarted = 8,
+                turnCompleted = null
+            ),
+            Quest(
+                id = "sim-smugglers",
+                title = "Salt and Signal",
+                type = "side",
+                desc = "Break up the crown tar smuggling ring before the festival.",
+                giver = "Dockmaster Jory",
+                location = "Harbor",
+                objectives = mutableListOf(
+                    "Identify the signal bell code",
+                    "Burn the hidden cache"
+                ),
+                reward = "250 gp",
+                status = "active",
+                turnStarted = 19,
+                turnCompleted = null
+            )
+        )
+
+        val worldEvents = listOf(
+            WorldEvent(
+                icon = "🌑",
+                title = "Black water omens",
+                text = "Every seventh wave tonight carries a scrap of royal silk.",
+                prompt = "Foreshadow the heir reveal.",
+                turn = 21
+            )
+        )
+
+        val hotbar = listOf("Hunter's Mark", "Cure Wounds", "Pass without Trace", null, null, null)
+
+        val newState = GameUiState(
+            character = ch,
+            worldMap = wm,
+            currentLoc = startId,
+            playerPos = PlayerPos(startLoc.x.toFloat(), startLoc.y.toFloat()),
+            worldLore = lore,
+            worldEvents = worldEvents,
+            lastEventTurn = 21,
+            npcLog = npcLog,
+            party = party,
+            quests = quests,
+            hotbar = hotbar,
+            turns = 24,
+            morality = 12,
+            factionRep = mapOf(
+                "town-guard" to 14,
+                "guild-merchants" to 8,
+                "shadow-court" to -6
+            ),
+            history = listOf(
+                ChatMsg("user", "We enter the lower ward after dark."),
+                ChatMsg(
+                    "assistant",
+                    "[NARRATION]Fog crawls up the cobbles; the bell tolls twice.[/NARRATION]"
+                )
+            ),
+            messages = messages,
+            currentScene = scene,
+            currentSceneDesc = sceneDesc,
+            currentChoices = listOf(
+                Choice(1, "Slip out through the kitchen", "DEX"),
+                Choice(2, "Call Vance's bluff with the letter", "CHA"),
+                Choice(3, "Stage a bar fight as cover", "STR")
+            ),
+            isGenerating = false,
+            error = null,
+            merchantStocks = mapOf(
+                "Vesper's Wares" to mapOf(
+                    "Healing Potion" to 4,
+                    "Iron Shortsword" to 1,
+                    "Rope (50 ft)" to 2
+                )
+            ),
+            availableMerchants = listOf("Vesper's Wares"),
+            lastDice = 16,
+            turnStartIndex = turnStart,
+            combat = null,
+            deathSave = null,
+            preRoll = null
+        )
+        debugInjectState(newState)
     }
 
     companion object {

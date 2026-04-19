@@ -88,10 +88,10 @@ fun TargetPromptDialog(
             Spacer(Modifier.height(10.dp))
             // Preview
             Surface(
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                color = MaterialTheme.colorScheme.primaryContainer,
                 shape = MaterialTheme.shapes.small,
                 modifier = Modifier.fillMaxWidth().border(
-                    1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), MaterialTheme.shapes.small
+                    1.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small
                 )
             ) {
                 Text(

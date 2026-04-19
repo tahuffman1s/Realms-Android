@@ -76,9 +76,7 @@ class SaveService(
             timeline = timeline.toList(),
             displayMessages = s.messages,
             deathSave = s.deathSave,
-            travelState = s.travelState,
-            debugLog = debugLog.takeLast(50),
-            bookmarks = s.bookmarks
+            debugLog = debugLog.takeLast(50)
         )
     }
 
@@ -126,10 +124,7 @@ class SaveService(
                 turnStartIndex = if (d.displayMessages.isNotEmpty()) d.displayMessages.lastIndex else 0,
                 // Restore in-flight death-save tracker so reload picks the player up
                 // exactly where they fell.
-                deathSave = d.deathSave,
-                // Restore any in-progress road travel.
-                travelState = d.travelState,
-                bookmarks = d.bookmarks
+                deathSave = d.deathSave
             )
             // Clear any stale ephemeral overlays so they don't leak into the loaded run.
             clearOverlays()

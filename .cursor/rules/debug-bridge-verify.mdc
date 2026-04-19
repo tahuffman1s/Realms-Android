@@ -1,0 +1,51 @@
+---
+description: Verify via Debug Bridge after any app change (mandatory unless skipped)
+alwaysApply: true
+---
+
+# Debug Bridge verification (always)
+
+## Trigger — after **any** change that touches runnable app code
+
+Whenever this session modifies **`app/src/main/`**, **`app/src/debug/`**, **`app/src/main/res/`**, **`app/build.gradle.kts`**, or **Gradle/settings files that change how `app` is built or packaged**, verification is **mandatory before claiming the work is done**, unless an exception below applies.
+
+**Minimum every time:** deploy (`installDebug`), port forward, then **`debug-bridge-test-procedures.mdc`** **P0 + P1** (bridge up + smoke screenshot read via assistant).
+
+**Then:** follow **P2–P9** as indicated by the **Contextual procedures** table in `debug-bridge-test-procedures.mdc` for what was edited (theme → **P3**, panels → **P4**, chat → **P7**, etc.). Non-UI logic (reducers, handlers, VM) still requires **P0–P1** plus whichever flows surface that logic (**P7**, **P8**, **`/state`**, etc.)—not compile-only.
+
+Do **not** treat `assembleDebug` or green tests alone as sufficient verification for app module changes.
+
+## Setup
+
+Requires port forward (often already done alongside deploy):
+
+```bash
+adb -s emulator-5554 forward tcp:8735 tcp:8735
+```
+
+Use the correct serial (`adb devices`) if not the emulator.
+
+## Deeper checks (always in addition to P0–P1 when the change warrants it)
+
+1. Drive the app to the right surface (examples):
+   - Instant game (no AI wait):  
+     `curl -s -X POST localhost:8735/macro/new-game -d '{"name":"Verify","class":"fighter","race":"human","skipFirstTurn":true}'`
+   - Direct screen:  
+     `curl -s -X POST localhost:8735/navigate -d '{"screen":"death"}'` (adjust `screen` as needed)
+2. Capture and **inspect visually**:  
+   `curl -s localhost:8735/screenshot > /tmp/verify.png`  
+   Then **read** the image file (assistant uses the Read tool on the saved path).
+
+## When to go further
+
+- **Colors / theme:** `curl -s -X POST localhost:8735/theme -d '{"mode":"dark"}'` then screenshot again; restore `"system"` or `"light"` after.
+- **Edge cases for the area you touched:** use `POST /inject` or `/inject/messages`; reset with `POST localhost:8735/inject/reset` when done.
+- **Behavior / state:** `curl -s localhost:8735/state` or `/state/overlay`.
+
+## Exceptions (narrow)
+
+- **User explicitly says** to skip deploy or Debug Bridge verification.
+- **Edits only under `app/src/test/`** (no main/debug/res/gradle app changes): run `gradle test`; Debug Bridge not required unless you need visual confirmation of a behavior change.
+- **Documentation or Cursor rules only** (no Kotlin, resources, or Gradle in `app/`): no deploy; state that verification was skipped for doc-only work.
+
+Do **not** claim runtime validation from compile or tests alone when **main/debug/res/app Gradle** changed; pair **deploy + P0/P1 (and contextual steps as applicable)** with the summary.

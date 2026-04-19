@@ -17,8 +17,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.data.Character
 import com.realmsoffate.game.data.Item
+import com.realmsoffate.game.ui.components.PanelTab
+import com.realmsoffate.game.ui.components.PanelTabRow
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
 
 /**
  * Shop overlay with Buy / Sell tabs and a buyback lane.
@@ -41,7 +42,6 @@ fun ShopOverlay(
     buybackStock: List<BuybackEntry>,
     onClose: () -> Unit
 ) {
-    val realms = RealmsTheme.colors
     var tab by remember(merchant) { mutableStateOf("buy") }
     var haggled by remember(merchant) { mutableStateOf(false) }
     var discount by remember(merchant) { mutableFloatStateOf(1f) }
@@ -64,22 +64,28 @@ fun ShopOverlay(
                     Text(
                         "Your gold: ${character.gold}g",
                         style = MaterialTheme.typography.labelMedium,
-                        color = realms.goldAccent
+                        color = MaterialTheme.colorScheme.tertiary
                     )
                 }
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Close") }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(Modifier.height(RealmsSpacing.s))
 
-            // Tabs
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                ShopTabBtn("Buy", tab == "buy", Modifier.weight(1f)) { tab = "buy" }
-                ShopTabBtn("Sell", tab == "sell", Modifier.weight(1f)) { tab = "sell" }
-                if (buybackStock.isNotEmpty()) {
-                    ShopTabBtn("Buyback", tab == "back", Modifier.weight(1f)) { tab = "back" }
+            val shopTabs = remember(buybackStock.isNotEmpty()) {
+                buildList {
+                    add("buy" to PanelTab("Buy"))
+                    add("sell" to PanelTab("Sell"))
+                    if (buybackStock.isNotEmpty()) add("back" to PanelTab("Buyback"))
                 }
             }
+            val shopTabIndex = shopTabs.indexOfFirst { it.first == tab }.let { i -> if (i >= 0) i else 0 }
+            PanelTabRow(
+                tabs = shopTabs.map { it.second },
+                selectedIndex = shopTabIndex,
+                onSelect = { tab = shopTabs[it].first },
+                horizontalPadding = 0.dp
+            )
 
             Spacer(Modifier.height(RealmsSpacing.s))
 
@@ -105,7 +111,7 @@ fun ShopOverlay(
                         Text(
                             it,
                             style = MaterialTheme.typography.labelMedium,
-                            color = if (discount < 1f) realms.success else realms.fumbleRed
+                            color = if (discount < 1f) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -196,29 +202,6 @@ private fun sellValue(item: Item): Int = when (item.rarity.lowercase()) {
 } * (if (item.type == "weapon" || item.type == "armor") 2 else 1)
 
 @Composable
-private fun ShopTabBtn(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        shape = MaterialTheme.shapes.small,
-        modifier = modifier.height(40.dp).border(
-            1.dp,
-            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-            MaterialTheme.shapes.small
-        )
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Text(
-                label.uppercase(),
-                style = MaterialTheme.typography.labelLarge,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-            )
-        }
-    }
-}
-
-@Composable
 private fun ShopRow(
     label: String,
     price: Int,
@@ -226,12 +209,11 @@ private fun ShopRow(
     actionLabel: String,
     onAction: () -> Unit
 ) {
-    val realms = RealmsTheme.colors
     Surface(
         onClick = onAction,
         enabled = canAfford,
-        color = if (canAfford) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        color = if (canAfford) MaterialTheme.colorScheme.surfaceContainerHigh
+                else MaterialTheme.colorScheme.surfaceContainerLow,
         shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth().border(
             1.dp,
@@ -245,13 +227,13 @@ private fun ShopRow(
         ) {
             Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             Surface(
-                color = realms.goldAccent.copy(alpha = if (canAfford) 0.14f else 0.06f),
+                color = if (canAfford) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
                 shape = MaterialTheme.shapes.extraSmall
             ) {
                 Text(
                     "${price}g",
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (canAfford) realms.goldAccent else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (canAfford) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = 3.dp)
                 )

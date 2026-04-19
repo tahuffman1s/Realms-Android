@@ -40,7 +40,6 @@ import com.realmsoffate.game.game.DeathSaveState
 import com.realmsoffate.game.game.PreRollDisplay
 import com.realmsoffate.game.ui.theme.RealmsElevation
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.cos
@@ -72,16 +71,15 @@ internal fun PreRollDialog(
     pre: PreRollDisplay,
     onConfirm: () -> Unit
 ) {
-    val realms = RealmsTheme.colors
     val dieColor = when {
-        pre.roll == 20 -> realms.critGold
-        pre.roll == 1 -> realms.fumbleRed
+        pre.roll == 20 -> MaterialTheme.colorScheme.tertiary
+        pre.roll == 1 -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.primary
     }
     val glowColor = when {
-        pre.roll == 20 -> realms.critGlow
-        pre.roll == 1 -> realms.fumbleGlow
-        else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+        pre.roll == 20 -> MaterialTheme.colorScheme.tertiaryContainer
+        pre.roll == 1 -> MaterialTheme.colorScheme.errorContainer
+        else -> MaterialTheme.colorScheme.primaryContainer
     }
     // Animated entrance — quick scale-in + fade so it feels like a card flipping.
     val entrance = remember(pre) { Animatable(0.85f) }
@@ -316,7 +314,7 @@ internal fun PreRollDialog(
                                     Brush.horizontalGradient(
                                         listOf(
                                             Color.Transparent,
-                                            realms.goldAccent.copy(alpha = 0.6f),
+                                            MaterialTheme.colorScheme.tertiary,
                                             Color.Transparent
                                         )
                                     )
@@ -329,13 +327,13 @@ internal fun PreRollDialog(
                             Text(
                                 "TOTAL",
                                 style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 2.sp),
-                                color = realms.goldAccent,
+                                color = MaterialTheme.colorScheme.tertiary,
                                 modifier = Modifier.weight(1f)
                             )
                             Text(
                                 pre.total.toString(),
                                 style = MaterialTheme.typography.displaySmall,
-                                color = realms.goldAccent,
+                                color = MaterialTheme.colorScheme.tertiary,
                                 fontWeight = FontWeight.Black
                             )
                         }
@@ -348,7 +346,7 @@ internal fun PreRollDialog(
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontStyle = FontStyle.Italic
                     ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(18.dp))
@@ -404,7 +402,6 @@ internal fun DeathSaveDialog(
     saves: DeathSaveState,
     onRoll: () -> Unit
 ) {
-    val realms = RealmsTheme.colors
     Dialog(
         onDismissRequest = { /* no dismiss — must resolve by rolling */ },
         properties = DialogProperties(
@@ -414,7 +411,7 @@ internal fun DeathSaveDialog(
         )
     ) {
         Box(
-            Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.82f)),
+            Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.82f)),
             contentAlignment = Alignment.Center
         ) {
             Surface(
@@ -435,7 +432,7 @@ internal fun DeathSaveDialog(
                     Text(
                         "DEATH SAVES",
                         style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 6.sp),
-                        color = realms.fumbleRed
+                        color = MaterialTheme.colorScheme.error
                     )
                     Spacer(Modifier.height(RealmsSpacing.m))
                     Text(
@@ -446,8 +443,8 @@ internal fun DeathSaveDialog(
                     )
                     Spacer(Modifier.height(14.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)) {
-                        ScoreCol("SUCCESSES", saves.successes, realms.success)
-                        ScoreCol("FAILURES", saves.failures, realms.fumbleRed)
+                        ScoreCol("SUCCESSES", saves.successes, MaterialTheme.colorScheme.primary)
+                        ScoreCol("FAILURES", saves.failures, MaterialTheme.colorScheme.error)
                     }
                     if (saves.rolls.isNotEmpty()) {
                         Spacer(Modifier.height(10.dp))
@@ -463,8 +460,7 @@ internal fun DeathSaveDialog(
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = realms.fumbleRed,
-                            contentColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.error
                         )
                     ) { Text("ROLL SAVE", fontWeight = FontWeight.Bold, letterSpacing = 3.sp) }
                 }

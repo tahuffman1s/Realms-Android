@@ -17,7 +17,6 @@ import com.realmsoffate.game.game.CombatState
 import com.realmsoffate.game.game.Combatant
 import com.realmsoffate.game.ui.components.RealmsProgressBar
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
 
 @Composable
 internal fun CombatHud(
@@ -25,9 +24,8 @@ internal fun CombatHud(
     npcLog: List<LogNpc> = emptyList(),
     currentTurn: Int = 0
 ) {
-    val realms = RealmsTheme.colors
     Surface(
-        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+        color = MaterialTheme.colorScheme.errorContainer,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.s)) {
@@ -42,7 +40,7 @@ internal fun CombatHud(
                     modifier = Modifier.weight(1f)
                 )
                 combat.active?.let { active ->
-                    val turnColor = if (active.isPlayer) realms.goldAccent else MaterialTheme.colorScheme.error
+                    val turnColor = if (active.isPlayer) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
                     Surface(
                         color = turnColor.copy(alpha = 0.18f),
                         shape = MaterialTheme.shapes.extraSmall
@@ -85,24 +83,23 @@ internal fun CombatHud(
 
 @Composable
 private fun InitiativeChip(c: Combatant, active: Boolean) {
-    val realms = RealmsTheme.colors
     val pct = (c.hp.toFloat() / c.maxHp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f)
     val hpColor = when {
         pct < 0.33f -> MaterialTheme.colorScheme.error
-        pct < 0.66f -> realms.warning
-        else -> realms.success
+        pct < 0.66f -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.primary
     }
     val isEnemy = !c.isPlayer && c.initiative > 0 // enemies added via [ENEMY] tags
     val chipBg = when {
-        active -> MaterialTheme.colorScheme.error.copy(alpha = 0.22f)
-        isEnemy -> MaterialTheme.colorScheme.error.copy(alpha = 0.10f)
-        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        active -> MaterialTheme.colorScheme.errorContainer
+        isEnemy -> MaterialTheme.colorScheme.surfaceContainerLow
+        else -> MaterialTheme.colorScheme.surfaceContainerHigh
     }
-    // Player's active turn uses goldAccent border so it reads as friendly, not enemy-red.
+    // Player's active turn uses tertiary border so it reads as friendly, not enemy-red.
     val chipBorder = when {
-        active && c.isPlayer -> realms.goldAccent
+        active && c.isPlayer -> MaterialTheme.colorScheme.tertiary
         active -> MaterialTheme.colorScheme.error
-        isEnemy -> MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
+        isEnemy -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.outlineVariant
     }
     Surface(
@@ -112,7 +109,7 @@ private fun InitiativeChip(c: Combatant, active: Boolean) {
     ) {
         Column(Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xs)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (c.isPlayer) Text("\u2605", style = MaterialTheme.typography.labelSmall, color = realms.goldAccent)
+                if (c.isPlayer) Text("\u2605", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
                 else if (isEnemy) Text("\u2620", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                 Text(
                     c.name,

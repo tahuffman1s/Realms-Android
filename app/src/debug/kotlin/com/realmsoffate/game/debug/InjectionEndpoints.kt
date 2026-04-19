@@ -2,6 +2,8 @@ package com.realmsoffate.game.debug
 
 import android.os.Handler
 import android.os.Looper
+import com.realmsoffate.game.data.Character
+import com.realmsoffate.game.data.deepCopy
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.game.DisplayMessage
 import kotlinx.coroutines.CompletableDeferred
@@ -17,6 +19,12 @@ object InjectionEndpoints {
     /** Snapshot of the state as it was before the first /inject call. */
     @Volatile
     private var savedState: GameUiState? = null
+
+    /**
+     * Independent copy so later injects cannot mutate this snapshot (used by /inject/reset).
+     */
+    private fun GameUiState.snapshotBeforeInjection(): GameUiState =
+        character?.let { copy(character = it.deepCopy()) } ?: this
 
     private suspend fun <T> onMain(block: () -> T): T {
         val deferred = CompletableDeferred<T>()
@@ -51,10 +59,9 @@ object InjectionEndpoints {
 
             // Save the original state on first inject so /inject/reset can restore it
             if (savedState == null) {
-                savedState = current
+                savedState = current.snapshotBeforeInjection()
             }
 
-            val ch = current.character
             var fieldsSet = 0
 
             // Apply top-level GameUiState fields
@@ -68,28 +75,32 @@ object InjectionEndpoints {
             body.strField("currentScene")?.let { currentScene = it; fieldsSet++ }
             body.intField("morality")?.let { morality = it; fieldsSet++ }
 
-            // Apply character fields (mutate in-place since Character has var fields)
-            if (ch != null) {
-                body.intField("character.hp")?.let { ch.hp = it; fieldsSet++ }
-                body.intField("character.maxHp")?.let { ch.maxHp = it; fieldsSet++ }
-                body.intField("character.gold")?.let { ch.gold = it; fieldsSet++ }
-                body.intField("character.level")?.let { ch.level = it; fieldsSet++ }
-                body.intField("character.xp")?.let { ch.xp = it; fieldsSet++ }
-                body.intField("character.ac")?.let { ch.ac = it; fieldsSet++ }
-                body.strField("character.name")?.let { ch.name = it; fieldsSet++ }
+            // Immutable character fold — MUST NOT mutate the live Character in StateFlow:
+            // MutableStateFlow suppresses emission when value == previous; in-place mutation
+            // keeps structural equality identical, so Compose never recomposes.
+            var newCharacter: Character? = null
+            current.character?.deepCopy()?.let { seed ->
+                var nc: Character = seed
+                body.intField("character.hp")?.let { v -> nc = nc.copy(hp = v); fieldsSet++ }
+                body.intField("character.maxHp")?.let { v -> nc = nc.copy(maxHp = v); fieldsSet++ }
+                body.intField("character.gold")?.let { v -> nc = nc.copy(gold = v); fieldsSet++ }
+                body.intField("character.level")?.let { v -> nc = nc.copy(level = v); fieldsSet++ }
+                body.intField("character.xp")?.let { v -> nc = nc.copy(xp = v); fieldsSet++ }
+                body.intField("character.ac")?.let { v -> nc = nc.copy(ac = v); fieldsSet++ }
+                body.strField("character.name")?.let { v -> nc = nc.copy(name = v); fieldsSet++ }
                 body["character.conditions"]?.jsonArray?.let { arr ->
-                    ch.conditions.clear()
-                    arr.forEach { el -> ch.conditions.add(el.jsonPrimitive.content) }
+                    nc = nc.copy(conditions = arr.map { it.jsonPrimitive.content }.toMutableList())
                     fieldsSet++
                 }
+                newCharacter = nc
             }
 
             val newState = current.copy(
+                character = newCharacter,
                 turns = turns,
                 isGenerating = isGenerating,
                 currentScene = currentScene,
                 morality = morality
-                // character is mutated in-place; its reference inside current is already updated
             )
 
             onMain { vm.debugInjectState(newState) }

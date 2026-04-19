@@ -91,6 +91,62 @@ android {
     }
 }
 
+// Generate a source index mapping UI text literals → file:line for the debug annotated endpoint
+val generateDebugSourceIndex by tasks.registering {
+    val srcDir = file("src/main/kotlin")
+    val outFile = file("src/debug/kotlin/com/realmsoffate/game/debug/SourceIndex.kt")
+    inputs.dir(srcDir)
+    outputs.file(outFile)
+    doLast {
+        val index = mutableMapOf<String, String>()
+        // Match various UI text patterns
+        val patterns = listOf(
+            Regex("""(?:Text|text)\(\s*(?:text\s*=\s*)?"([^"$]{2,})""""),
+            Regex("""(?:content[Dd]escription|label|title|placeholder)\s*=\s*"([^"$]{2,})""""),
+            Regex("""(?:Text|Button|Tab|Icon)\([^)]*"([^"$]{3,})""""),
+        )
+        // Separate pattern for lines with UI composable keywords
+        val uiKeywords = Regex("""(?:Text|Button|Tab|NavigationBarItem|TopAppBar|BottomAppBar|Scaffold)\s*\(""")
+        val anyLiteral = Regex(""""([^"$]{3,})"""")
+
+        srcDir.walkTopDown().filter { it.extension == "kt" }.forEach { file ->
+            file.readLines().forEachIndexed { lineIdx, line ->
+                // Match specific patterns
+                for (p in patterns) {
+                    for (m in p.findAll(line)) {
+                        val t = m.groupValues[1]
+                        if (t.length >= 3 && !t.contains("\\u") && !t.startsWith("//"))
+                            index.putIfAbsent(t, "${file.name}:${lineIdx + 1}")
+                    }
+                }
+                // On lines with UI keywords, also capture any string literal >= 3 chars
+                if (uiKeywords.containsMatchIn(line)) {
+                    for (m in anyLiteral.findAll(line)) {
+                        val t = m.groupValues[1]
+                        if (t.length >= 3 && !t.contains("\\u") && !t.startsWith("//") && !t.contains("."))
+                            index.putIfAbsent(t, "${file.name}:${lineIdx + 1}")
+                    }
+                }
+            }
+        }
+        val entries = index.entries.sortedBy { it.value }.joinToString(",\n        ") { (text, src) ->
+            """"${text.replace("\\", "\\\\").replace("\"", "\\\"")}" to "$src""""
+        }
+        outFile.parentFile.mkdirs()
+        outFile.writeText(buildString {
+            appendLine("package com.realmsoffate.game.debug")
+            appendLine()
+            appendLine("/** Auto-generated source index — maps UI text literals to source file:line. */")
+            appendLine("object SourceIndex {")
+            appendLine("    val textToSource = mapOf(")
+            appendLine("        $entries")
+            appendLine("    )")
+            appendLine("}")
+        })
+    }
+}
+tasks.matching { it.name == "compileDebugKotlin" }.configureEach { dependsOn(generateDebugSourceIndex) }
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.09.02")
     implementation(composeBom)
@@ -141,43 +197,4 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-}
-
-tasks.register("checkHardcodedColors") {
-    description = "Scans UI composables for hardcoded Color usage instead of theme tokens"
-    group = "verification"
-    // Exclude from configuration cache — this is a source-scanning task
-    notCompatibleWithConfigurationCache("Scans source files")
-    doLast {
-        val uiDir = file("src/main/kotlin/com/realmsoffate/game/ui")
-        if (!uiDir.exists()) { println("UI directory not found"); return@doLast }
-        // Theme definition files are WHERE colors are supposed to be defined — skip them
-        val skipFiles = setOf("Extended.kt", "Theme.kt", "Tokens.kt", "Type.kt", "Fonts.kt")
-        val hardcoded = listOf(
-            Regex("""Color\s*\.\s*(White|Black|Red|Green|Blue|Yellow|Cyan|Magenta|Gray|DarkGray|LightGray)"""),
-            Regex("""Color\s*\(\s*0x[0-9A-Fa-f]+\s*\)"""),
-            Regex("""Color\s*\(\s*\d+\s*,\s*\d+\s*,\s*\d+"""),
-        )
-        val allowed = listOf(
-            Regex("""MaterialTheme\.colorScheme\."""),
-            Regex("""RealmsTheme\.colors\."""),
-            Regex("""Color\.Transparent"""),
-            Regex("""Color\.Unspecified"""),
-        )
-        var total = 0
-        uiDir.walkTopDown().filter { it.extension == "kt" && it.name !in skipFiles }.forEach { file ->
-            file.readLines().forEachIndexed { lineNum, line ->
-                val t = line.trim()
-                if (t.startsWith("//") || t.startsWith("*") || t.startsWith("import")) return@forEachIndexed
-                for (p in hardcoded) {
-                    if (p.containsMatchIn(line) && allowed.none { it.containsMatchIn(line) }) {
-                        println("WARNING: ${file.relativeTo(projectDir)}:${lineNum + 1}: ${t.take(120)}")
-                        total++
-                    }
-                }
-            }
-        }
-        if (total > 0) println("\n$total hardcoded color(s) found. Use MaterialTheme.colorScheme.* or RealmsTheme.colors.* instead.")
-        else println("No hardcoded colors found.")
-    }
 }

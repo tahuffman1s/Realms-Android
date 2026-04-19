@@ -18,14 +18,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.ui.components.EmptyState
-import com.realmsoffate.game.ui.components.FilterTabRow
+import com.realmsoffate.game.ui.components.PanelTab
+import com.realmsoffate.game.ui.components.PanelTabRow
 import com.realmsoffate.game.ui.components.PanelSheet
 import com.realmsoffate.game.ui.components.RealmsCard
 import com.realmsoffate.game.ui.components.SectionHeader
 import com.realmsoffate.game.ui.components.StatusTag
 import com.realmsoffate.game.ui.components.WealthBars
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
 import com.realmsoffate.game.util.formatSigned
 
 // ----------------- LORE (5 tabs: World / Factions / NPCs / History / Rumors) -----------------
@@ -46,9 +46,8 @@ internal fun LoreContent(state: GameUiState) {
         return
     }
     var tab by remember { mutableStateOf(LoreTab.World) }
-    val loreTabs = LoreTab.entries.map { it.label to it.icon }
-    FilterTabRow(
-        tabs = loreTabs,
+    PanelTabRow(
+        tabs = LoreTab.entries.map { PanelTab(it.label, it.icon) },
         selectedIndex = LoreTab.entries.indexOf(tab),
         onSelect = { tab = LoreTab.entries[it] }
     )
@@ -130,7 +129,7 @@ private fun LoreWorldTab(state: GameUiState) {
                 Text(
                     "Whispers reaching you from beyond the immediate scene.",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = RealmsSpacing.xs)
                 )
             }
@@ -143,12 +142,11 @@ private fun LoreWorldTab(state: GameUiState) {
 
 @Composable
 private fun LivingWorldRow(ev: com.realmsoffate.game.data.WorldEvent) {
-    val realms = RealmsTheme.colors
     Surface(
-        color = realms.warning.copy(alpha = 0.10f),
+        color = MaterialTheme.colorScheme.tertiaryContainer,
         shape = MaterialTheme.shapes.small,
         modifier = Modifier.fillMaxWidth().border(
-            1.dp, realms.warning.copy(alpha = 0.35f), MaterialTheme.shapes.small
+            1.dp, MaterialTheme.colorScheme.tertiary, MaterialTheme.shapes.small
         )
     ) {
         Row(
@@ -162,7 +160,7 @@ private fun LivingWorldRow(ev: com.realmsoffate.game.data.WorldEvent) {
                     Text(
                         ev.title,
                         style = MaterialTheme.typography.titleSmall,
-                        color = realms.warning,
+                        color = MaterialTheme.colorScheme.tertiary,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
@@ -188,10 +186,9 @@ private fun LoreFactionsTab(state: GameUiState) {
     ) {
         items(lore.factions) { f ->
             val rep = state.factionRep[f.name] ?: 0
-            val realms = RealmsTheme.colors
             val repColor = when {
-                rep >= 50 -> realms.success
-                rep <= -50 -> realms.fumbleRed
+                rep >= 50 -> MaterialTheme.colorScheme.primary
+                rep <= -50 -> MaterialTheme.colorScheme.error
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             }
             RealmsCard(
@@ -204,11 +201,11 @@ private fun LoreFactionsTab(state: GameUiState) {
                         Spacer(Modifier.width(RealmsSpacing.s))
                         Surface(
                             color = when (f.status) {
-                                "destroyed" -> MaterialTheme.colorScheme.error
-                                "subjugated" -> realms.warning
-                                "player_controlled" -> realms.success
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant
-                            }.copy(alpha = 0.16f),
+                                "destroyed" -> MaterialTheme.colorScheme.errorContainer
+                                "subjugated" -> MaterialTheme.colorScheme.tertiaryContainer
+                                "player_controlled" -> MaterialTheme.colorScheme.primaryContainer
+                                else -> MaterialTheme.colorScheme.surfaceVariant
+                            },
                             shape = MaterialTheme.shapes.extraSmall
                         ) {
                             Text(
@@ -216,8 +213,8 @@ private fun LoreFactionsTab(state: GameUiState) {
                                 style = MaterialTheme.typography.labelSmall,
                                 color = when (f.status) {
                                     "destroyed" -> MaterialTheme.colorScheme.error
-                                    "subjugated" -> realms.warning
-                                    "player_controlled" -> realms.success
+                                    "subjugated" -> MaterialTheme.colorScheme.tertiary
+                                    "player_controlled" -> MaterialTheme.colorScheme.primary
                                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                                 },
                                 fontWeight = FontWeight.Bold,
@@ -245,7 +242,7 @@ private fun LoreFactionsTab(state: GameUiState) {
                     Text(
                         "Goal: ${f.goal}",
                         style = MaterialTheme.typography.labelMedium,
-                        color = realms.info
+                        color = MaterialTheme.colorScheme.secondary
                     )
                 }
                 // ---- Government block ----
@@ -289,7 +286,7 @@ private fun LoreFactionsTab(state: GameUiState) {
                                                 .padding(vertical = RealmsSpacing.xxs)
                                                 .size(6.dp)
                                                 .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                                                .background(MaterialTheme.colorScheme.primary)
                                         )
                                         Spacer(Modifier.width(RealmsSpacing.s))
                                         Text(
@@ -331,13 +328,13 @@ private fun LoreFactionsTab(state: GameUiState) {
                             }
                             Spacer(Modifier.height(RealmsSpacing.xs))
                             Surface(
-                                color = realms.goldAccent.copy(alpha = 0.12f),
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
                                 shape = MaterialTheme.shapes.extraSmall
                             ) {
                                 Text(
                                     "\uD83D\uDCB0 Currency: ${f.currency}",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = realms.goldAccent,
+                                    color = MaterialTheme.colorScheme.tertiary,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs)
                                 )
@@ -400,7 +397,7 @@ private fun LoreNpcsTab(state: GameUiState) {
                         n.name,
                         style = MaterialTheme.typography.titleSmall,
                         color = if (isDead)
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
+                            MaterialTheme.colorScheme.outline
                         else
                             MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
@@ -408,7 +405,7 @@ private fun LoreNpcsTab(state: GameUiState) {
                     if (isDead) {
                         Spacer(Modifier.width(RealmsSpacing.s))
                         Surface(
-                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.16f),
+                            color = MaterialTheme.colorScheme.errorContainer,
                             shape = MaterialTheme.shapes.extraSmall
                         ) {
                             Text(
@@ -424,31 +421,23 @@ private fun LoreNpcsTab(state: GameUiState) {
                 Text(
                     "${n.race} ${n.role} · ${n.location}",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                        alpha = if (isDead) 0.45f else 1f
-                    )
+                    color = if (isDead) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (n.appearance.isNotBlank()) Text(
                     n.appearance,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(
-                        alpha = if (isDead) 0.4f else 1f
-                    )
+                    color = if (isDead) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface
                 )
                 if (n.personality.isNotBlank()) Text(
                     "— ${n.personality}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                        alpha = if (isDead) 0.4f else 1f
-                    )
+                    color = if (isDead) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 n.faction?.let {
                     Text(
                         "\u25B8 $it",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary.copy(
-                            alpha = if (isDead) 0.4f else 1f
-                        ),
+                        color = if (isDead) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(top = 3.dp)
                     )
                 }
@@ -460,7 +449,6 @@ private fun LoreNpcsTab(state: GameUiState) {
 @Composable
 private fun LoreHistoryTab(state: GameUiState) {
     val lore = state.worldLore ?: return
-    val realms = RealmsTheme.colors
     // Group by era in chronological order.
     val eraOrder = listOf("primordial", "ancient", "medieval", "dark_age", "recent")
     val grouped = lore.history.groupBy { it.era }
@@ -497,7 +485,7 @@ private fun LoreHistoryTab(state: GameUiState) {
                 Text(
                     "— PRESENT DAY —",
                     style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 4.sp),
-                    color = realms.goldAccent
+                    color = MaterialTheme.colorScheme.tertiary
                 )
             }
         }
@@ -506,14 +494,13 @@ private fun LoreHistoryTab(state: GameUiState) {
 
 @Composable
 private fun EraHeader(era: String, fromYear: Int, toYear: Int, overrideLabel: String? = null) {
-    val realms = RealmsTheme.colors
     val (label, color) = when (era) {
         "primordial" -> "— PRIMORDIAL AGE —" to MaterialTheme.colorScheme.secondary
-        "ancient" -> "— ANCIENT AGE —" to realms.info
+        "ancient" -> "— ANCIENT AGE —" to MaterialTheme.colorScheme.secondary
         "medieval" -> "— MEDIEVAL AGE —" to MaterialTheme.colorScheme.primary
-        "dark_age" -> "— DARK AGE —" to realms.fumbleRed
-        "recent" -> "— RECENT HISTORY —" to realms.goldAccent
-        else -> (overrideLabel ?: era.uppercase()) to realms.warning
+        "dark_age" -> "— DARK AGE —" to MaterialTheme.colorScheme.error
+        "recent" -> "— RECENT HISTORY —" to MaterialTheme.colorScheme.tertiary
+        else -> (overrideLabel ?: era.uppercase()) to MaterialTheme.colorScheme.tertiary
     }
     Column(Modifier.fillMaxWidth().padding(top = RealmsSpacing.s)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -545,14 +532,13 @@ private fun HistoryRow(
     entry: com.realmsoffate.game.data.HistoryEntry,
     labelOverride: String? = null
 ) {
-    val realms = RealmsTheme.colors
     val color = when (entry.era) {
         "primordial" -> MaterialTheme.colorScheme.secondary
-        "ancient" -> realms.info
+        "ancient" -> MaterialTheme.colorScheme.secondary
         "medieval" -> MaterialTheme.colorScheme.primary
-        "dark_age" -> realms.fumbleRed
-        "recent" -> realms.goldAccent
-        else -> realms.warning
+        "dark_age" -> MaterialTheme.colorScheme.error
+        "recent" -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.tertiary
     }
     val yearsAgoLabel = labelOverride ?: when {
         entry.year < 0 -> "${-entry.year} yrs ago"

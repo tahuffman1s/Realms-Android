@@ -87,6 +87,8 @@ gradle test
 
 ### Step 5 — Build, Deploy, and Verify Visually
 
+**Owner preference:** Whenever agent work touches app code or resources, **always** rebuild and install to a connected device at the end of that work (do not stop at compile-only), unless the user explicitly says to skip deploy. Use `installDebug` + launch `MainActivity` + Debug Bridge port forward when an emulator or device is available. If Gradle cannot write `~/.android`, set `ANDROID_USER_HOME` to a writable directory (e.g. project `.android-user`). If install fails with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, `adb uninstall com.realmsoffate.game` then reinstall.
+
 After tests pass, build, deploy, connect the Debug Bridge, and verify visually:
 
 ```bash
@@ -122,13 +124,7 @@ If no device is connected, either start the emulator (`emulator -avd Pixel7 &`) 
    ```
    Read the screenshot. Look for layout issues, text readability, alignment, and anything that looks off.
 
-3. **Run automated checks in both themes:**
-   ```bash
-   curl localhost:8735/checks/both
-   ```
-   Review all `high` severity issues. Fix any WCAG contrast failures, touch target violations, or overflow problems before proceeding.
-
-4. **Test edge cases if the change touches UI:**
+3. **Test edge cases** if the change touches UI:
    ```bash
    # Long names, zero HP, max gold, many conditions
    curl -X POST localhost:8735/inject -d '{"character.hp":0}'
@@ -138,7 +134,7 @@ If no device is connected, either start the emulator (`emulator -avd Pixel7 &`) 
    curl -X POST localhost:8735/inject/reset
    ```
 
-5. **Check the other theme** if the change touches colors or backgrounds:
+4. **Check the other theme** if the change touches colors or backgrounds:
    ```bash
    curl -X POST localhost:8735/theme -d '{"mode":"dark"}'
    curl localhost:8735/screenshot > screenshots/verify_dark.png
@@ -463,7 +459,7 @@ The phone is a Galaxy S23 (`SM-S916U`) on the LAN at `192.168.68.64`. The Debug 
 
 ## Debugging workflow
 
-**Primary:** Use the Debug Bridge (`curl localhost:8735/state`, `/screenshot`, `/checks`). See Step 5 for the full visual verification protocol.
+**Primary:** Use the Debug Bridge (`curl localhost:8735/state`, `/screenshot`). See Step 5 for the full visual verification protocol.
 
 **For AI exchange logs:** The in-game Debug button (More menu → Debug) dumps full game state + AI exchange log to the device. Pull with:
 
@@ -496,7 +492,7 @@ adb -s emulator-5554 logcat -s RealmsDebug:V
 
 **State:** `GET /state` · `/state/diff` · `/state/overlay`
 
-**Visual:** `GET /screenshot` (`?format=base64`) · `/screenshot/both` · `/checks` · `/checks/both`
+**Visual:** `GET /screenshot` (`?format=base64`) · `/screenshot/both` · `/describe`
 
 **Commands:** `POST /input {"text":"..."}` · `/confirm` · `/cancel` · `/navigate {"screen":"game"}` · `/tap {"text":"Continue"}`
 
@@ -504,7 +500,7 @@ adb -s emulator-5554 logcat -s RealmsDebug:V
 
 **Injection:** `POST /inject {"character.hp":0}` · `/inject/messages {"messages":[...]}` · `/inject/reset`
 
-**Macros:** `POST /macro/new-game {"name":"Test","class":"fighter","race":"human","skipFirstTurn":true}` · `/macro/advance {"turns":3,"mode":"canned"}` · `/macro/death`
+**Macros:** `POST /macro/new-game {"name":"Test","class":"fighter","race":"human","skipFirstTurn":true}` · `/macro/advance {"turns":3,"mode":"canned"}` · `/macro/death` · `/macro/simulate-gameplay` (dense fake mid-campaign state for UI/QA — no AI)
 
 ### Key interactions
 
@@ -517,17 +513,11 @@ curl localhost:8735/state/overlay                            # check if dice rol
 curl -X POST localhost:8735/confirm                          # confirm dice roll
 ```
 
-**Check visual health:**
-```bash
-curl localhost:8735/checks/both   # contrast, touch targets, overflow — both themes
-gradle checkHardcodedColors       # build-time scan for Color.XXX in composables
-```
-
 ### Fish function
 
 The `debug` fish function wraps all endpoints:
 ```
-debug state | diff | overlay | screenshot | checks | checks-both
+debug state | diff | overlay | screenshot | describe
 debug input <text> | confirm | cancel | navigate <screen> | tap <label>
 debug theme <light|dark|system> | font-scale <n>
 debug inject <field> <value> | reset

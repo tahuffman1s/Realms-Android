@@ -12,12 +12,12 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.ui.components.EmptyState
-import com.realmsoffate.game.ui.components.FilterTabRow
+import com.realmsoffate.game.ui.components.PanelTab
+import com.realmsoffate.game.ui.components.PanelTabRow
 import com.realmsoffate.game.ui.components.PanelSheet
 import com.realmsoffate.game.ui.components.RealmsCard
 import com.realmsoffate.game.ui.components.StatusTag
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
 
 // ----------------- QUESTS -----------------
 
@@ -36,8 +36,8 @@ internal fun QuestsContent(state: GameUiState, onAbandon: (String) -> Unit) {
         EmptyState("\uD83D\uDCDC", "No quests yet. The world waits.")
         return
     }
-    FilterTabRow(
-        tabs = QuestFilter.entries.map { it.label to it.icon },
+    PanelTabRow(
+        tabs = QuestFilter.entries.map { PanelTab(it.label, it.icon) },
         selectedIndex = QuestFilter.entries.indexOf(filter),
         onSelect = { filter = QuestFilter.entries[it] }
     )
@@ -56,10 +56,9 @@ internal fun QuestsContent(state: GameUiState, onAbandon: (String) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         items(filtered) { q ->
-            val realms = RealmsTheme.colors
             val accent = when (q.status) {
-                "completed" -> realms.success
-                "failed" -> realms.fumbleRed
+                "completed" -> MaterialTheme.colorScheme.primary
+                "failed" -> MaterialTheme.colorScheme.error
                 else -> MaterialTheme.colorScheme.primary
             }
             RealmsCard(
@@ -84,7 +83,7 @@ internal fun QuestsContent(state: GameUiState, onAbandon: (String) -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             if (done) "\u2714" else "\u25CB",
-                            color = if (done) realms.success else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Spacer(Modifier.width(6.dp))
@@ -99,13 +98,13 @@ internal fun QuestsContent(state: GameUiState, onAbandon: (String) -> Unit) {
                 if (q.reward.isNotBlank()) {
                     Spacer(Modifier.height(6.dp))
                     Surface(
-                        color = realms.goldAccent.copy(alpha = 0.14f),
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
                         shape = MaterialTheme.shapes.extraSmall
                     ) {
                         Text(
                             "Reward: ${q.reward}",
                             style = MaterialTheme.typography.labelMedium,
-                            color = realms.goldAccent,
+                            color = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs),
                             fontWeight = FontWeight.Bold
                         )

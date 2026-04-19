@@ -13,7 +13,6 @@ private val Context.prefsDataStore by preferencesDataStore(name = "rpg_prefs")
 class PreferencesStore(private val context: Context) {
     private val keyApi = stringPreferencesKey("rpg_api_key")
     private val keyProvider = stringPreferencesKey("rpg_provider")
-    private val keyTutorial = stringPreferencesKey("rpg_tutorial_done")
     private val keyFontScale = stringPreferencesKey("rpg_font_scale")
 
     val provider: Flow<AiProvider> = context.prefsDataStore.data.map { prefs ->
@@ -35,17 +34,6 @@ class PreferencesStore(private val context: Context) {
             it[keyProvider] = provider.id
             it[keyApi] = apiKey
         }
-    }
-
-    suspend fun isTutorialComplete(): Boolean =
-        context.prefsDataStore.data.first()[keyTutorial] == "true"
-
-    suspend fun setTutorialComplete() {
-        context.prefsDataStore.edit { it[keyTutorial] = "true" }
-    }
-
-    suspend fun resetTutorial() {
-        context.prefsDataStore.edit { it.remove(keyTutorial) }
     }
 
 }

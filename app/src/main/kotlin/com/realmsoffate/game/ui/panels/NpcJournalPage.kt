@@ -13,7 +13,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,12 +26,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.ui.components.EmptyState
-import com.realmsoffate.game.ui.components.FilterTabRow
+import com.realmsoffate.game.ui.components.PanelTab
 import com.realmsoffate.game.ui.components.PanelSheet
+import com.realmsoffate.game.ui.components.PanelTabRow
 import com.realmsoffate.game.ui.components.RealmsCard
 import com.realmsoffate.game.ui.components.SectionHeader
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
 
 // ----------------- JOURNAL -----------------
 
@@ -52,130 +53,47 @@ private enum class JournalFilter(val label: String, val icon: String, val match:
 @Composable
 internal fun JournalContent(state: GameUiState, focusNpc: String? = null) {
     var filter by remember { mutableStateOf(JournalFilter.All) }
-    var selected by remember { mutableStateOf<String?>(focusNpc) }
+    var expandedNpcName by remember(focusNpc) { mutableStateOf(focusNpc) }
     val filtered = state.npcLog.filter { filter.match(it.relationship.lowercase()) }
     if (state.npcLog.isEmpty()) {
         EmptyState("\uD83D\uDCD6", "No NPCs met yet.")
         return
     }
-    // ---- Player header card ----
-    state.character?.let { ch ->
-        Row(
-            Modifier.padding(horizontal = RealmsSpacing.m).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        LazyColumn(
+            Modifier.padding(horizontal = RealmsSpacing.l).fillMaxSize(),
+            contentPadding = PaddingValues(top = RealmsSpacing.s, bottom = RealmsSpacing.m),
+            verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
         ) {
-            RealmsCard(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            ch.name.take(1).uppercase(),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(ch.name, style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "L${ch.level} ${ch.race} ${ch.cls} (you)",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
-        Spacer(Modifier.height(RealmsSpacing.s))
-    }
-    FilterTabRow(
-        tabs = JournalFilter.entries.map { it.label to it.icon },
-        selectedIndex = JournalFilter.entries.indexOf(filter),
-        onSelect = { filter = JournalFilter.entries[it] }
-    )
-    Spacer(Modifier.height(RealmsSpacing.s))
-    if (filtered.isEmpty()) {
-        Text(
-            "No ${filter.label.lowercase()} NPCs in journal.",
-            modifier = Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xxl),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        return
-    }
-
-    // Selected NPC detail — animates in/out instead of abruptly appearing.
-    val selectedNpc = selected?.let { sel -> state.npcLog.firstOrNull { it.name == sel } }
-    AnimatedVisibility(
-        visible = selectedNpc != null,
-        enter = expandVertically(),
-        exit = shrinkVertically()
-    ) {
-        if (selectedNpc != null) {
-            Column {
-                NpcDetailCard(npc = selectedNpc, onClose = { selected = null })
-                Spacer(Modifier.height(RealmsSpacing.s))
-            }
-        }
-    }
-
-    LazyColumn(
-        Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 540.dp),
-        verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
-    ) {
-        items(filtered) { n ->
-            RealmsCard(
-                onClick = { selected = if (selected == n.name) null else n.name },
-                selected = selected == n.name,
-                accentColor = MaterialTheme.colorScheme.primary,
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(n.name.take(1).uppercase(), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(n.name, style = MaterialTheme.typography.titleMedium)
-                        Text("${n.race} ${n.role} · ${n.age}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    RelationshipTag(n.relationship)
-                    if (n.status == "dead") {
-                        Spacer(Modifier.width(RealmsSpacing.xs))
-                        Surface(
-                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.16f),
-                            shape = MaterialTheme.shapes.small
-                        ) {
-                            Text(
-                                "☠️ DEAD",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs)
-                            )
-                        }
-                    }
-                }
-                if (n.personality.isNotBlank()) Text(
-                    n.personality,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = RealmsSpacing.xs)
+            item(key = "filters") {
+                PanelTabRow(
+                    tabs = JournalFilter.entries.map { PanelTab(it.label, it.icon) },
+                    selectedIndex = JournalFilter.entries.indexOf(filter),
+                    onSelect = { filter = JournalFilter.entries[it] },
+                    horizontalPadding = 0.dp
                 )
-                Text(
-                    "Last seen T${n.lastSeenTurn} · ${n.lastLocation}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = RealmsSpacing.xs)
+            }
+            if (filtered.isEmpty()) {
+                item(key = "empty") {
+                    Text(
+                        "No ${filter.label.lowercase()} NPCs in journal.",
+                        modifier = Modifier.padding(vertical = RealmsSpacing.xl),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            items(filtered, key = { it.name }) { n ->
+                NpcJournalRow(
+                    npc = n,
+                    expanded = expandedNpcName == n.name,
+                    onToggle = {
+                        expandedNpcName = if (expandedNpcName == n.name) null else n.name
+                    }
                 )
             }
         }
@@ -193,78 +111,144 @@ internal fun JournalPanel(state: GameUiState, focusNpc: String? = null, onClose:
     }
 }
 
+// ─── Journal row (summary + optional expanded detail) ─────────────────
+
 @Composable
-private fun NpcDetailCard(
+private fun NpcJournalRow(
     npc: com.realmsoffate.game.data.LogNpc,
-    onClose: () -> Unit
+    expanded: Boolean,
+    onToggle: () -> Unit
 ) {
-    val realms = RealmsTheme.colors
+    val isDead = npc.status == "dead"
+    val avatarColor = if (isDead)
+        MaterialTheme.colorScheme.errorContainer
+    else
+        MaterialTheme.colorScheme.tertiaryContainer
+
     RealmsCard(
-        outlined = true,
-        accentColor = MaterialTheme.colorScheme.primary,
+        onClick = onToggle,
         shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.padding(horizontal = RealmsSpacing.m).fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        outlined = expanded,
+        accentColor = if (expanded) MaterialTheme.colorScheme.primary else null
     ) {
-        if (npc.status == "dead") {
-            Surface(
-                color = MaterialTheme.colorScheme.error.copy(alpha = 0.14f),
-                shape = MaterialTheme.shapes.small,
-                modifier = Modifier.fillMaxWidth().padding(bottom = RealmsSpacing.s)
-            ) {
-                Row(
-                    Modifier.padding(horizontal = RealmsSpacing.m, vertical = RealmsSpacing.s),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("☠️", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.width(RealmsSpacing.s))
-                    Text(
-                        "DECEASED",
-                        style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 3.sp),
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.Top) {
             Box(
-                Modifier.size(56.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiaryContainer),
+                Modifier.size(40.dp).clip(CircleShape).background(avatarColor),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    npc.name.take(1).uppercase(),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                    if (isDead) "☠" else npc.name.take(1).uppercase(),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (isDead) MaterialTheme.colorScheme.onErrorContainer
+                    else MaterialTheme.colorScheme.onTertiaryContainer
                 )
             }
             Spacer(Modifier.width(RealmsSpacing.m))
             Column(Modifier.weight(1f)) {
-                Text(npc.name, style = MaterialTheme.typography.titleLarge)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        npc.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Spacer(Modifier.width(RealmsSpacing.s))
+                    StatusTag(npc)
+                }
                 Text(
-                    "${npc.race} ${npc.role} · ${npc.age}",
-                    style = MaterialTheme.typography.labelMedium,
+                    buildString {
+                        if (npc.race.isNotBlank()) append(npc.race)
+                        if (npc.role.isNotBlank()) {
+                            if (isNotEmpty()) append(" · ")
+                            append(npc.role)
+                        }
+                        if (npc.age.isNotBlank()) {
+                            if (isNotEmpty()) append(" · ")
+                            append(npc.age)
+                        }
+                    },
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (npc.id.isNotBlank()) {
+                if (npc.personality.isNotBlank()) {
                     Text(
-                        "#${npc.id}",
-                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                        npc.personality,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = RealmsSpacing.xxs)
                     )
                 }
+                Text(
+                    "Last seen T${npc.lastSeenTurn} · ${npc.lastLocation}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.padding(top = RealmsSpacing.xxs)
+                )
             }
-            IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Close") }
+            Icon(
+                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = if (expanded) "Collapse entry" else "Expand entry",
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            NpcExpandedDetailSections(npc)
+        }
+    }
+}
+
+// ─── Status tag (relationship or dead) ───────────────────────────────
+
+@Composable
+private fun StatusTag(npc: com.realmsoffate.game.data.LogNpc) {
+    if (npc.status == "dead") {
+        Surface(
+            color = MaterialTheme.colorScheme.errorContainer,
+            shape = MaterialTheme.shapes.small
+        ) {
+            Text(
+                "DEAD",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs)
+            )
+        }
+    } else {
+        RelationshipTag(npc.relationship)
+    }
+}
+
+// ─── Expanded detail (inline under list summary) ─────────────────────
+
+@Composable
+private fun NpcExpandedDetailSections(npc: com.realmsoffate.game.data.LogNpc) {
+    Column {
+        if (npc.id.isNotBlank()) {
+            Text(
+                "#${npc.id}",
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                color = MaterialTheme.colorScheme.outline
+            )
+            Spacer(Modifier.height(RealmsSpacing.s))
         }
         if (npc.personality.isNotBlank()) {
             Spacer(Modifier.height(RealmsSpacing.s))
             Surface(
-                color = realms.info.copy(alpha = 0.12f),
+                color = MaterialTheme.colorScheme.secondaryContainer,
                 shape = MaterialTheme.shapes.extraSmall
             ) {
                 Text(
                     "\u201C${npc.personality}\u201D",
                     style = MaterialTheme.typography.bodySmall.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
-                    color = realms.info,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xs)
                 )
             }
@@ -320,12 +304,12 @@ private fun NpcDetailCard(
                 Text(
                     "MEMORABLE LINES",
                     style = MaterialTheme.typography.labelLarge,
-                    color = realms.goldAccent
+                    color = MaterialTheme.colorScheme.tertiary
                 )
             }
             Spacer(Modifier.height(RealmsSpacing.xs))
             npc.memorableQuotes.forEach { line ->
-                DialogueLine(line, accent = realms.goldAccent)
+                DialogueLine(line, highlighted = true)
             }
         }
         if (npc.dialogueHistory.isNotEmpty()) {
@@ -339,32 +323,33 @@ private fun NpcDetailCard(
     }
 }
 
+// ─── Supporting composables ──────────────────────────────────────────
+
 @Composable
 private fun DialogueLine(
     raw: String,
-    accent: androidx.compose.ui.graphics.Color? = null
+    highlighted: Boolean = false
 ) {
-    // Entries are stored as "T12: \"the dialogue\"" — parse gently.
     val turnSep = raw.indexOf(':')
     val turnLabel = if (turnSep > 0 && raw.startsWith("T")) raw.substring(0, turnSep) else ""
     val body = if (turnSep > 0) raw.substring(turnSep + 1).trim() else raw
-    val realms = RealmsTheme.colors
-    val barColor = accent ?: MaterialTheme.colorScheme.primary
+    val barColor = if (highlighted) MaterialTheme.colorScheme.tertiary
+                   else MaterialTheme.colorScheme.outlineVariant
     Row(Modifier.padding(vertical = RealmsSpacing.xxs)) {
         if (turnLabel.isNotBlank()) {
             Text(
                 turnLabel,
                 style = MaterialTheme.typography.labelSmall,
-                color = realms.goldAccent,
+                color = MaterialTheme.colorScheme.tertiary,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.width(34.dp)
             )
         }
         Box(
             Modifier
-                .width(if (accent != null) 3.dp else 2.dp)
+                .width(if (highlighted) 3.dp else 2.dp)
                 .heightIn(min = RealmsSpacing.l)
-                .background(barColor.copy(alpha = if (accent != null) 0.8f else 0.4f))
+                .background(barColor)
         )
         Spacer(Modifier.width(RealmsSpacing.s))
         Text(
@@ -377,53 +362,26 @@ private fun DialogueLine(
 
 @Composable
 private fun TraitChip(text: String) {
-    Surface(
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
-        shape = MaterialTheme.shapes.extraSmall
-    ) {
-        Text(
-            text,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 7.dp, vertical = RealmsSpacing.xxs)
-        )
-    }
+    SuggestionChip(
+        onClick = {},
+        label = { Text(text, fontWeight = FontWeight.Bold) }
+    )
 }
 
-/**
- * Scans an appearance description for obvious traits and returns short labels
- * for chip rendering. "Tall, gaunt, scarred, armored" etc.
- */
 private fun extractTraitChips(text: String): List<String> {
     val lc = text.lowercase()
     val hits = mutableListOf<String>()
     val map = listOf(
-        "tall" to "Tall",
-        "short" to "Short",
-        "stocky" to "Stocky",
-        "gaunt" to "Gaunt",
-        "slender" to "Slender",
-        "muscular" to "Muscular",
-        "scarred" to "Scarred",
-        "hooded" to "Hooded",
-        "cloaked" to "Cloaked",
-        "robed" to "Robed",
-        "armored" to "Armored",
-        "armoured" to "Armoured",
-        "bearded" to "Bearded",
-        "tattoo" to "Tattooed",
-        "one-eyed" to "One-Eyed",
-        "missing" to "Missing ‹digit›",
-        "pale" to "Pale",
-        "dark-skinned" to "Dark-skinned",
-        "soot" to "Sooty",
-        "burnt" to "Burn-scar",
-        "noble" to "Noble bearing",
-        "weathered" to "Weathered",
-        "young" to "Young",
-        "ancient" to "Ancient",
-        "elderly" to "Elderly"
+        "tall" to "Tall", "short" to "Short", "stocky" to "Stocky",
+        "gaunt" to "Gaunt", "slender" to "Slender", "muscular" to "Muscular",
+        "scarred" to "Scarred", "hooded" to "Hooded", "cloaked" to "Cloaked",
+        "robed" to "Robed", "armored" to "Armored", "armoured" to "Armoured",
+        "bearded" to "Bearded", "tattoo" to "Tattooed", "one-eyed" to "One-Eyed",
+        "missing" to "Missing ‹digit›", "pale" to "Pale",
+        "dark-skinned" to "Dark-skinned", "soot" to "Sooty",
+        "burnt" to "Burn-scar", "noble" to "Noble bearing",
+        "weathered" to "Weathered", "young" to "Young",
+        "ancient" to "Ancient", "elderly" to "Elderly"
     )
     map.forEach { (kw, label) -> if (kw in lc) hits += label }
     return hits.distinct().take(6)
@@ -431,18 +389,21 @@ private fun extractTraitChips(text: String): List<String> {
 
 @Composable
 private fun RelationshipTag(relationship: String) {
-    val realms = RealmsTheme.colors
-    val color = when (relationship.lowercase()) {
-        "friendly", "ally", "love" -> realms.success
-        "hostile", "enemy" -> realms.fumbleRed
-        "suspicious", "wary" -> realms.warning
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    val (bg, fg) = when (relationship.lowercase()) {
+        "friendly", "ally", "love" ->
+            MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+        "hostile", "enemy" ->
+            MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+        "suspicious", "wary" ->
+            MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+        else ->
+            MaterialTheme.colorScheme.surfaceContainerHighest to MaterialTheme.colorScheme.onSurfaceVariant
     }
-    Surface(color = color.copy(alpha = 0.16f), shape = MaterialTheme.shapes.small) {
+    Surface(color = bg, shape = MaterialTheme.shapes.small) {
         Text(
             relationship.uppercase(),
             style = MaterialTheme.typography.labelSmall,
-            color = color,
+            color = fg,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs)
         )

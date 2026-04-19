@@ -101,5 +101,27 @@ object MacroEndpoints {
             val finalTurn = vm.ui.value.turns
             HttpResponse.json("""{"ok":true,"turnsPlayed":$turns,"finalTurn":$finalTurn}""")
         }
+
+        /**
+         * POST /macro/simulate-gameplay — replace state with a dense fake mid-campaign snapshot
+         * (world + lore, chat feed, quests, NPCs, party, merchants, merchants stock).
+         * Ensures a character exists; switches to [Screen.Game]. Does not call the AI.
+         */
+        DebugServer.route("POST", "/macro/simulate-gameplay") { _ ->
+            val vm = DebugBridge.requireVm()
+            var turns = 0
+            var messageCount = 0
+            onMain {
+                if (vm.ui.value.character == null) {
+                    vm.debugCreateCharacter("Riven Ashmark", "rogue", "half-elf")
+                }
+                vm.setScreen(Screen.Game)
+                vm.debugSimulateGameplay()
+                val s = vm.ui.value
+                turns = s.turns
+                messageCount = s.messages.size
+            }
+            HttpResponse.json("""{"ok":true,"turns":$turns,"messages":$messageCount}""")
+        }
     }
 }

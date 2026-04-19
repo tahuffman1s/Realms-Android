@@ -1,0 +1,10 @@
+---
+description: Terminal commands — prefer execution without sudo unless user asks
+alwaysApply: true
+---
+
+# Shell execution
+
+The user allows and expects the agent to **run any shell command that does not require elevated privileges** (`sudo`). Prefer executing commands directly rather than only suggesting them.
+
+Do **not** assume permission for `sudo` or password prompts unless the user explicitly requests something that requires root.

@@ -52,7 +52,15 @@ private val FallbackDark = darkColorScheme(
     onErrorContainer = Color(0xFFFFDAD4),
     outline = Color(0xFF6A6378),
     outlineVariant = Color(0xFF3F3A4A),
-    scrim = Color.Black
+    scrim = Color.Black,
+    // Material 3 surface hierarchy (fallback when dynamic color unavailable)
+    surfaceDim = Color(0xFF121015),
+    surfaceBright = Color(0xFF3C383F),
+    surfaceContainerLowest = Color(0xFF0F0E12),
+    surfaceContainerLow = Color(0xFF1A181E),
+    surfaceContainer = Color(0xFF211F26),
+    surfaceContainerHigh = Color(0xFF2B292F),
+    surfaceContainerHighest = Color(0xFF36343A)
 )
 
 private val FallbackLight = lightColorScheme(
@@ -81,7 +89,14 @@ private val FallbackLight = lightColorScheme(
     onErrorContainer = Color(0xFF410002),
     outline = Color(0xFF79747E),
     outlineVariant = Color(0xFFCAC4D0),
-    scrim = Color.Black
+    scrim = Color.Black,
+    surfaceDim = Color(0xFFDCD6C8),
+    surfaceBright = Color(0xFFF9F6ED),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF7F3E9),
+    surfaceContainer = Color(0xFFF1EDE3),
+    surfaceContainerHigh = Color(0xFFEBE7DD),
+    surfaceContainerHighest = Color(0xFFE5E1D7)
 )
 
 @Composable

@@ -1,0 +1,18 @@
+---
+description: Commit workspace changes after verification succeeds (unless opted out)
+alwaysApply: true
+---
+
+# Commit after verification
+
+When this session **modified tracked files** under the repo and verification has **succeeded** for that work:
+
+1. **Commit** those changes before ending the response—unless the user explicitly asked **not** to commit yet (e.g. “don’t commit”, “WIP”, “leave uncommitted”).
+2. **Verification means:** whatever applies per project rules—typically `gradle test` when logic changed; **`installDebug` + Debug Bridge** (`debug-bridge-verify.mdc` / `debug-bridge-test-procedures.mdc`) when `app/src/main/`, `app/src/debug/`, resources, or app-related Gradle changed; or the stated skip reasons when verification was intentionally omitted.
+3. Do **not** commit broken work: if tests fail, build fails, or verification was required but did not pass, fix first or stop without committing unless the user directs otherwise.
+
+Use a clear commit message summarizing **what** changed and **why** (short imperative subject line; optional body if multiple concerns).
+
+If the working tree is **already clean**, say so and skip.
+
+For **documentation or Cursor rules only** (no app/runtime verification required), commit when that work is complete—the task itself is the bar—unless the user asked not to commit.

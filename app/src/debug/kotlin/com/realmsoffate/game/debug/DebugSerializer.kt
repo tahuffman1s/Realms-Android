@@ -169,19 +169,6 @@ object DebugSerializer {
                         add(JsonPrimitive("useItem"))
                     }
                 }
-                state.travelState != null -> {
-                    val ts = state.travelState
-                    putJsonObject("travel") {
-                        put("destId", ts.destId)
-                        put("destName", ts.destName)
-                        put("totalLeagues", ts.totalLeagues)
-                        put("leaguesTraveled", ts.leaguesTraveled)
-                    }
-                    putJsonArray("availableActions") {
-                        add(JsonPrimitive("continueTravel"))
-                        add(JsonPrimitive("camp"))
-                    }
-                }
                 else -> {
                     putJsonArray("availableActions") {
                         state.currentChoices.forEach { choice ->
@@ -312,7 +299,6 @@ object DebugSerializer {
         state.preRoll != null -> "preRoll"
         state.deathSave != null -> "deathSave"
         state.combat != null -> "combat"
-        state.travelState != null -> "travel"
         else -> null
     }
 

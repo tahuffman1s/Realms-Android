@@ -37,7 +37,6 @@ import com.realmsoffate.game.data.GraveyardEntry
 import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
 
 /**
  * Title / main menu — sits between the API setup flow and character creation.
@@ -55,7 +54,6 @@ import com.realmsoffate.game.ui.theme.RealmsTheme
 fun TitleScreen(vm: GameViewModel) {
     val slots by vm.saveSlots.collectAsState()
     val graves by vm.graveyard.collectAsState()
-    val realms = RealmsTheme.colors
     val context = LocalContext.current
 
     var loadSheet by remember { mutableStateOf(false) }
@@ -162,7 +160,7 @@ fun TitleScreen(vm: GameViewModel) {
                     enabled = graves.isNotEmpty(),
                     onClick = { graveSheet = true },
                     modifier = Modifier.weight(1f),
-                    accent = realms.fumbleRed,
+                    accent = MaterialTheme.colorScheme.error,
                     iconText = "\u26B0"
                 )
                 SecondaryTile(
@@ -171,15 +169,6 @@ fun TitleScreen(vm: GameViewModel) {
                     enabled = true,
                     onClick = { vm.backToApiSetup() },
                     modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(Modifier.height(10.dp))
-            TextButton(onClick = { vm.resetTutorial() }) {
-                Text(
-                    "Replay Tutorial",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -223,7 +212,6 @@ private fun PrimaryTile(
     onClick: () -> Unit,
     gradient: Boolean
 ) {
-    val realms = RealmsTheme.colors
     Surface(
         onClick = onClick,
         shape = MaterialTheme.shapes.medium,
@@ -233,7 +221,7 @@ private fun PrimaryTile(
     ) {
         Box(
             modifier = if (gradient) Modifier.background(
-                Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary, realms.goldAccent))
+                Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary))
             ) else Modifier,
             contentAlignment = Alignment.CenterStart
         ) {
@@ -267,7 +255,7 @@ private fun SecondaryTile(
         onClick = onClick,
         enabled = enabled,
         shape = MaterialTheme.shapes.medium,
-        color = if (enabled) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        color = if (enabled) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = modifier.height(62.dp)
     ) {
         Row(
@@ -351,7 +339,7 @@ private fun LoadSheet(
 private fun SaveRow(s: SaveSlotMeta, onPick: () -> Unit, onDelete: () -> Unit) {
     Surface(
         onClick = onPick,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -396,10 +384,9 @@ private fun GraveyardSheet(
     onForget: (GraveyardEntry) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val realms = RealmsTheme.colors
     ModalBottomSheet(onDismissRequest = onDismiss, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) {
         Column(Modifier.padding(horizontal = RealmsSpacing.xl, vertical = RealmsSpacing.s)) {
-            Text("GRAVEYARD", style = MaterialTheme.typography.labelLarge, color = realms.fumbleRed)
+            Text("GRAVEYARD", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
             Spacer(Modifier.height(4.dp))
             Text(
                 "Those who walked these realms and fell.",
@@ -415,17 +402,17 @@ private fun GraveyardSheet(
                     items(graves) { g ->
                         Surface(
                             onClick = { onPick(g) },
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                            color = MaterialTheme.colorScheme.surfaceContainer,
                             shape = MaterialTheme.shapes.medium,
                             modifier = Modifier.fillMaxWidth().border(
-                                1.dp, realms.fumbleRed.copy(alpha = 0.35f), MaterialTheme.shapes.medium
+                                1.dp, MaterialTheme.colorScheme.error, MaterialTheme.shapes.medium
                             )
                         ) {
                             Row(
                                 Modifier.padding(horizontal = RealmsSpacing.m, vertical = RealmsSpacing.m),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("\u26B0", fontSize = 28.sp, color = realms.fumbleRed)
+                                Text("\u26B0", fontSize = 28.sp, color = MaterialTheme.colorScheme.error)
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(g.characterName, style = MaterialTheme.typography.titleMedium)
@@ -437,7 +424,7 @@ private fun GraveyardSheet(
                                     Text(
                                         g.causeOfDeath,
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = realms.fumbleRed,
+                                        color = MaterialTheme.colorScheme.error,
                                         maxLines = 1
                                     )
                                 }
@@ -454,7 +441,6 @@ private fun GraveyardSheet(
 
 @Composable
 private fun GraveDetailDialog(entry: GraveyardEntry, onDismiss: () -> Unit) {
-    val realms = RealmsTheme.colors
     val moralLabel = when {
         entry.morality > 30 -> "Virtuous"
         entry.morality > 0 -> "Good"
@@ -463,9 +449,9 @@ private fun GraveDetailDialog(entry: GraveyardEntry, onDismiss: () -> Unit) {
         else -> "Villainous"
     }
     val moralColor = when {
-        entry.morality > 0 -> realms.success
+        entry.morality > 0 -> MaterialTheme.colorScheme.primary
         entry.morality == 0 -> MaterialTheme.colorScheme.onSurfaceVariant
-        else -> realms.fumbleRed
+        else -> MaterialTheme.colorScheme.error
     }
     val categoryIcon = { cat: String -> when (cat) {
         "birth", "start" -> "🌅"
@@ -509,23 +495,23 @@ private fun GraveDetailDialog(entry: GraveyardEntry, onDismiss: () -> Unit) {
                             entry.characterName,
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.inverseOnSurface
                         )
                         Text(
                             "L${entry.level} ${entry.race} ${entry.cls}",
                             style = MaterialTheme.typography.titleSmall,
-                            color = Color.White.copy(alpha = 0.7f)
+                            color = MaterialTheme.colorScheme.inverseOnSurface
                         )
                         if (entry.worldName.isNotBlank()) {
                             Text(
                                 entry.worldName,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = Color.White.copy(alpha = 0.5f)
+                                color = MaterialTheme.colorScheme.outline
                             )
                         }
                         Spacer(Modifier.height(12.dp))
                         Surface(
-                            color = realms.fumbleRed.copy(alpha = 0.2f),
+                            color = MaterialTheme.colorScheme.errorContainer,
                             shape = MaterialTheme.shapes.medium
                         ) {
                             Text(
@@ -533,7 +519,7 @@ private fun GraveDetailDialog(entry: GraveyardEntry, onDismiss: () -> Unit) {
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                                 ),
-                                color = realms.fumbleRed,
+                                color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.s),
                                 textAlign = TextAlign.Center
                             )
@@ -548,10 +534,10 @@ private fun GraveDetailDialog(entry: GraveyardEntry, onDismiss: () -> Unit) {
                 ) {
                     GraveStat("Turns", entry.turns.toString(), MaterialTheme.colorScheme.primary)
                     GraveStat("XP", "${entry.xp}", MaterialTheme.colorScheme.secondary)
-                    GraveStat("Gold", "${entry.gold}g", realms.goldAccent)
+                    GraveStat("Gold", "${entry.gold}g", MaterialTheme.colorScheme.tertiary)
                     GraveStat(moralLabel, "${entry.morality}", moralColor)
                 }
-                HorizontalDivider(Modifier.padding(horizontal = RealmsSpacing.xl), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                HorizontalDivider(Modifier.padding(horizontal = RealmsSpacing.xl), color = MaterialTheme.colorScheme.outlineVariant)
 
                 // ---- Companions ----
                 if (entry.companions.isNotEmpty()) {
@@ -561,12 +547,12 @@ private fun GraveDetailDialog(entry: GraveyardEntry, onDismiss: () -> Unit) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             entry.companions.forEach { name ->
                                 Surface(
-                                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                                    color = MaterialTheme.colorScheme.tertiaryContainer,
                                     shape = MaterialTheme.shapes.small
                                 ) {
                                     Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Box(
-                                            Modifier.size(20.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f)),
+                                            Modifier.size(20.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiaryContainer),
                                             contentAlignment = Alignment.Center
                                         ) { Text(name.take(1), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary) }
                                         Spacer(Modifier.width(6.dp))
@@ -596,7 +582,7 @@ private fun GraveDetailDialog(entry: GraveyardEntry, onDismiss: () -> Unit) {
                             Text("BACKSTORY", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.height(RealmsSpacing.xs))
                             Surface(
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                color = MaterialTheme.colorScheme.surfaceContainer,
                                 shape = MaterialTheme.shapes.small
                             ) {
                                 Text(
@@ -614,7 +600,7 @@ private fun GraveDetailDialog(entry: GraveyardEntry, onDismiss: () -> Unit) {
                     }
                 }
 
-                HorizontalDivider(Modifier.padding(horizontal = RealmsSpacing.xl, vertical = 6.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                HorizontalDivider(Modifier.padding(horizontal = RealmsSpacing.xl, vertical = 6.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
                 // ---- Timeline ----
                 Column(Modifier.padding(horizontal = RealmsSpacing.xl, vertical = 6.dp)) {
@@ -633,7 +619,7 @@ private fun GraveDetailDialog(entry: GraveyardEntry, onDismiss: () -> Unit) {
                                             Modifier
                                                 .width(2.dp)
                                                 .height(20.dp)
-                                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                                                .background(MaterialTheme.colorScheme.outlineVariant)
                                         )
                                     }
                                 }
@@ -641,7 +627,7 @@ private fun GraveDetailDialog(entry: GraveyardEntry, onDismiss: () -> Unit) {
                                 Column(Modifier.weight(1f)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Surface(
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                            color = MaterialTheme.colorScheme.primaryContainer,
                                             shape = MaterialTheme.shapes.extraSmall
                                         ) {
                                             Text(

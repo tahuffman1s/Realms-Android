@@ -44,11 +44,8 @@ internal fun NarrationBlock(
     structuredSegments: List<NarrationSegmentData> = emptyList(),
     npcLog: List<LogNpc> = emptyList(),
     isLatestTurn: Boolean = false,
-    bookmarks: List<String> = emptyList(),
-    onToggleBookmark: (String) -> Unit = {},
     onNpcTap: (name: String) -> Unit = {},
     onNpcReply: (name: String) -> Unit = {},
-    onNpcReaction: (name: String, quote: String, reaction: String) -> Unit = { _, _, _ -> },
     onAttackNpc: (name: String) -> Unit = {},
     onOpenJournal: (name: String) -> Unit = {},
     onOpenStats: () -> Unit = {}
@@ -61,17 +58,11 @@ internal fun NarrationBlock(
                     is NarrationSegmentData.Prose -> {
                         NarratorProseBubble(
                             text = seg.text,
-                            isLatestTurn = isLatestTurn,
-                            isBookmarked = bookmarks.any { it.take(300) == seg.text.take(300) },
-                            onToggleBookmark = { onToggleBookmark(seg.text.take(300)) }
+                            isLatestTurn = isLatestTurn
                         )
                     }
                     is NarrationSegmentData.Aside -> {
-                        NarratorAsideLine(
-                            text = seg.text,
-                            isBookmarked = bookmarks.any { it.take(300) == seg.text.take(300) },
-                            onToggleBookmark = { onToggleBookmark(seg.text.take(300)) }
-                        )
+                        NarratorAsideLine(text = seg.text)
                     }
                     is NarrationSegmentData.NpcDialog -> {
                         val displayName = resolveNpcDisplayName(seg.name, npcLog)
@@ -86,12 +77,7 @@ internal fun NarrationBlock(
                             NpcDialogueBubble(
                                 name = displayName,
                                 quote = seg.text,
-                                isBookmarked = bookmarks.any { it.take(300) == "${seg.name}: ${seg.text}".take(300) },
-                                onToggleBookmark = { onToggleBookmark("${seg.name}: ${seg.text}".take(300)) },
                                 onTap = if (isLatestTurn) { { onNpcReply(seg.name) } } else { {} },
-                                onReaction = if (isLatestTurn) {
-                                    { reaction: String -> onNpcReaction(seg.name, seg.text, reaction) }
-                                } else { {} },
                                 isInteractive = isLatestTurn
                             )
                         }
@@ -137,24 +123,16 @@ internal fun NarrationBlock(
             val nonProseSegments = segments.filter { it !is NarrationSegment.Prose }
 
             if (allProse.isNotBlank()) {
-                val proseBookmarkKey = allProse.take(300)
-                val isProseMarked = bookmarks.contains(proseBookmarkKey)
                 NarratorProseBubble(
                     text = allProse,
-                    isLatestTurn = isLatestTurn,
-                    isBookmarked = isProseMarked,
-                    onToggleBookmark = { onToggleBookmark(proseBookmarkKey) }
+                    isLatestTurn = isLatestTurn
                 )
             }
 
             nonProseSegments.forEach { seg ->
                 when (seg) {
                     is NarrationSegment.NarratorQuip -> {
-                        NarratorAsideLine(
-                            text = seg.text,
-                            isBookmarked = bookmarks.any { it.take(300) == seg.text.take(300) },
-                            onToggleBookmark = { onToggleBookmark(seg.text.take(300)) }
-                        )
+                        NarratorAsideLine(text = seg.text)
                     }
                     is NarrationSegment.Dialogue -> {
                         SwipeableMessage(
@@ -168,12 +146,8 @@ internal fun NarrationBlock(
                             NpcDialogueBubble(
                                 name = seg.name,
                                 quote = seg.quote,
-                                isBookmarked = bookmarks.contains("${seg.name}: ${seg.quote}".take(300)),
-                                onToggleBookmark = { onToggleBookmark("${seg.name}: ${seg.quote}".take(300)) },
                                 onTap = if (isLatestTurn) { { onNpcReply(seg.name) } } else { {} },
-                                onReaction = if (isLatestTurn) {
-                                    { reaction -> onNpcReaction(seg.name, seg.quote, reaction) }
-                                } else { {} }
+                                isInteractive = isLatestTurn
                             )
                         }
                     }
@@ -193,11 +167,7 @@ internal fun NarrationBlock(
                         }
                     }
                     is NarrationSegment.Action -> {
-                        NarratorAsideLine(
-                            text = seg.text,
-                            isBookmarked = bookmarks.any { it.take(300) == seg.text.take(300) },
-                            onToggleBookmark = { onToggleBookmark(seg.text.take(300)) }
-                        )
+                        NarratorAsideLine(text = seg.text)
                     }
                     else -> {}
                 }
@@ -218,19 +188,16 @@ internal fun NarrationBlock(
 @Composable
 internal fun NarratorProseBubble(
     text: String,
-    isLatestTurn: Boolean,
-    isBookmarked: Boolean = false,
-    onToggleBookmark: () -> Unit = {}
+    isLatestTurn: Boolean
 ) {
-    val realms = RealmsTheme.colors
     var expanded by remember { mutableStateOf(isLatestTurn) }
-    val borderColor = realms.asideOnBubble.copy(alpha = 0.25f)
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
 
     val fontSize = (15f * LocalFontScale.current).sp
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Surface(
             onClick = { expanded = !expanded },
-            color = if (expanded) realms.narratorBubble else realms.narratorBubble.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
             shape = RoundedCornerShape(12.dp),
             border = BorderStroke(1.dp, borderColor),
             modifier = Modifier.fillMaxWidth()
@@ -245,20 +212,20 @@ internal fun NarratorProseBubble(
                         Icons.Filled.MenuBook,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = realms.asideOnBubble.copy(alpha = 0.7f)
+                        tint = MaterialTheme.colorScheme.secondary
                     )
                     Spacer(Modifier.width(RealmsSpacing.xs))
                     Text(
                         "NARRATOR",
                         style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.5.sp),
-                        color = realms.asideOnBubble.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.secondary
                     )
                     Spacer(Modifier.width(RealmsSpacing.xs))
                     Icon(
                         if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                         contentDescription = if (expanded) "Collapse" else "Expand",
                         modifier = Modifier.size(16.dp),
-                        tint = realms.asideOnBubble.copy(alpha = 0.5f)
+                        tint = MaterialTheme.colorScheme.outline
                     )
                 }
                 if (expanded) {
@@ -497,9 +464,7 @@ private fun splitNarration(text: String, characterName: String? = null): List<Na
 private fun ActionPill(
     text: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    accent: Color,
-    isBookmarked: Boolean = false,
-    onToggleBookmark: (() -> Unit)? = null
+    accent: Color
 ) {
     Surface(
         color = accent.copy(alpha = 0.12f),
@@ -527,12 +492,6 @@ private fun ActionPill(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center
             )
-            if (onToggleBookmark != null) {
-                InlineBookmark(
-                    isBookmarked, onToggleBookmark,
-                    inactiveTint = accent.copy(alpha = 0.35f)
-                )
-            }
         }
     }
 }
@@ -542,21 +501,15 @@ private fun NpcActionLine(text: String, accentColor: Color) =
     ActionPill(text = text, icon = Icons.Filled.DirectionsRun, accent = accentColor)
 
 @Composable
-internal fun NarratorAsideLine(
-    text: String,
-    isBookmarked: Boolean = false,
-    onToggleBookmark: () -> Unit = {}
-) = ActionPill(
+internal fun NarratorAsideLine(text: String) = ActionPill(
     text = text,
     icon = Icons.Filled.AutoAwesome,
-    accent = RealmsTheme.colors.asideOnBubble,
-    isBookmarked = isBookmarked,
-    onToggleBookmark = onToggleBookmark
+    accent = MaterialTheme.colorScheme.secondary
 )
 
 @Composable
 private fun PlayerActionLine(text: String) =
-    ActionPill(text = text, icon = Icons.Filled.Bolt, accent = RealmsTheme.colors.goldAccent)
+    ActionPill(text = text, icon = Icons.Filled.Bolt, accent = MaterialTheme.colorScheme.tertiary)
 
 /** Extracts a 1-3 sentence summary from the full prose text. */
 private fun summarizeProse(text: String): String {

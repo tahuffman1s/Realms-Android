@@ -137,7 +137,7 @@ private fun EquippedSlot(
             }
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(icon, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                Text(icon, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.outline)
                 Spacer(Modifier.width(8.dp))
                 Text(
                     "empty",
@@ -207,7 +207,7 @@ private fun BackpackCell(item: Item, selected: Boolean, onClick: () -> Unit) {
     val color = rarityColor(item.rarity)
     Surface(
         onClick = onClick,
-        color = if (selected) color.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        color = if (selected) color.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.small,
         modifier = Modifier.aspectRatio(0.85f).border(
             1.dp,

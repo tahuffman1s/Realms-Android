@@ -1,0 +1,133 @@
+---
+description: Named Debug Bridge verification procedures (smoke, UI, theme, flows, contextual maps)
+alwaysApply: true
+---
+
+# Debug Bridge — verification test procedures
+
+Use these **after every** `installDebug` that follows a change to **`app/src/main/`**, **`app/src/debug/`**, **`app/src/main/res/`**, **`app/build.gradle.kts`**, or project Gradle/settings that affect **`app`**, with port forwarding (`adb -s <serial> forward tcp:8735 tcp:8735`). Base URL: `http://localhost:8735`. Replace `<serial>` via `adb devices` (emulator is often `emulator-5554`).
+
+**Default:** **P0 → P1** is required for **any** such change (not only UI). Add contextual P-steps from the table below for the files/features touched.
+
+Pair outcomes with **evidence**: saved screenshot path **or** `/state` / `/describe` JSON snippets in the summary—never runtime claims from compile-only.
+
+---
+
+## Contextual procedures (pick by what you changed)
+
+Use **P0 → P1** on **every** app deploy after **any** qualifying edit (see `debug-bridge-verify.mdc` triggers). Add the row below that best matches what changed.
+
+| Area (paths / feature) | Add these procedures | Focus steps |
+|------------------------|----------------------|-------------|
+| `ui/theme/`, `Theme.kt`, `Fonts.kt`, tokens / color | **P2 + P3** | Theme toggle + screenshot both modes; `font-scale` if type/scale changed |
+| `GameScreen.kt`, bottom/top chrome (`BottomNav`, `TopBar`) | **P2**, optional **P4** | Exercise **Chat** / **Character** / **Journal** tabs via `/tap` |
+| `ChatFeed`, `ChatInput`, `MessageBubbles`, `NarrationBlock` | **P2, P7**, optional **P9** | Long narration in P7; canned turns if scroll/history behavior touched |
+| `CharacterPager`, `panels/*` (stats, inventory, spells, party, currency) | **P2 + P4**, optional **P5** | `/tap` **Character** → tab **Stats**, **Inventory**, **Spells**, **Party**, **Currency**; use **P4** for full lists; **P5** for currency/HP stress |
+| `JournalPager`, quest/NPC/lore panels | **P2 + P4** | `/tap` **Journal** → **Quests**, **NPCs**, **Lore** |
+| `CombatHud`, combat HUD overlays | **P2**, optional **P8** | If initiative/rolls tied to input flow, run **P8** |
+| `WealthBars`, resource strip in header | **P2 + P5** | Gold/HP/long name injections |
+| `ui/overlays/*`, `GameDialogs`, `TargetPromptDialog`, sheet overlays | **P2 + P4** | **P4** stocks merchants/NPC density; `curl -s localhost:8735/state/overlay` when checking modal/stacking |
+| `ShopOverlay`, merchants / buyback | **P4** (required), then **P2** | `simulate-gameplay` seeds shops/stock; capture shop UI—use `/describe` or `/tap` if tab labels fail to appear |
+| `setup/TitleScreen`, `CharacterCreationScreen`, `ApiSetupScreen` | **P2** via **navigate** | `navigate` to `title`, `characterCreation`, or `apiSetup`—do **not** rely only on `macro/new-game` |
+| `DeathScreen` | **P6** | Dedicated death path |
+| `GameViewModel` / reducers / handlers—**player-visible** outcome (messages, HP, overlay) | **P2** + targeted check | Use **P8** if input/dice; **P7**/`/state` if only feed text; **P5** if character fields |
+| `app/src/debug/*` (Debug Bridge) | **P0** + affected flow | Re-test the endpoints you changed; still **P1** smoke after deploy |
+
+**Tap hints (game):** bottom nav labels **Chat**, **Character**, **Journal**. Character tabs: **Stats**, **Inventory**, **Spells**, **Party**, **Currency**. Journal tabs: **Quests**, **NPCs**, **Lore**.
+
+**Narrow theme scope:** If only one screen file changed, still run **P3**, but screenshot **that** screen after `navigate` or the right tab (no need to tour every panel unless shared components moved).
+
+**Overlays unknown from curl:** After **P4** or **P2**, `curl -s localhost:8735/describe/ui | head -c 6000` to confirm semantics for the widget you edited; pair with a screenshot.
+
+**Shop not visible after simulate:** Check `curl -s localhost:8735/state` for merchant/shop fields; fall back to **P9** canned advance or manual in-app flow if the feature requires a specific game state not in macros.
+
+---
+
+## P0 — Bridge up (connectivity)
+
+1. `curl -s -o /dev/null -w "%{http_code}" localhost:8735/state` → expect `200`.
+2. If connection fails: confirm debug build, app foreground or server started, forward correct serial, firewall not blocking localhost.
+
+---
+
+## P1 — Smoke (any deploy)
+
+1. `curl -s localhost:8735/state | head -c 2000` — JSON present, no HTML error page.
+2. `curl -s localhost:8735/screenshot > /tmp/db-smoke.png` — PNG opens; assistant **Read** tool on `/tmp/db-smoke.png`.
+
+---
+
+## P2 — UI / Compose / layout change
+
+1. Reach game instantly (no AI):  
+   `curl -s -X POST localhost:8735/macro/new-game -d '{"name":"Verify","class":"fighter","race":"human","skipFirstTurn":true}'`
+2. Screenshot: `curl -s localhost:8735/screenshot > /tmp/db-ui.png` → inspect image.
+3. Optional layout audit (no pixel judgment):  
+   `curl -s localhost:8735/describe/ui | head -c 4000` — sanity-check nodes/text for the touched surface.
+4. **Specific screen only:**  
+   `curl -s -X POST localhost:8735/navigate -d '{"screen":"death"}'`  
+   Valid `screen` values: `apiSetup`, `title`, `characterCreation`, `game`, `death`.
+
+---
+
+## P3 — Theme, colors, typography
+
+1. `curl -s -X POST localhost:8735/theme -d '{"mode":"dark"}'` → screenshot → inspect.
+2. Restore: `curl -s -X POST localhost:8735/theme -d '{"mode":"system"}'` (or `"light"`).
+3. If fonts scaled in QA: `curl -s -X POST localhost:8735/font-scale -d '{"scale":1.5}'` → screenshot → restore with `{"scale":1.0}` (or your project default).
+
+---
+
+## P4 — Dense panels / scrolling / overflow
+
+1. `curl -s -X POST localhost:8735/macro/simulate-gameplay` — mid-campaign-style snapshot, no AI.
+2. Screenshot; open panels/tabs relevant to the change (`/tap` with `{"text":"..."}` if needed).
+3. `curl -s -X POST localhost:8735/inject/reset` only if earlier `/inject` left state dirty; simulate-gameplay replaces VM state for this flow.
+
+---
+
+## P5 — Character strip / bars / edge values
+
+After **P2** or **P4** landing in game:
+
+- Low HP: `curl -s -X POST localhost:8735/inject -d '{"character.hp":0}'` → screenshot.
+- Long name: `curl -s -X POST localhost:8735/inject -d '{"character.name":"Bartholomew Fitzgerald Worthington III"}'` → screenshot.
+- Wealth stress: `curl -s -X POST localhost:8735/inject -d '{"character.gold":999999}'` → screenshot.
+- Always finish: `curl -s -X POST localhost:8735/inject/reset`
+
+---
+
+## P6 — Death / failure UI
+
+1. `curl -s -X POST localhost:8735/macro/new-game -d '{"name":"D","class":"fighter","race":"human","skipFirstTurn":true}'`
+2. `curl -s -X POST localhost:8735/macro/death` → navigate is handled inside macro → screenshot death UI.
+
+---
+
+## P7 — Chat feed / bubbles
+
+1. Land in game (P2 step 1).
+2. `curl -s -X POST localhost:8735/inject/messages -d '{"messages":[{"type":"narration","text":"Short line."},{"type":"narration","text":"Very long narration line repeated for overflow testing. Very long narration line repeated for overflow testing."}]}'`
+3. Screenshot; then `inject/reset` if using P5-style injects afterward.
+
+---
+
+## P8 — Input routing and dice overlay
+
+1. Game with character (P2).
+2. `curl -s -X POST localhost:8735/input -d '{"text":"I inspect the door"}'` — expect JSON with `triggered` (`dispatch` vs `preRoll`).
+3. If overlay pending: `curl -s localhost:8735/state/overlay` then `curl -s -X POST localhost:8735/confirm` or `/cancel` as appropriate.
+
+---
+
+## P9 — Multi-turn canned progression (regression / soak lite)
+
+1. On **game** screen with character:  
+   `curl -s -X POST localhost:8735/macro/advance -d '{"turns":3,"mode":"canned"}'`
+2. `curl -s localhost:8735/state` — turns advanced; screenshot if chat/HUD should reflect history.
+
+---
+
+## When to skip
+
+Align with **`debug-bridge-verify.mdc`**: skip **only** when the session touched **no** runnable-app paths above (e.g. tests-only under `app/src/test/`, doc/rules-only, or Gradle unrelated to `app`), or the user explicitly skips verification. State the reason briefly.

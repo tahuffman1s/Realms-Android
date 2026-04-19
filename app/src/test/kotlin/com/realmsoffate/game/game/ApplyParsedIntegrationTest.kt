@@ -3,7 +3,6 @@ package com.realmsoffate.game.game
 import com.realmsoffate.game.data.Faction
 import com.realmsoffate.game.data.LogNpc
 import com.realmsoffate.game.data.Quest
-import com.realmsoffate.game.data.TravelState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -219,54 +218,40 @@ class ApplyParsedIntegrationTest {
     }
 
     // -------------------------------------------------------------------------
-    // Test 7: Travel progress advances leaguesTraveled
+    // Test 7: TRAVEL tag updates current location when world map is present
     // -------------------------------------------------------------------------
     @Test
-    fun `travel progress advances leaguesTraveled`() {
-        // Set up a world map with two locations and a road between them.
+    fun `TRAVEL tag updates current location`() {
         val loc0 = com.realmsoffate.game.data.MapLocation(0, "Testtown", "town", "🏘", 100, 100, discovered = true)
         val loc1 = com.realmsoffate.game.data.MapLocation(1, "Farkeep", "town", "🏰", 300, 300, discovered = false)
-        val road = com.realmsoffate.game.data.MapRoad(from = 0, to = 1, dist = 10)
         val worldMap = com.realmsoffate.game.data.WorldMap(
             locations = mutableListOf(loc0, loc1),
-            roads = listOf(road),
+            roads = emptyList(),
             startId = 0,
             terrain = emptyList(),
             rivers = emptyList(),
             lakes = emptyList()
         )
 
-        // Player is mid-journey: 3 of 10 leagues traveled
-        val travel = TravelState(
-            destId = 1,
-            totalLeagues = 10,
-            leaguesTraveled = 3,
-            roadPath = listOf(0, 1),
-            destName = "Farkeep"
-        )
-
         val state = GameUiState(
             character = GameStateFixture.character(),
             worldMap = worldMap,
             currentLoc = 0,
-            travelState = travel,
             turns = 3
         )
         val char = state.character!!
         val vm = GameStateFixture.viewModelWithState(state)
 
-        // roll=5 → fixed 3 leagues per turn. newTraveled = 3 + 3 = 6.
-        val parsed = ParsedReplyBuilder().narration("You travel on.").build()
-        val result = vm.applyParsed(state, char, parsed, "I travel", roll = 5, mod = 0, prof = 0)
+        val parsed = ParsedReplyBuilder()
+            .narration("You arrive at the gates.")
+            .travelTo("Farkeep")
+            .build()
+        val result = vm.applyParsed(state, char, parsed, "I go to Farkeep", roll = 5, mod = 0, prof = 0)
 
-        // Still traveling (6 < 10), travelState should exist with more leagues
-        assertNotNull("travelState should still be active", result.travelState)
-        assertTrue(
-            "leaguesTraveled should have increased from 3",
-            (result.travelState?.leaguesTraveled ?: 0) > 3
-        )
-        // Fixed pace: 3 leagues per turn → 3 + 3 = 6 total
-        assertEquals(6, result.travelState?.leaguesTraveled)
+        assertEquals(1, result.currentLoc)
+        assertTrue(result.worldMap!!.locations[1].discovered)
+        assertEquals(300f, result.playerPos!!.x)
+        assertEquals(300f, result.playerPos!!.y)
     }
 
     // -------------------------------------------------------------------------

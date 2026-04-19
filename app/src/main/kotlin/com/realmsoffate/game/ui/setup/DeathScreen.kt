@@ -21,7 +21,6 @@ import com.realmsoffate.game.data.TimelineEntry
 import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.ui.components.SectionHeader
 import com.realmsoffate.game.ui.theme.RealmsSpacing
-import com.realmsoffate.game.ui.theme.RealmsTheme
 import com.realmsoffate.game.util.formatSigned
 
 /**
@@ -41,8 +40,6 @@ fun DeathScreen(vm: GameViewModel) {
         LaunchedEffect(Unit) { vm.returnToTitle() }
         return
     }
-
-    val realms = RealmsTheme.colors
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -79,7 +76,7 @@ fun DeathScreen(vm: GameViewModel) {
             Text(
                 "REST IN PEACE",
                 style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 6.sp),
-                color = realms.fumbleRed
+                color = MaterialTheme.colorScheme.error
             )
             Spacer(Modifier.height(4.dp))
             Text(
@@ -106,15 +103,15 @@ fun DeathScreen(vm: GameViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 StatPill("TURNS", entry.turns.toString(), MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                StatPill("XP", entry.xp.toString(), realms.goldAccent, Modifier.weight(1f))
-                StatPill("GOLD", "${entry.gold}g", realms.goldAccent, Modifier.weight(1f))
-                StatPill("MORAL", formatSigned(entry.morality), moralityColor(entry.morality, realms), Modifier.weight(1f))
+                StatPill("XP", entry.xp.toString(), MaterialTheme.colorScheme.tertiary, Modifier.weight(1f))
+                StatPill("GOLD", "${entry.gold}g", MaterialTheme.colorScheme.tertiary, Modifier.weight(1f))
+                StatPill("MORAL", formatSigned(entry.morality), moralityColor(entry.morality), Modifier.weight(1f))
             }
 
             if (entry.mutations.isNotEmpty()) {
                 Spacer(Modifier.height(16.dp))
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -131,7 +128,7 @@ fun DeathScreen(vm: GameViewModel) {
             Text(
                 entry.causeOfDeath,
                 style = MaterialTheme.typography.bodyLarge.copy(fontStyle = FontStyle.Italic),
-                color = realms.fumbleRed,
+                color = MaterialTheme.colorScheme.error,
                 textAlign = TextAlign.Center
             )
 
@@ -139,7 +136,7 @@ fun DeathScreen(vm: GameViewModel) {
             Text(
                 "— LIFE STORY —",
                 style = MaterialTheme.typography.labelLarge,
-                color = realms.goldAccent
+                color = MaterialTheme.colorScheme.tertiary
             )
             Spacer(Modifier.height(12.dp))
 
@@ -188,16 +185,15 @@ private fun StatPill(label: String, value: String, color: Color, modifier: Modif
 
 @Composable
 private fun TimelineColumn(entries: List<TimelineEntry>) {
-    val realms = RealmsTheme.colors
     Column(Modifier.fillMaxWidth()) {
         entries.forEachIndexed { idx, t ->
             val color = when (t.category) {
-                "birth" -> realms.success
-                "levelup" -> realms.goldAccent
+                "birth" -> MaterialTheme.colorScheme.primary
+                "levelup" -> MaterialTheme.colorScheme.tertiary
                 "quest" -> MaterialTheme.colorScheme.secondary
-                "travel" -> realms.info
-                "event" -> realms.warning
-                "death" -> realms.fumbleRed
+                "travel" -> MaterialTheme.colorScheme.secondary
+                "event" -> MaterialTheme.colorScheme.tertiary
+                "death" -> MaterialTheme.colorScheme.error
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             }
             Row(Modifier.fillMaxWidth()) {
@@ -234,9 +230,10 @@ private fun TimelineColumn(entries: List<TimelineEntry>) {
     }
 }
 
-private fun moralityColor(n: Int, r: com.realmsoffate.game.ui.theme.RealmsExtendedColors): Color = when {
-    n >= 30 -> r.success
-    n <= -30 -> r.fumbleRed
-    else -> r.info
+@Composable
+private fun moralityColor(n: Int): androidx.compose.ui.graphics.Color = when {
+    n >= 30 -> MaterialTheme.colorScheme.primary
+    n <= -30 -> MaterialTheme.colorScheme.error
+    else -> MaterialTheme.colorScheme.secondary
 }
 

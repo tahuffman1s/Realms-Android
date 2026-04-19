@@ -1,11 +1,9 @@
 package com.realmsoffate.game.ui.game
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Store
@@ -13,8 +11,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -27,10 +23,7 @@ import com.realmsoffate.game.ui.theme.RealmsSpacing
 internal fun ChatFeed(
     state: GameUiState,
     listState: LazyListState,
-    bookmarks: List<String>,
-    onToggleBookmark: (String) -> Unit,
     onNpcReply: (String) -> Unit,
-    onNpcReaction: (String, String, String) -> Unit,
     onAttackNpc: (String) -> Unit,
     onOpenJournal: (String) -> Unit,
     onOpenStats: () -> Unit,
@@ -41,8 +34,8 @@ internal fun ChatFeed(
     LazyColumn(
         state = listState,
         modifier = modifier,
-        contentPadding = PaddingValues(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.m),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        contentPadding = PaddingValues(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.m),
+        verticalArrangement = Arrangement.spacedBy(RealmsSpacing.m)
     ) {
         // Empty state — shown when there are no messages and nothing is generating
         if (state.messages.isEmpty() && !state.isGenerating) {
@@ -88,11 +81,8 @@ internal fun ChatFeed(
                             msg.text, state.character?.name, msg, msg.segments,
                             npcLog = state.npcLog,
                             isLatestTurn = idx == state.messages.lastIndex || (idx == state.messages.size - 2 && state.messages.lastOrNull() is DisplayMessage.System),
-                            bookmarks = state.bookmarks,
-                            onToggleBookmark = onToggleBookmark,
                             onNpcTap = { /* future use */ },
                             onNpcReply = onNpcReply,
-                            onNpcReaction = onNpcReaction,
                             onAttackNpc = onAttackNpc,
                             onOpenJournal = onOpenJournal,
                             onOpenStats = onOpenStats
@@ -112,23 +102,25 @@ internal fun ChatFeed(
             item {
                 Row(
                     Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
+                    horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     state.availableMerchants.forEach { merchant ->
-                        Surface(
+                        AssistChip(
                             onClick = { onOpenShop(merchant) },
-                            color = MaterialTheme.colorScheme.tertiaryContainer,
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Row(
-                                Modifier.padding(horizontal = RealmsSpacing.m, vertical = RealmsSpacing.s),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Filled.Store, null, Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
+                            label = {
                                 Text(merchant, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                            }
-                        }
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Store, contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                leadingIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            ),
+                            border = AssistChipDefaults.assistChipBorder(enabled = true)
+                        )
                     }
                 }
             }
@@ -138,7 +130,9 @@ internal fun ChatFeed(
         state.error?.let { err ->
             item {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    shape = MaterialTheme.shapes.large,
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Row(
                         Modifier.padding(start = 14.dp, top = RealmsSpacing.s, bottom = RealmsSpacing.s, end = RealmsSpacing.xs),
@@ -163,24 +157,24 @@ internal fun ChatFeed(
 @Composable
 private fun TurnDivider(turnNumber: Int) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.s),
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.s),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            Modifier.weight(1f).height(1.dp).background(
-                Brush.horizontalGradient(listOf(Color.Transparent, MaterialTheme.colorScheme.outlineVariant))
-            )
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant
         )
         Text(
             "TURN $turnNumber",
             style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 2.sp),
             color = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.padding(horizontal = RealmsSpacing.s)
+            modifier = Modifier.padding(horizontal = RealmsSpacing.m)
         )
-        Box(
-            Modifier.weight(1f).height(1.dp).background(
-                Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.outlineVariant, Color.Transparent))
-            )
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant
         )
     }
 }
