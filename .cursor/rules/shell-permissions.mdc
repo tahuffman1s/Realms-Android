@@ -1,6 +1,6 @@
 ---
 description: Terminal commands — prefer execution without sudo unless user asks
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Shell execution

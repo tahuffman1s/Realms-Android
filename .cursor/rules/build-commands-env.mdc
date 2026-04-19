@@ -1,6 +1,7 @@
 ---
 description: Local env setup and common Gradle commands — Realms Android
-alwaysApply: true
+globs: ["build.gradle.kts", "settings.gradle.kts", "setup-env.sh", "gradle/**"]
+alwaysApply: false
 ---
 
 # Environment and Gradle

@@ -1,6 +1,7 @@
 ---
 description: Verify via Debug Bridge after any app change (mandatory unless skipped)
-alwaysApply: true
+globs: ["app/src/main/**", "app/src/debug/**", "app/build.gradle.kts", "app/src/main/res/**"]
+alwaysApply: false
 ---
 
 # Debug Bridge verification (always)

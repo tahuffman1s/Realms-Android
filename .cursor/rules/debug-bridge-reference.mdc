@@ -1,6 +1,7 @@
 ---
 description: Debug Bridge endpoints, devices, pulldebug — supplements verify procedures
-alwaysApply: true
+globs: ["app/src/debug/**"]
+alwaysApply: false
 ---
 
 # Debug Bridge reference

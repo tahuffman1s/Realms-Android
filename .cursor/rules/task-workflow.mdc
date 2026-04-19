@@ -1,6 +1,6 @@
 ---
 description: Task triage, execution order, tests, finish — Cursor-oriented workflow
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Task workflow

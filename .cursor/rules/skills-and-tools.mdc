@@ -1,6 +1,6 @@
 ---
 description: Optional Claude skills / MCP routing — use when relevant
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Skills and external tools

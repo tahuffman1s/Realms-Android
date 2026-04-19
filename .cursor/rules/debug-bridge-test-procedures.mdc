@@ -1,6 +1,7 @@
 ---
 description: Named Debug Bridge verification procedures (smoke, UI, theme, flows, contextual maps)
-alwaysApply: true
+globs: ["app/src/main/**", "app/src/debug/**", "app/build.gradle.kts"]
+alwaysApply: false
 ---
 
 # Debug Bridge — verification test procedures
