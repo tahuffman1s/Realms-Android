@@ -22,6 +22,32 @@ keystore.properties
 *.jks
 *.keystore
 
+# Local Android tooling when ANDROID_USER_HOME points inside the repo (debug.keystore, locks)
+.android-user/
+
+# IDE / editor — machine-local (team shares convention via docs, not IDE dirs)
+.idea/
+*.iml
+.vscode/
+
+# Claude Code Superpowers plugin — brainstorm/session artifacts, not project source
+.superpowers/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Profiling / heap dumps
+*.hprof
+
+# Android Studio screen recordings / macro captures
+captures/
+
+# Emacs / Vim / backup droppings
+*~
+*.swp
+*.swo
+
 # Eclipse Gradle plugin generated files
 # Eclipse Core
 .project
