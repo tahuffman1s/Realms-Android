@@ -686,3 +686,32 @@ fun buildSessionSystem(
 
     return sections.joinToString("\n\n")
 }
+
+// --- Phase 2: infinite-turn memory -------------------------------------------
+
+/** System prompt used by ArcSummarizer when compressing scenes into an arc. */
+const val ARC_SUMMARY_SYS: String = """You are compressing a sequence of scene summaries into a single arc summary.
+Preserve: named characters and their fates, major decisions the player made, faction shifts,
+unresolved plot threads, key locations visited.
+Omit minor dialogue, transient scenery, weather.
+Target ~300 tokens. Output JSON: {"summary":"..."} and nothing else."""
+
+/** Trigger rollup once this many unrolled scene summaries have accumulated. */
+const val ROLLUP_THRESHOLD: Int = 20
+
+/** Number of oldest scenes rolled into a single arc per rollup pass. */
+const val ROLLUP_BATCH_SIZE: Int = 10
+
+/** Directive telling the AI to treat the CANONICAL FACTS block as ground truth. */
+val CANONICAL_FACTS_DIRECTIVE: String = """
+The CANONICAL FACTS block is ground truth. When you mention any named NPC, faction, or location from that block,
+use the facts exactly — do not change names, factions, dispositions, or statuses. To change a fact, emit the
+appropriate update tag ([NPC_UPDATE:...], [FACTION_UPDATE:...]) and describe the in-fiction event that caused the change.
+""".trim()
+
+// Character budgets for prompt-assembly sections.
+const val BUDGET_ARC_SUMMARIES: Int = 1500
+const val BUDGET_SCENE_SUMMARIES: Int = 2000
+const val BUDGET_KNOWN_NPCS: Int = 600
+const val BUDGET_CANONICAL_FACTS: Int = 800
+const val BUDGET_RECENT_TURNS: Int = 6000
