@@ -3,12 +3,14 @@ package com.realmsoffate.game
 import android.app.Application
 import com.realmsoffate.game.BuildConfig
 import com.realmsoffate.game.data.SaveStore
+import com.realmsoffate.game.data.db.RealmsDbHolder
 
 class RealmsApp : Application() {
     override fun onCreate() {
         super.onCreate()
         INSTANCE = this
         SaveStore.init(this)
+        RealmsDbHolder.init(this)
         if (BuildConfig.DEBUG) {
             try {
                 val bridge = Class.forName("com.realmsoffate.game.debug.DebugBridge")

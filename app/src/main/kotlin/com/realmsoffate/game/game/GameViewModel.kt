@@ -166,8 +166,54 @@ sealed interface DisplayMessage {
 
 class GameViewModel(
     private val ai: AiRepository,
-    private val prefs: PreferencesStore
+    private val prefs: PreferencesStore,
+    private val repo: com.realmsoffate.game.data.EntityRepository = com.realmsoffate.game.data.db.RealmsDbHolder.repo
 ) : ViewModel() {
+
+    /** Expose repo flows so UI panels can observe entity lists live. */
+    val loggedNpcsFlow: kotlinx.coroutines.flow.Flow<List<LogNpc>> get() = repo.observeLoggedNpcs()
+    val loreNpcsFlow: kotlinx.coroutines.flow.Flow<List<com.realmsoffate.game.data.LoreNpc>> get() = repo.observeLoreNpcs()
+    val activeQuestsFlow: kotlinx.coroutines.flow.Flow<List<Quest>> get() = repo.observeActiveQuests()
+    val factionsFlow: kotlinx.coroutines.flow.Flow<List<com.realmsoffate.game.data.Faction>> get() = repo.observeFactions()
+    val locationsFlow: kotlinx.coroutines.flow.Flow<List<com.realmsoffate.game.data.MapLocation>> get() = repo.observeLocations()
+
+    /** Arc summaries accessor for debug endpoints / retrospection UI. */
+    suspend fun readArcSummaries() = repo.allArcSummaries()
+
+    /** Wipes and reseeds the narrative DB from current [GameUiState]. Called
+     *  after load and at save time so Room mirrors the authoritative state. */
+    internal fun reseedRepoFromState() {
+        viewModelScope.launch { runCatching { repo.seedFromSaveData(snapshotSaveData()) } }
+    }
+
+    private fun snapshotSaveData(): com.realmsoffate.game.data.SaveData {
+        val s = _ui.value
+        val ch = s.character ?: com.realmsoffate.game.data.Character(name = "", race = "", cls = "")
+        val wm = s.worldMap ?: com.realmsoffate.game.data.WorldMap(
+            locations = mutableListOf(), roads = emptyList(), startId = 0,
+            terrain = emptyList(), rivers = emptyList(), lakes = emptyList()
+        )
+        return com.realmsoffate.game.data.SaveData(
+            character = ch,
+            morality = s.morality,
+            factionRep = s.factionRep,
+            worldMap = wm,
+            currentLoc = s.currentLoc,
+            playerPos = s.playerPos,
+            worldLore = s.worldLore,
+            worldEvents = s.worldEvents,
+            lastEventTurn = s.lastEventTurn,
+            npcLog = s.npcLog,
+            party = s.party,
+            quests = s.quests,
+            hotbar = s.hotbar,
+            history = s.history,
+            turns = s.turns,
+            scene = s.currentScene,
+            savedAt = "",
+            sceneSummaries = s.sceneSummaries
+        )
+    }
 
     private val _screen = MutableStateFlow(Screen.ApiSetup)
     val screen: StateFlow<Screen> = _screen.asStateFlow()
@@ -453,12 +499,24 @@ class GameViewModel(
     fun refreshSlots() = saveService.refreshSlots()
     fun deleteSlot(slot: String) = saveService.deleteSlot(slot)
     fun exhumeGrave(entry: GraveyardEntry) = saveService.exhumeGrave(entry)
-    fun saveToSlot(slot: String = "autosave") = saveService.saveToSlot(slot)
+    fun saveToSlot(slot: String = "autosave") {
+        saveService.saveToSlot(slot)
+        reseedRepoFromState()
+    }
     fun exportCurrentJson(): String? = saveService.exportCurrentJson()
     fun exportFilename(): String = saveService.exportFilename()
     fun debugDumpFilename(): String = saveService.debugDumpFilename()
     fun importSave(json: String) = saveService.importSave(json)
-    fun loadSlot(slot: String = "autosave") = saveService.loadSlot(slot)
+    fun loadSlot(slot: String = "autosave") {
+        saveService.loadSlot(slot)
+        // Seed the narrative DB from the freshly loaded state. Uses a short delay
+        // tied to viewModelScope so we reseed once the SaveService coroutine has
+        // finished publishing ui.value.
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(100)
+            reseedRepoFromState()
+        }
+    }
 
     init {
         viewModelScope.launch {
