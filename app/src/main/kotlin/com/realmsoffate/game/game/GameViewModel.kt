@@ -23,6 +23,7 @@ import com.realmsoffate.game.data.GraveyardEntry
 import com.realmsoffate.game.data.DebugTurn
 import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
+import com.realmsoffate.game.data.SceneSummary
 import com.realmsoffate.game.data.NarrationSegmentData
 import com.realmsoffate.game.data.TagParser
 import com.realmsoffate.game.data.TimelineEntry
@@ -96,7 +97,13 @@ data class GameUiState(
      * cleared on level-up, mutation change, character replacement, or load. See
      * Prompts.buildSessionSystem.
      */
-    val cachedSessionSystem: String? = null
+    val cachedSessionSystem: String? = null,
+    /**
+     * Ordered list of compressed scene records. Prepended during the session
+     * by [SceneSummarizer] when a scene boundary is crossed; injected into
+     * the prompt via [GameViewModel.buildUserPrompt] with a token budget cap.
+     */
+    val sceneSummaries: List<SceneSummary> = emptyList()
 )
 
 data class CheckDisplay(

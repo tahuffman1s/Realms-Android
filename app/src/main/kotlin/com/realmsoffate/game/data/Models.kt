@@ -358,7 +358,9 @@ data class SaveData(
     val deathSave: com.realmsoffate.game.game.DeathSaveState? = null,
     // ---- diagnostic trail: last ~50 AI exchanges, preserved across reloads ----
     val debugLog: List<DebugTurn> = emptyList(),
-    val availableMerchants: List<String> = emptyList()
+    val availableMerchants: List<String> = emptyList(),
+    /** Scene summaries persisted for reload. Empty on legacy saves; rebuilt forward from next scene boundary. */
+    val sceneSummaries: List<SceneSummary> = emptyList()
 )
 
 /**
