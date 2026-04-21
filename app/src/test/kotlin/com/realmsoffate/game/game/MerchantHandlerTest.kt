@@ -1,7 +1,5 @@
 package com.realmsoffate.game.game
 
-import com.realmsoffate.game.data.EconomyInfo
-import com.realmsoffate.game.data.Faction
 import com.realmsoffate.game.data.Item
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -113,61 +111,6 @@ class MerchantHandlerTest {
         assertTrue(ch.gold < 100)
         assertTrue(ch.inventory.any { it.name == "Old Sword" })
         assertTrue(vm.buybackStocks.value["Brom"].orEmpty().none { it.item.name == "Old Sword" && it.price == buybackPrice })
-    }
-
-    // -------------------------------------------------------------------------
-    // exchange
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `exchange to converts gold to local currency at wealth-derived rate`() {
-        val faction = Faction(
-            id = "merchants",
-            name = "Merchants Guild",
-            type = "trade",
-            description = "",
-            baseLoc = "Market",
-            currency = "silver",
-            economy = EconomyInfo(wealth = 5)
-        )
-        val vm = GameStateFixture.viewModelWithState(
-            GameStateFixture.baseState(
-                character = GameStateFixture.character(gold = 100),
-                factions = listOf(faction)
-            )
-        )
-
-        vm.exchange("Merchants Guild", "to", 10)
-
-        val ch = vm.ui.value.character!!
-        assertEquals(90, ch.gold)
-        // rate = 0.6 + 0.2*(5-3) = 1.0; localGained = (10 * 1.0).toInt() = 10
-        assertEquals(10, ch.currencyBalances["silver"])
-    }
-
-    @Test
-    fun `exchange from converts local currency back to gold`() {
-        val faction = Faction(
-            id = "merchants",
-            name = "Merchants Guild",
-            type = "trade",
-            description = "",
-            baseLoc = "Market",
-            currency = "silver",
-            economy = EconomyInfo(wealth = 3)
-        )
-        val ch = GameStateFixture.character(gold = 0)
-        ch.currencyBalances["silver"] = 20
-        val vm = GameStateFixture.viewModelWithState(
-            GameStateFixture.baseState(character = ch, factions = listOf(faction))
-        )
-
-        vm.exchange("Merchants Guild", "from", 10)
-
-        val updated = vm.ui.value.character!!
-        // rate = 0.6 + 0.2*(3-3) = 0.6; goldGained = (10 / 0.6).toInt() = 16
-        assertEquals(16, updated.gold)
-        assertEquals(10, updated.currencyBalances["silver"])
     }
 
     // -------------------------------------------------------------------------

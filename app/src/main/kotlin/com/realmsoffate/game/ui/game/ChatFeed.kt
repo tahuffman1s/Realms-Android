@@ -126,17 +126,24 @@ internal fun ChatFeed(
             }
         }
 
-        // Error card with explicit dismiss button (no auto-dismiss)
+        // Error card — M3 error-container banner with explicit dismiss
         state.error?.let { err ->
             item {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                     shape = MaterialTheme.shapes.large,
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        Modifier.padding(start = 14.dp, top = RealmsSpacing.s, bottom = RealmsSpacing.s, end = RealmsSpacing.xs),
-                        verticalAlignment = Alignment.CenterVertically
+                        Modifier.padding(
+                            start = RealmsSpacing.l,
+                            top = RealmsSpacing.m,
+                            bottom = RealmsSpacing.m,
+                            end = RealmsSpacing.xs
+                        ),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
                     ) {
                         Text(
                             err,

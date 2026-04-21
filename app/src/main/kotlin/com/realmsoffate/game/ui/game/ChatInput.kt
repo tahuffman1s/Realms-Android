@@ -3,7 +3,6 @@ package com.realmsoffate.game.ui.game
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -12,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.game.GameUiState
@@ -93,7 +93,8 @@ internal fun GameInputBar(
         ) {
             Row(
                 Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.s),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
             ) {
                 OutlinedTextField(
                     value = input,
@@ -106,38 +107,39 @@ internal fun GameInputBar(
                             style = MaterialTheme.typography.bodyMedium
                         )
                     },
-                    shape = MaterialTheme.shapes.large,
+                    shape = MaterialTheme.shapes.extraLarge,
                     singleLine = false,
                     maxLines = 5,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        focusedBorderColor = MaterialTheme.colorScheme.outline,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = Color.Transparent,
+                        disabledBorderColor = Color.Transparent
                     )
                 )
                 if (hasChoices) {
-                    Spacer(Modifier.width(RealmsSpacing.s))
-                    FilledIconButton(
+                    FilledTonalIconButton(
                         onClick = onChoicesOpen,
-                        modifier = Modifier.size(52.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        modifier = Modifier.size(48.dp),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     ) { Icon(Icons.AutoMirrored.Filled.List, "Choices") }
                 }
-                Spacer(Modifier.width(RealmsSpacing.s))
+                // M3 small-FAB-style send: 48dp target, primary-container for visibility without shouting.
                 FilledIconButton(
                     onClick = onSend,
                     enabled = input.isNotBlank() && !state.isGenerating,
-                    modifier = Modifier.size(52.dp),
+                    modifier = Modifier.size(48.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                     )
                 ) { Icon(Icons.AutoMirrored.Filled.Send, "Send") }
             }

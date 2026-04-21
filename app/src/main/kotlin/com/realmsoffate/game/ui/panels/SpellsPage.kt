@@ -240,7 +240,7 @@ private fun SpellDetailCard(
                 Text(
                     "\uD83D\uDDE1\uFE0F ${spell.damage}",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                 )

@@ -1,8 +1,10 @@
 package com.realmsoffate.game.ui.panels
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,8 +14,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.ui.components.EmptyState
-import com.realmsoffate.game.ui.components.PanelTab
-import com.realmsoffate.game.ui.components.PanelTabRow
 import com.realmsoffate.game.ui.components.PanelSheet
 import com.realmsoffate.game.ui.components.RealmsCard
 import com.realmsoffate.game.ui.components.StatusTag
@@ -21,11 +21,11 @@ import com.realmsoffate.game.ui.theme.RealmsSpacing
 
 // ----------------- QUESTS -----------------
 
-internal enum class QuestFilter(val label: String, val icon: String, val status: String?) {
-    Active("Active", "📜", "active"),
-    Done("Done", "✅", "completed"),
-    Failed("Failed", "❌", "failed"),
-    All("All", "∗", null)
+internal enum class QuestFilter(val label: String, val status: String?) {
+    Active("Active", "active"),
+    Done("Done", "completed"),
+    Failed("Failed", "failed"),
+    All("All", null)
 }
 
 @Composable
@@ -36,11 +36,21 @@ internal fun QuestsContent(state: GameUiState, onAbandon: (String) -> Unit) {
         EmptyState("\uD83D\uDCDC", "No quests yet. The world waits.")
         return
     }
-    PanelTabRow(
-        tabs = QuestFilter.entries.map { PanelTab(it.label, it.icon) },
-        selectedIndex = QuestFilter.entries.indexOf(filter),
-        onSelect = { filter = QuestFilter.entries[it] }
-    )
+    Row(
+        modifier = Modifier
+            .horizontalScroll(rememberScrollState())
+            .fillMaxWidth()
+            .padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)
+    ) {
+        QuestFilter.entries.forEach { opt ->
+            FilterChip(
+                selected = opt == filter,
+                onClick = { filter = opt },
+                label = { Text(opt.label, style = MaterialTheme.typography.labelMedium) }
+            )
+        }
+    }
     Spacer(Modifier.height(6.dp))
     if (filtered.isEmpty()) {
         Text(
@@ -104,7 +114,7 @@ internal fun QuestsContent(state: GameUiState, onAbandon: (String) -> Unit) {
                         Text(
                             "Reward: ${q.reward}",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.tertiary,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
                             modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs),
                             fontWeight = FontWeight.Bold
                         )

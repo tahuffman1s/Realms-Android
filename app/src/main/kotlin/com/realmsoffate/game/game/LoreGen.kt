@@ -358,7 +358,6 @@ object LoreGen {
             val type = FACTION_TYPES.random(rand)
             val govForm = GOV_FORMS.random(rand)
             val ruler = NPC_FIRSTS.random(rand) + " " + NPC_TITLES.random(rand)
-            val currency = listOf("gold", "silver marks", "crowns", "shards", "talons", "bones", "scales").random(rand)
             val econ = ECON_STATES.random(rand)
             val government = GovernmentInfo(
                 form = govForm,
@@ -410,8 +409,7 @@ object LoreGen {
                 population = listOf("handful of villages", "a dozen towns", "a great city and outskirts", "scattered strongholds", "an entire kingdom").random(rand),
                 mood = MOODS.random(rand),
                 disposition = DISPOSITIONS.random(rand),
-                goal = GOALS.random(rand),
-                currency = currency
+                goal = GOALS.random(rand)
             )
         }
         val npcs = mutableListOf<LoreNpc>()

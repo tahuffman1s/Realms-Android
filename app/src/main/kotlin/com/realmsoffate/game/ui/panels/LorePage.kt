@@ -4,10 +4,15 @@ package com.realmsoffate.game.ui.panels
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,8 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.ui.components.EmptyState
-import com.realmsoffate.game.ui.components.PanelTab
-import com.realmsoffate.game.ui.components.PanelTabRow
 import com.realmsoffate.game.ui.components.PanelSheet
 import com.realmsoffate.game.ui.components.RealmsCard
 import com.realmsoffate.game.ui.components.SectionHeader
@@ -28,15 +31,7 @@ import com.realmsoffate.game.ui.components.WealthBars
 import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.util.formatSigned
 
-// ----------------- LORE (5 tabs: World / Factions / NPCs / History / Rumors) -----------------
-
-private enum class LoreTab(val label: String, val icon: String) {
-    World("World", "📜"),
-    Factions("Factions", "⚔️"),
-    Npcs("NPCs", "👤"),
-    History("History", "📖"),
-    Rumors("Rumors", "🗣️")
-}
+// ----------------- LORE (collapsible sections: World / Factions / NPCs / History / Rumors) -----------------
 
 @Composable
 internal fun LoreContent(state: GameUiState) {
@@ -45,19 +40,80 @@ internal fun LoreContent(state: GameUiState) {
         EmptyState("\uD83D\uDCDA", "The world's secrets are not yet recorded.")
         return
     }
-    var tab by remember { mutableStateOf(LoreTab.World) }
-    PanelTabRow(
-        tabs = LoreTab.entries.map { PanelTab(it.label, it.icon) },
-        selectedIndex = LoreTab.entries.indexOf(tab),
-        onSelect = { tab = LoreTab.entries[it] }
-    )
-    Spacer(Modifier.height(RealmsSpacing.xs))
-    when (tab) {
-        LoreTab.World -> LoreWorldTab(state)
-        LoreTab.Factions -> LoreFactionsTab(state)
-        LoreTab.Npcs -> LoreNpcsTab(state)
-        LoreTab.History -> LoreHistoryTab(state)
-        LoreTab.Rumors -> LoreRumorsTab(state)
+    var expanded by remember { mutableStateOf(setOf("World")) }
+    val toggle: (String) -> Unit = { key ->
+        expanded = if (key in expanded) expanded - key else expanded + key
+    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = RealmsSpacing.m),
+        verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s),
+        contentPadding = PaddingValues(vertical = RealmsSpacing.s)
+    ) {
+        collapsibleLoreSection("World", "\uD83C\uDF0D  World", "World" in expanded, { toggle("World") }) {
+            loreWorldItems(state)
+        }
+        collapsibleLoreSection("Factions", "\u2694\uFE0F  Factions", "Factions" in expanded, { toggle("Factions") }) {
+            loreFactionsItems(state)
+        }
+        collapsibleLoreSection("NPCs", "\uD83D\uDC64  NPCs", "NPCs" in expanded, { toggle("NPCs") }) {
+            loreNpcsItems(state)
+        }
+        collapsibleLoreSection("History", "\uD83D\uDCDC  History", "History" in expanded, { toggle("History") }) {
+            loreHistoryItems(state)
+        }
+        collapsibleLoreSection("Rumors", "\uD83D\uDDE3\uFE0F  Rumors", "Rumors" in expanded, { toggle("Rumors") }) {
+            loreRumorsItems(state)
+        }
+    }
+}
+
+private fun LazyListScope.collapsibleLoreSection(
+    key: String,
+    label: String,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    content: LazyListScope.() -> Unit
+) {
+    item(key = "header_$key") {
+        CollapsibleLoreHeader(label, isExpanded, onToggle)
+    }
+    if (isExpanded) {
+        content()
+        item(key = "footer_$key") {
+            Spacer(Modifier.height(RealmsSpacing.xs))
+        }
+    }
+}
+
+@Composable
+private fun CollapsibleLoreHeader(label: String, isExpanded: Boolean, onToggle: () -> Unit) {
+    Surface(
+        color = if (isExpanded) MaterialTheme.colorScheme.surfaceContainerHigh
+                else MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggle)
+                .padding(horizontal = RealmsSpacing.m, vertical = RealmsSpacing.s),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = if (isExpanded) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = if (isExpanded) "Collapse $label" else "Expand $label",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -68,37 +124,31 @@ internal fun LorePanel(state: GameUiState, onClose: () -> Unit) {
     }
 }
 
-@Composable
-private fun LoreWorldTab(state: GameUiState) {
+private fun LazyListScope.loreWorldItems(state: GameUiState) {
     val lore = state.worldLore ?: return
     val worldName = lore.worldName.ifBlank { state.worldMap?.locations?.firstOrNull()?.name.orEmpty() }
-    LazyColumn(
-        Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 560.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        item {
-            RealmsCard(
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                SectionHeader("REALM")
-                Text(worldName.ifBlank { "Unnamed" }, style = MaterialTheme.typography.titleLarge)
-                Text(
-                    lore.era.ifBlank { "Age of the Wanderer" },
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+    item(key = "world_realm") {
+        RealmsCard(
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            SectionHeader("REALM")
+            Text(worldName.ifBlank { "Unnamed" }, style = MaterialTheme.typography.titleLarge)
+            Text(
+                lore.era.ifBlank { "Age of the Wanderer" },
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
-        item {
+    }
+    item(key = "world_conditions") {
+        Column {
             SectionHeader("WORLD CONDITIONS")
             lore.mutations.forEach {
                 Text("• $it", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 3.dp))
             }
             Spacer(Modifier.height(RealmsSpacing.s))
             SectionHeader("POWERS AT PLAY")
-            // FlowRow so faction chips wrap cleanly onto multiple lines instead of
-            // squishing the last entry off-screen.
             androidx.compose.foundation.layout.FlowRow(
                 modifier = Modifier.padding(top = RealmsSpacing.xs).fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s),
@@ -120,10 +170,10 @@ private fun LoreWorldTab(state: GameUiState) {
                 }
             }
         }
-        // Living World — silent rumours of recent shifts. The narrator weaves
-        // these into prose; the player checks here for the bigger picture.
-        if (state.worldEvents.isNotEmpty()) {
-            item {
+    }
+    if (state.worldEvents.isNotEmpty()) {
+        item(key = "world_living_header") {
+            Column {
                 Spacer(Modifier.height(RealmsSpacing.s))
                 SectionHeader("LIVING WORLD")
                 Text(
@@ -133,9 +183,12 @@ private fun LoreWorldTab(state: GameUiState) {
                     modifier = Modifier.padding(bottom = RealmsSpacing.xs)
                 )
             }
-            items(state.worldEvents.takeLast(8).reversed()) { ev ->
-                LivingWorldRow(ev)
-            }
+        }
+        items(
+            items = state.worldEvents.takeLast(8).reversed(),
+            key = { ev -> "world_event_${ev.turn}_${ev.title}" }
+        ) { ev ->
+            LivingWorldRow(ev)
         }
     }
 }
@@ -160,7 +213,7 @@ private fun LivingWorldRow(ev: com.realmsoffate.game.data.WorldEvent) {
                     Text(
                         ev.title,
                         style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.tertiary,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
@@ -177,14 +230,16 @@ private fun LivingWorldRow(ev: com.realmsoffate.game.data.WorldEvent) {
     }
 }
 
-@Composable
-private fun LoreFactionsTab(state: GameUiState) {
+private fun LazyListScope.loreFactionsItems(state: GameUiState) {
     val lore = state.worldLore ?: return
-    LazyColumn(
-        Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 560.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        items(lore.factions) { f ->
+    if (lore.factions.isEmpty()) {
+        item(key = "factions_empty") { EmptyState("\u2694\uFE0F", "No factions recorded.") }
+        return
+    }
+    items(
+        items = lore.factions,
+        key = { f -> "faction_${f.name}" }
+    ) { f ->
             val rep = state.factionRep[f.name] ?: 0
             val repColor = when {
                 rep >= 50 -> MaterialTheme.colorScheme.primary
@@ -326,19 +381,6 @@ private fun LoreFactionsTab(state: GameUiState) {
                             if (e.description.isNotBlank()) {
                                 Text(e.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Spacer(Modifier.height(RealmsSpacing.xs))
-                            Surface(
-                                color = MaterialTheme.colorScheme.tertiaryContainer,
-                                shape = MaterialTheme.shapes.extraSmall
-                            ) {
-                                Text(
-                                    "\uD83D\uDCB0 Currency: ${f.currency}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.tertiary,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs)
-                                )
-                            }
                             if (e.exports.isNotEmpty()) {
                                 Text("Exports: ${e.exports.joinToString(", ")}", style = MaterialTheme.typography.bodySmall)
                             }
@@ -366,27 +408,23 @@ private fun LoreFactionsTab(state: GameUiState) {
                 }
             }
         }
-    }
+
 }
 
-@Composable
-private fun LoreNpcsTab(state: GameUiState) {
+private fun LazyListScope.loreNpcsItems(state: GameUiState) {
     val lore = state.worldLore ?: return
     if (lore.npcs.isEmpty()) {
-        EmptyState("\uD83D\uDC64", "No NPCs recorded.")
+        item(key = "npcs_empty") { EmptyState("\uD83D\uDC64", "No NPCs recorded.") }
         return
     }
-    // Cross-reference met-NPC journal to surface dead status on lore NPCs.
     val deadNpcNames = state.npcLog
         .filter { it.status == "dead" }
         .map { it.name.lowercase() }
         .toSet()
-
-    LazyColumn(
-        Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 560.dp),
-        verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
-    ) {
-        items(lore.npcs) { n ->
+    items(
+        items = lore.npcs,
+        key = { n -> "npc_${n.name}" }
+    ) { n ->
             val isDead = n.name.lowercase() in deadNpcNames
             RealmsCard(
                 shape = MaterialTheme.shapes.small,
@@ -411,7 +449,7 @@ private fun LoreNpcsTab(state: GameUiState) {
                             Text(
                                 "\u2620\uFE0F DEAD",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs)
                             )
@@ -443,51 +481,52 @@ private fun LoreNpcsTab(state: GameUiState) {
                 }
             }
         }
-    }
+
 }
 
-@Composable
-private fun LoreHistoryTab(state: GameUiState) {
+private fun LazyListScope.loreHistoryItems(state: GameUiState) {
     val lore = state.worldLore ?: return
-    // Group by era in chronological order.
     val eraOrder = listOf("primordial", "ancient", "medieval", "dark_age", "recent")
     val grouped = lore.history.groupBy { it.era }
-    LazyColumn(
-        Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 560.dp),
-        verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
-    ) {
-        eraOrder.forEach { era ->
-            val entries = grouped[era].orEmpty()
-            if (entries.isNotEmpty()) {
-                item { EraHeader(era, entries.minOf { it.year }, entries.maxOf { it.year }) }
-                items(entries) { entry -> HistoryRow(entry) }
-            }
+    eraOrder.forEach { era ->
+        val entries = grouped[era].orEmpty()
+        if (entries.isNotEmpty()) {
+            item(key = "hist_era_$era") { EraHeader(era, entries.minOf { it.year }, entries.maxOf { it.year }) }
+            items(
+                items = entries,
+                key = { entry -> "hist_${entry.era}_${entry.year}_${entry.text.hashCode()}" }
+            ) { entry -> HistoryRow(entry) }
         }
-        if (state.worldEvents.isNotEmpty()) {
-            item {
+    }
+    if (state.worldEvents.isNotEmpty()) {
+        item(key = "hist_living_header") {
+            Column {
                 Spacer(Modifier.height(RealmsSpacing.s))
                 EraHeader("recent_live", 0, 0, overrideLabel = "— LIVING WORLD —")
             }
-            items(state.worldEvents) {
-                HistoryRow(
-                    entry = com.realmsoffate.game.data.HistoryEntry(
-                        era = "live",
-                        year = it.turn,
-                        text = "${it.icon} ${it.title} — ${it.text}"
-                    ),
-                    labelOverride = "Turn ${it.turn}"
+        }
+        items(
+            items = state.worldEvents,
+            key = { "hist_live_${it.turn}_${it.title}" }
+        ) {
+            HistoryRow(
+                entry = com.realmsoffate.game.data.HistoryEntry(
+                    era = "live",
+                    year = it.turn,
+                    text = "${it.icon} ${it.title} — ${it.text}"
+                ),
+                labelOverride = "Turn ${it.turn}"
                 )
             }
         }
-        item {
-            Spacer(Modifier.height(10.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                Text(
-                    "— PRESENT DAY —",
-                    style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 4.sp),
-                    color = MaterialTheme.colorScheme.tertiary
-                )
-            }
+    item(key = "hist_present") {
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            Text(
+                "— PRESENT DAY —",
+                style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 4.sp),
+                color = MaterialTheme.colorScheme.tertiary
+            )
         }
     }
 }
@@ -561,27 +600,24 @@ private fun HistoryRow(
     }
 }
 
-@Composable
-private fun LoreRumorsTab(state: GameUiState) {
+private fun LazyListScope.loreRumorsItems(state: GameUiState) {
     val rumors = state.worldLore?.rumors.orEmpty()
     if (rumors.isEmpty()) {
-        EmptyState("\uD83D\uDDE3\uFE0F", "No rumors yet. Taverns are quiet.")
+        item(key = "rumors_empty") { EmptyState("\uD83D\uDDE3\uFE0F", "No rumors yet. Taverns are quiet.") }
         return
     }
-    LazyColumn(
-        Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 560.dp),
-        verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
-    ) {
-        items(rumors) { r ->
-            RealmsCard(
-                shape = MaterialTheme.shapes.small,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("\uD83D\uDDE3\uFE0F", style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.width(10.dp))
-                    Text(r, style = MaterialTheme.typography.bodySmall)
-                }
+    items(
+        items = rumors,
+        key = { r -> "rumor_${r.hashCode()}" }
+    ) { r ->
+        RealmsCard(
+            shape = MaterialTheme.shapes.small,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("\uD83D\uDDE3\uFE0F", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.width(10.dp))
+                Text(r, style = MaterialTheme.typography.bodySmall)
             }
         }
     }

@@ -1,6 +1,5 @@
 package com.realmsoffate.game.ui.overlays
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -56,7 +55,7 @@ fun TargetPromptDialog(
                 style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 3.sp),
                 color = MaterialTheme.colorScheme.primary
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(RealmsSpacing.xs))
             Text(
                 "Target (leave blank for narrator's pick)",
                 style = MaterialTheme.typography.labelSmall,
@@ -72,10 +71,10 @@ fun TargetPromptDialog(
                 modifier = Modifier.fillMaxWidth()
             )
             if (spec.recentTargets.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(RealmsSpacing.xs))
                 Row(
                     Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)
                 ) {
                     spec.recentTargets.take(8).forEach { name ->
                         AssistChip(
@@ -85,20 +84,18 @@ fun TargetPromptDialog(
                     }
                 }
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(RealmsSpacing.s))
             // Preview
             Surface(
                 color = MaterialTheme.colorScheme.primaryContainer,
-                shape = MaterialTheme.shapes.small,
-                modifier = Modifier.fillMaxWidth().border(
-                    1.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small
-                )
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     "\u201C$composed.\u201D",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(10.dp)
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(RealmsSpacing.m)
                 )
             }
             Spacer(Modifier.height(RealmsSpacing.m))
@@ -106,22 +103,19 @@ fun TargetPromptDialog(
                 if (spec.selfCastable) {
                     OutlinedButton(
                         onClick = { onSelf() },
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.small
+                        modifier = Modifier.weight(1f)
                     ) { Text("On self", fontWeight = FontWeight.Bold) }
                 }
                 OutlinedButton(
                     onClick = onDismiss,
-                    modifier = Modifier.weight(1f),
-                    shape = MaterialTheme.shapes.small
+                    modifier = Modifier.weight(1f)
                 ) { Text("Cancel") }
                 Button(
                     onClick = { onSubmit(composed) },
-                    modifier = Modifier.weight(1f).height(44.dp),
-                    shape = MaterialTheme.shapes.small
+                    modifier = Modifier.weight(1f)
                 ) { Text("Submit", fontWeight = FontWeight.Bold) }
             }
-            Spacer(Modifier.navigationBarsPadding().height(14.dp))
+            Spacer(Modifier.navigationBarsPadding().height(RealmsSpacing.m))
         }
     }
 }

@@ -26,24 +26,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.ui.components.EmptyState
-import com.realmsoffate.game.ui.components.PanelTab
 import com.realmsoffate.game.ui.components.PanelSheet
-import com.realmsoffate.game.ui.components.PanelTabRow
 import com.realmsoffate.game.ui.components.RealmsCard
 import com.realmsoffate.game.ui.components.SectionHeader
 import com.realmsoffate.game.ui.theme.RealmsSpacing
 
 // ----------------- JOURNAL -----------------
 
-private enum class JournalFilter(val label: String, val icon: String, val match: (String) -> Boolean) {
-    All("All", "∗", { true }),
-    Friendly("Friendly", "🟢", { r ->
+private enum class JournalFilter(val label: String, val match: (String) -> Boolean) {
+    All("All", { true }),
+    Friendly("Friendly", { r ->
         listOf("friendly", "ally", "love", "grateful", "allied", "romantic", "warm", "helpful", "loyal", "trusted").any { r.contains(it) }
     }),
-    Hostile("Hostile", "🔴", { r ->
+    Hostile("Hostile", { r ->
         listOf("hostile", "enemy", "rival", "feared", "angry", "aggressive", "hateful", "suspicious", "distrustful").any { r.contains(it) }
     }),
-    Neutral("Neutral", "🟣", { r ->
+    Neutral("Neutral", { r ->
         val friendly = listOf("friendly", "ally", "love", "grateful", "allied", "romantic", "warm", "helpful", "loyal", "trusted")
         val hostile = listOf("hostile", "enemy", "rival", "feared", "angry", "aggressive", "hateful", "suspicious", "distrustful")
         !friendly.any { r.contains(it) } && !hostile.any { r.contains(it) }
@@ -60,22 +58,26 @@ internal fun JournalContent(state: GameUiState, focusNpc: String? = null) {
         return
     }
 
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxSize()
+    LazyColumn(
+        Modifier.padding(horizontal = RealmsSpacing.l).fillMaxSize(),
+        contentPadding = PaddingValues(top = RealmsSpacing.s, bottom = RealmsSpacing.m),
+        verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
     ) {
-        LazyColumn(
-            Modifier.padding(horizontal = RealmsSpacing.l).fillMaxSize(),
-            contentPadding = PaddingValues(top = RealmsSpacing.s, bottom = RealmsSpacing.m),
-            verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
-        ) {
             item(key = "filters") {
-                PanelTabRow(
-                    tabs = JournalFilter.entries.map { PanelTab(it.label, it.icon) },
-                    selectedIndex = JournalFilter.entries.indexOf(filter),
-                    onSelect = { filter = JournalFilter.entries[it] },
-                    horizontalPadding = 0.dp
-                )
+                Row(
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState())
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)
+                ) {
+                    JournalFilter.entries.forEach { opt ->
+                        FilterChip(
+                            selected = opt == filter,
+                            onClick = { filter = opt },
+                            label = { Text(opt.label, style = MaterialTheme.typography.labelMedium) }
+                        )
+                    }
+                }
             }
             if (filtered.isEmpty()) {
                 item(key = "empty") {
@@ -87,15 +89,14 @@ internal fun JournalContent(state: GameUiState, focusNpc: String? = null) {
                     )
                 }
             }
-            items(filtered, key = { it.name }) { n ->
-                NpcJournalRow(
-                    npc = n,
-                    expanded = expandedNpcName == n.name,
-                    onToggle = {
-                        expandedNpcName = if (expandedNpcName == n.name) null else n.name
-                    }
-                )
-            }
+        items(filtered, key = { it.name }) { n ->
+            NpcJournalRow(
+                npc = n,
+                expanded = expandedNpcName == n.name,
+                onToggle = {
+                    expandedNpcName = if (expandedNpcName == n.name) null else n.name
+                }
+            )
         }
     }
 }

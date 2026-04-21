@@ -154,6 +154,8 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.core:core-splashscreen:1.0.1")
+    // Bundles Noto Color Emoji so emoji render the same on every device.
+    implementation("androidx.emoji2:emoji2-bundled:1.5.0")
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")

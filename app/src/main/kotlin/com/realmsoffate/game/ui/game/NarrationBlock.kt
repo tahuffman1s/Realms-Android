@@ -50,7 +50,7 @@ internal fun NarrationBlock(
     onOpenJournal: (name: String) -> Unit = {},
     onOpenStats: () -> Unit = {}
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)) {
         if (structuredSegments.isNotEmpty()) {
             // ---- Structured rendering: document-order segments ----
             structuredSegments.forEach { seg ->
@@ -198,7 +198,7 @@ internal fun NarratorProseBubble(
         Surface(
             onClick = { expanded = !expanded },
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.medium,
             border = BorderStroke(1.dp, borderColor),
             modifier = Modifier.fillMaxWidth()
         ) {

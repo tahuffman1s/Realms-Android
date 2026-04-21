@@ -253,11 +253,11 @@ fun RestOverlay(kind: String, onDismiss: () -> Unit) {
                 modifier = Modifier.widthIn(min = 300.dp)
             ) {
                 Column(
-                    Modifier.padding(horizontal = RealmsSpacing.xxl, vertical = 22.dp),
+                    Modifier.padding(horizontal = RealmsSpacing.xxl, vertical = RealmsSpacing.xl),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     if (long) SunriseIllustration() else CampfireIllustration()
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(RealmsSpacing.m))
                     Text(
                         if (long) "LONG REST" else "SHORT REST",
                         style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 4.sp),
@@ -270,7 +270,7 @@ fun RestOverlay(kind: String, onDismiss: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(RealmsSpacing.m))
                     TextButton(onClick = onDismiss) { Text("Dismiss") }
                 }
             }
@@ -489,7 +489,7 @@ fun FeatSelectionOverlay(
                             shape = MaterialTheme.shapes.medium,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Row(Modifier.padding(RealmsSpacing.m), verticalAlignment = Alignment.CenterVertically) {
                                 Text(feat.icon, fontSize = 28.sp)
                                 Spacer(Modifier.width(RealmsSpacing.m))
                                 Column(Modifier.weight(1f)) {

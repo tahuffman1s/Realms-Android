@@ -310,7 +310,7 @@ class GameViewModel(
             appendLine()
             appendLine("── FACTIONS ──")
             s.worldLore?.factions?.forEach { f ->
-                appendLine("  ${f.name} (${f.type}) status=${f.status} ruler=${f.ruler} currency=${f.currency}")
+                appendLine("  ${f.name} (${f.type}) status=${f.status} ruler=${f.ruler}")
             }
 
             appendLine()
@@ -423,7 +423,6 @@ class GameViewModel(
     fun sellItem(merchant: String, item: Item, price: Int) = merchantHandler.sellItem(merchant, item, price)
     fun buybackItem(merchant: String, item: Item, price: Int) = merchantHandler.buybackItem(merchant, item, price)
     fun rollDeathSave() = restHandler.rollDeathSave()
-    fun exchange(factionName: String, direction: String, goldAmount: Int) = merchantHandler.exchange(factionName, direction, goldAmount)
     fun haggle(chaMod: Int): Float = merchantHandler.haggle(chaMod)
 
     private val saveService = SaveService(
@@ -935,7 +934,7 @@ class GameViewModel(
             append("\nMORALITY: ${s.morality}   ")
             append("FACTION REP: ${s.factionRep.entries.joinToString { "${it.key}:${it.value}" }.ifBlank { "none" }}")
             loc?.let { append("\nLOCATION: ${it.name} (${it.type})") }
-            localFaction?.let { append("\nLOCAL FACTION: ${it.name} (${it.type}); currency: ${it.currency}") }
+            localFaction?.let { append("\nLOCAL FACTION: ${it.name} (${it.type})") }
             append("\nNEARBY: ${nearby.joinToString(", ") { "${it.first.name} (${it.second}lg)" }}")
             append("\nTURN: ${s.turns + 1}")
             append(partyCtx); append(questCtx); append(npcCtx); append(knownNpcsCtx); append(eventCtx)
