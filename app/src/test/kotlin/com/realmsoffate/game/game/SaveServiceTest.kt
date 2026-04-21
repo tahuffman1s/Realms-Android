@@ -52,4 +52,45 @@ class SaveServiceTest {
         val epoch = filename.removeSuffix(".txt").substringAfterLast("_").toLong()
         assertTrue(epoch in before..after)
     }
+
+    @Test
+    fun `exportCurrentJson includes sceneSummaries`() {
+        val summary = com.realmsoffate.game.data.SceneSummary(
+            turnStart = 1, turnEnd = 5,
+            sceneName = "ashford-tavern", locationName = "Ashford",
+            summary = "Met Mira the rogue.",
+            keyFacts = listOf("Owes 5g")
+        )
+        val state = baseState(character = character(name = "Roundtrip"))
+            .copy(sceneSummaries = listOf(summary))
+        val vm = viewModelWithState(state)
+        val json = vm.exportCurrentJson()
+        assertNotNull(json)
+        assertTrue(json!!.contains("Met Mira the rogue"))
+        assertTrue(json.contains("Owes 5g"))
+        assertTrue(json.contains("ashford-tavern"))
+    }
+
+    @Test
+    fun `sceneSummaries survive SaveData JSON roundtrip`() {
+        val summaries = listOf(
+            com.realmsoffate.game.data.SceneSummary(
+                turnStart = 1, turnEnd = 4,
+                sceneName = "s1", locationName = "L1",
+                summary = "First scene", keyFacts = emptyList()
+            ),
+            com.realmsoffate.game.data.SceneSummary(
+                turnStart = 5, turnEnd = 9,
+                sceneName = "s2", locationName = "L2",
+                summary = "Second scene", keyFacts = listOf("fact")
+            )
+        )
+        val state = baseState(character = character(name = "Roundtrip2"))
+            .copy(sceneSummaries = summaries)
+        val vm = viewModelWithState(state)
+        val json = vm.exportCurrentJson()!!
+        val parsed = com.realmsoffate.game.data.SaveStore.fromJson(json)
+        assertNotNull(parsed)
+        assertEquals(summaries, parsed!!.sceneSummaries)
+    }
 }
