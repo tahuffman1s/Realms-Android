@@ -8,10 +8,14 @@ import com.realmsoffate.game.data.LogNpc
 import com.realmsoffate.game.data.LoreNpc
 import com.realmsoffate.game.data.MapLocation
 import com.realmsoffate.game.data.Quest
+import com.realmsoffate.game.data.ArcSummary
+import com.realmsoffate.game.data.SceneSummary
+import com.realmsoffate.game.data.db.entities.ArcSummaryEntity
 import com.realmsoffate.game.data.db.entities.FactionEntity
 import com.realmsoffate.game.data.db.entities.LocationEntity
 import com.realmsoffate.game.data.db.entities.NpcEntity
 import com.realmsoffate.game.data.db.entities.QuestEntity
+import com.realmsoffate.game.data.db.entities.SceneSummaryEntity
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -179,5 +183,45 @@ object Mappers {
     fun toMapLocation(e: LocationEntity) = MapLocation(
         id = e.id, name = e.name, type = e.type, icon = e.icon,
         x = e.x, y = e.y, discovered = e.discovered != 0
+    )
+
+    // --- Scene / Arc summary ----------------------------------------------
+    fun toEntity(s: SceneSummary) = SceneSummaryEntity(
+        id = s.id,
+        turnStart = s.turnStart,
+        turnEnd = s.turnEnd,
+        sceneName = s.sceneName,
+        location = s.locationName,
+        summary = s.summary,
+        keyFactsJson = json.encodeToString(stringList, s.keyFacts),
+        createdAt = s.createdAt,
+        arcId = null
+    )
+
+    fun toSceneSummary(e: SceneSummaryEntity) = SceneSummary(
+        turnStart = e.turnStart,
+        turnEnd = e.turnEnd,
+        sceneName = e.sceneName,
+        locationName = e.location,
+        summary = e.summary,
+        keyFacts = runCatching { json.decodeFromString(stringList, e.keyFactsJson) }.getOrDefault(emptyList()),
+        id = e.id,
+        createdAt = e.createdAt
+    )
+
+    fun toEntity(a: ArcSummary) = ArcSummaryEntity(
+        id = a.id,
+        turnStart = a.turnStart,
+        turnEnd = a.turnEnd,
+        summary = a.summary,
+        createdAt = a.createdAt
+    )
+
+    fun toArcSummary(e: ArcSummaryEntity) = ArcSummary(
+        id = e.id,
+        turnStart = e.turnStart,
+        turnEnd = e.turnEnd,
+        summary = e.summary,
+        createdAt = e.createdAt
     )
 }

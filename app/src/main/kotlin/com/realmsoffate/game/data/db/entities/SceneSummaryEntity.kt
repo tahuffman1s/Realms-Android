@@ -13,8 +13,10 @@ data class SceneSummaryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     @ColumnInfo(name = "turn_start") val turnStart: Int,
     @ColumnInfo(name = "turn_end") val turnEnd: Int,
+    @ColumnInfo(name = "scene_name") val sceneName: String = "",
     val location: String = "",
     val summary: String,
+    @ColumnInfo(name = "key_facts_json") val keyFactsJson: String = "[]",
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "arc_id") val arcId: Long? = null
 )
