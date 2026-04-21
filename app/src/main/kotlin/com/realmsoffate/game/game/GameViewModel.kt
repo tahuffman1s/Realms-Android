@@ -492,7 +492,8 @@ class GameViewModel(
             _targetPrompt.value = null
             _showInitiative.value = false
             _lastDeath.value = null
-        }
+        },
+        arcSummaryProvider = { repo.allArcSummaries() }
     )
     val saveSlots: StateFlow<List<SaveSlotMeta>> = saveService.saveSlotsMeta
     val graveyard: StateFlow<List<GraveyardEntry>> = saveService.graveyardEntries

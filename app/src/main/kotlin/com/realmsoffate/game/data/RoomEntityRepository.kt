@@ -246,6 +246,9 @@ class RoomEntityRepository(private val db: RealmsDb) : EntityRepository {
             for (s in save.sceneSummaries) {
                 db.sceneSummaryDao().insert(Mappers.toEntity(s).copy(id = 0))
             }
+            for (a in save.arcSummaries) {
+                db.arcSummaryDao().insert(Mappers.toEntity(a).copy(id = 0))
+            }
         }
     }
 

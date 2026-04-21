@@ -56,10 +56,35 @@ data class TimelineEntry(
     val text: String
 )
 
+/** Manifest persisted as `manifest.json` inside each `.rofsave` zip. */
+@Serializable
+data class SaveManifest(
+    val version: Int = 3,
+    val slot: String,
+    val characterName: String,
+    val race: String,
+    val cls: String,
+    val level: Int,
+    val turns: Int,
+    val worldName: String,
+    val scene: String,
+    val savedAt: String
+) {
+    fun toMeta(): SaveSlotMeta = SaveSlotMeta(
+        slot = slot, characterName = characterName, race = race, cls = cls,
+        level = level, turns = turns, worldName = worldName, scene = scene, savedAt = savedAt
+    )
+}
+
 /**
- * JSON-file save store. Writes live in app-private files/saves/ and graveyard/.
- * Active save is always the "autosave" slot + character-named slot; death moves
- * a slot into the graveyard directory (capped at 20 entries).
+ * Save-slot store.
+ *
+ * Active format (v3) is a `.rofsave` zip with `manifest.json` + `save.json`.
+ * Legacy `.json` files (v2) still load; the next write for that slot upgrades
+ * to a `.rofsave` and removes the old JSON.
+ *
+ * Graveyard tombstones continue to live as standalone `.json` files — they
+ * are small and read-only after burial, so no zip wrapping is needed.
  */
 object SaveStore {
     private var appContext: Context? = null
@@ -89,7 +114,9 @@ object SaveStore {
         return dir
     }
 
-    private fun slotFile(slot: String) = File(saveDir(), "slot_${slot}.json")
+    private fun rofFile(slot: String) = File(saveDir(), "slot_${slot}.rofsave")
+    private fun legacyJsonFile(slot: String) = File(saveDir(), "slot_${slot}.json")
+    private fun legacyBackup(slot: String) = File(saveDir(), "slot_${slot}.v2.bak.json")
     private fun graveFile(name: String) = File(graveDir(), "grave_${name}.json")
 
     /** Sanitises a character name for use as a slot key. */
@@ -101,50 +128,151 @@ object SaveStore {
     // ---------------- SAVE ----------------
 
     suspend fun write(slot: String, data: SaveData): Unit = withContext(Dispatchers.IO) {
-        slotFile(slot).writeText(json.encodeToString(data))
+        val rof = rofFile(slot)
+        val manifest = buildManifest(slot, data)
+        val manifestJson = json.encodeToString(manifest)
+        val saveJson = json.encodeToString(data)
+
+        // Write to a .tmp sibling first so an interrupted write can't corrupt the slot.
+        val tmp = File(rof.parentFile, rof.name + ".tmp")
+        SaveRofZip.writeMixed(
+            out = tmp,
+            textEntries = mapOf(
+                SaveRofZip.MANIFEST to manifestJson,
+                SaveRofZip.SAVE_JSON to saveJson
+            )
+        )
+        if (rof.exists()) rof.delete()
+        if (!tmp.renameTo(rof)) {
+            tmp.copyTo(rof, overwrite = true)
+            tmp.delete()
+        }
+        // Kill any stale v2 JSON so we never double-list this slot.
+        legacyJsonFile(slot).delete()
     }
 
     suspend fun read(slot: String): SaveData? = withContext(Dispatchers.IO) {
-        val f = slotFile(slot)
-        if (!f.exists()) return@withContext null
-        runCatching { json.decodeFromString<SaveData>(f.readText()) }.getOrNull()?.let { migrateIds(it) }
+        val rof = rofFile(slot)
+        if (rof.exists()) {
+            val body = SaveRofZip.readTextEntry(rof, SaveRofZip.SAVE_JSON)
+                ?: return@withContext null
+            return@withContext runCatching {
+                json.decodeFromString<SaveData>(body)
+            }.getOrNull()?.let { migrateIds(it) }
+        }
+        // Legacy v2 fallback. The next write will upgrade this slot to .rofsave.
+        val legacy = legacyJsonFile(slot)
+        if (legacy.exists()) {
+            return@withContext runCatching {
+                json.decodeFromString<SaveData>(legacy.readText())
+            }.getOrNull()?.let { migrateIds(it) }
+        }
+        null
     }
 
-    /** Remove a save slot (also clears autosave if the slot names match). */
+    /**
+     * Remove a save slot and every variant (active .rofsave, legacy .json,
+     * migration backup, plus an autosave sibling if it belongs to the same
+     * character). This fixes the "save reappears after delete" bug where each
+     * save wrote both a character-keyed slot AND the autosave slot; deleting
+     * only one left the other orphaned.
+     */
     suspend fun delete(slot: String): Unit = withContext(Dispatchers.IO) {
-        slotFile(slot).delete()
+        val characterName = peekCharacterName(slot)
+        deleteAllFor(slot)
+        if (characterName.isNullOrBlank()) return@withContext
+        // Sweep the sibling slot that shares this character.
+        val sibling = if (slot == AUTOSAVE_KEY) slotKeyFor(characterName) else AUTOSAVE_KEY
+        if (sibling == slot) return@withContext
+        if (peekCharacterName(sibling) == characterName) deleteAllFor(sibling)
+    }
+
+    private fun deleteAllFor(slot: String) {
+        rofFile(slot).delete()
+        legacyJsonFile(slot).delete()
+        legacyBackup(slot).delete()
+    }
+
+    /**
+     * Cheap read of the character name for a slot without deserialising
+     * full [SaveData]. Uses manifest.json for v3; reads the JSON only for v2.
+     */
+    private fun peekCharacterName(slot: String): String? {
+        val rof = rofFile(slot)
+        if (rof.exists()) {
+            val manifestText = SaveRofZip.readTextEntry(rof, SaveRofZip.MANIFEST)
+            if (!manifestText.isNullOrBlank()) {
+                val m = runCatching { json.decodeFromString<SaveManifest>(manifestText) }.getOrNull()
+                if (m != null) return m.characterName
+            }
+            // Fall through to save.json if manifest is missing (pre-v3 archive).
+            val body = SaveRofZip.readTextEntry(rof, SaveRofZip.SAVE_JSON) ?: return null
+            return runCatching { json.decodeFromString<SaveData>(body).character.name }.getOrNull()
+        }
+        val legacy = legacyJsonFile(slot)
+        if (legacy.exists()) {
+            return runCatching { json.decodeFromString<SaveData>(legacy.readText()).character.name }.getOrNull()
+        }
+        return null
     }
 
     /** Returns slot metadata for the title-screen Load menu, newest first. */
     suspend fun listSlots(): List<SaveSlotMeta> = withContext(Dispatchers.IO) {
-        val files = saveDir().listFiles()?.filter {
-            it.isFile && it.name.startsWith("slot_") && it.name.endsWith(".json")
-        }.orEmpty()
-        files.mapNotNull { f ->
-            val slot = f.name.removePrefix("slot_").removeSuffix(".json")
-            if (slot.isBlank()) return@mapNotNull null
-            val data = runCatching { json.decodeFromString<SaveData>(f.readText()) }.getOrNull()
-                ?: return@mapNotNull null
-            SaveSlotMeta(
-                slot = slot,
-                characterName = data.character.name,
-                race = data.character.race,
-                cls = data.character.cls,
-                level = data.character.level,
-                turns = data.turns,
-                worldName = data.worldMap.locations.firstOrNull()?.name.orEmpty(),
-                scene = data.scene,
-                savedAt = data.savedAt
-            )
-        }.sortedByDescending { it.savedAt }
+        val files = saveDir().listFiles()?.filter { it.isFile && it.name.startsWith("slot_") }.orEmpty()
+        val bySlot = mutableMapOf<String, SaveSlotMeta>()
+        val v2Slots = mutableMapOf<String, SaveSlotMeta>()
+        for (f in files) {
+            when {
+                f.name.endsWith(".rofsave") -> {
+                    val slot = f.name.removePrefix("slot_").removeSuffix(".rofsave")
+                    if (slot.isBlank()) continue
+                    val manifestText = SaveRofZip.readTextEntry(f, SaveRofZip.MANIFEST) ?: continue
+                    val manifest = runCatching { json.decodeFromString<SaveManifest>(manifestText) }.getOrNull()
+                        ?: continue
+                    bySlot[slot] = manifest.toMeta()
+                }
+                f.name.endsWith(".json") && !f.name.endsWith(".v2.bak.json") -> {
+                    val slot = f.name.removePrefix("slot_").removeSuffix(".json")
+                    if (slot.isBlank()) continue
+                    val data = runCatching { json.decodeFromString<SaveData>(f.readText()) }.getOrNull()
+                        ?: continue
+                    v2Slots[slot] = SaveSlotMeta(
+                        slot = slot,
+                        characterName = data.character.name,
+                        race = data.character.race,
+                        cls = data.character.cls,
+                        level = data.character.level,
+                        turns = data.turns,
+                        worldName = data.worldMap.locations.firstOrNull()?.name.orEmpty(),
+                        scene = data.scene,
+                        savedAt = data.savedAt
+                    )
+                }
+            }
+        }
+        // v3 wins over v2 for the same slot key.
+        for ((slot, meta) in v2Slots) bySlot.putIfAbsent(slot, meta)
+        bySlot.values.sortedByDescending { it.savedAt }
     }
+
+    private fun buildManifest(slot: String, data: SaveData): SaveManifest = SaveManifest(
+        version = 3,
+        slot = slot,
+        characterName = data.character.name,
+        race = data.character.race,
+        cls = data.character.cls,
+        level = data.character.level,
+        turns = data.turns,
+        worldName = data.worldMap.locations.firstOrNull()?.name.orEmpty(),
+        scene = data.scene,
+        savedAt = data.savedAt
+    )
 
     // ---------------- GRAVEYARD ----------------
 
     suspend fun bury(entry: GraveyardEntry): Unit = withContext(Dispatchers.IO) {
         val name = slotKeyFor(entry.characterName) + "_" + System.currentTimeMillis()
         graveFile(name).writeText(json.encodeToString(entry))
-        // Cap graveyard size
         val graves = graveDir().listFiles()?.sortedByDescending { it.lastModified() }.orEmpty()
         graves.drop(MAX_GRAVES).forEach { it.delete() }
     }
@@ -200,7 +328,6 @@ object SaveStore {
 
         // --- 2. LoreNpcs (separate namespace) ---
         val loreNpcIds = mutableSetOf<String>()
-        // Map from lowercase name -> assigned ID, for log matching below
         val loreNpcNameToId = mutableMapOf<String, String>()
         val migratedLoreNpcs = lore?.npcs?.map { npc ->
             if (npc.id.isNotBlank()) {
@@ -222,7 +349,6 @@ object SaveStore {
                 logNpcIds += logNpc.id
                 logNpc
             } else {
-                // Reuse the lore NPC id if names match (case-insensitive)
                 val existingLoreId = loreNpcNameToId[logNpc.name.lowercase()]
                 val newId = existingLoreId
                     ?: IdGen.forName(logNpc.name, loreNpcIds + logNpcIds)
