@@ -38,6 +38,35 @@ class AiRepository(
 
     /** Cache-hit token count from the most recent DeepSeek response. Not thread-safe; called serially. */
     var lastCacheHit: Int = 0
+
+    companion object {
+        /** Default history budget in tokens — leaves headroom for system + scene summaries + per-turn context. */
+        const val HISTORY_TOKEN_BUDGET: Int = 8000
+
+        /**
+         * Keep the largest suffix of [history] whose summed token estimate ≤ [budget].
+         * Always preserves the final message even if it alone exceeds the budget
+         * (a dropped final user turn would break the turn contract).
+         */
+        fun windowByTokenBudget(history: List<ChatMsg>, budget: Int): List<ChatMsg> {
+            if (history.isEmpty()) return emptyList()
+            val kept = ArrayDeque<ChatMsg>()
+            var used = 0
+            for (m in history.asReversed()) {
+                val cost = com.realmsoffate.game.util.TokenEstimate.ofMessage(m)
+                if (kept.isEmpty()) {
+                    // Always keep the final message.
+                    kept.addFirst(m)
+                    used += cost
+                    continue
+                }
+                if (used + cost > budget) break
+                kept.addFirst(m)
+                used += cost
+            }
+            return kept.toList()
+        }
+    }
     /** Total prompt token count from the most recent DeepSeek response. Not thread-safe; called serially. */
     var lastPromptTokens: Int = 0
 
@@ -51,7 +80,7 @@ class AiRepository(
     }
 
     private fun callDeepSeek(apiKey: String, sys: String, history: List<ChatMsg>): String {
-        val trimmed = history.takeLast(40).toMutableList()
+        val trimmed = windowByTokenBudget(history, HISTORY_TOKEN_BUDGET).toMutableList()
         if (trimmed.isNotEmpty() && trimmed.last().role == "user") {
             val last = trimmed.last()
             trimmed[trimmed.size - 1] = last.copy(content = last.content + Prompts.PER_TURN_REMINDER)
