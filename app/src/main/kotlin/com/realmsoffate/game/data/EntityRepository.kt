@@ -25,4 +25,8 @@ interface EntityRepository {
     suspend fun countUnrolledScenes(): Int
     suspend fun allArcSummaries(): List<ArcSummary>
     suspend fun rollupScenes(sceneIds: List<Long>, arc: ArcSummary)
+
+    // Migration bridge
+    suspend fun seedFromSaveData(save: SaveData)
+    suspend fun exportToSaveData(base: SaveData): SaveData
 }

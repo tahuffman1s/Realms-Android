@@ -5,6 +5,7 @@ import com.realmsoffate.game.data.db.Mappers
 import com.realmsoffate.game.data.db.RealmsDb
 import com.realmsoffate.game.data.db.entities.NpcEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
@@ -217,5 +218,57 @@ class RoomEntityRepository(private val db: RealmsDb) : EntityRepository {
             val arcId = db.arcSummaryDao().insert(Mappers.toEntity(arc))
             db.sceneSummaryDao().assignArcId(sceneIds, arcId)
         }
+    }
+
+    override suspend fun seedFromSaveData(save: SaveData) {
+        db.withTransaction {
+            clearInline()
+
+            val mergedNpcs = mutableMapOf<String, com.realmsoffate.game.data.db.entities.NpcEntity>()
+            save.worldLore?.npcs?.forEach { lore ->
+                val entity = Mappers.toEntity(lore)
+                mergedNpcs[IdGen.nameKey(lore.name)] = entity
+            }
+            save.npcLog.forEach { log ->
+                mergedNpcs[IdGen.nameKey(log.name)] = Mappers.toEntity(log)
+            }
+            if (mergedNpcs.isNotEmpty()) db.npcDao().upsert(mergedNpcs.values.toList())
+
+            save.worldLore?.factions?.takeIf { it.isNotEmpty() }?.let { fs ->
+                db.factionDao().upsert(fs.map(Mappers::toEntity))
+            }
+            if (save.worldMap.locations.isNotEmpty()) {
+                db.locationDao().upsert(save.worldMap.locations.map(Mappers::toEntity))
+            }
+            if (save.quests.isNotEmpty()) {
+                db.questDao().upsert(save.quests.map(Mappers::toEntity))
+            }
+            for (s in save.sceneSummaries) {
+                db.sceneSummaryDao().insert(Mappers.toEntity(s).copy(id = 0))
+            }
+        }
+    }
+
+    private suspend fun clearInline() {
+        db.npcDao().clear()
+        db.questDao().clear()
+        db.factionDao().clear()
+        db.locationDao().clear()
+        db.sceneSummaryDao().clear()
+        db.arcSummaryDao().clear()
+    }
+
+    override suspend fun exportToSaveData(base: SaveData): SaveData {
+        val snap = snapshotForReducers()
+        val lore = db.npcDao().observeLore().first().map(Mappers::toLoreNpc)
+        val scenes = db.sceneSummaryDao().getAll().map(Mappers::toSceneSummary)
+        val mergedMap = base.worldMap.copy(locations = snap.locations.toMutableList())
+        return base.copy(
+            npcLog = snap.npcs,
+            quests = snap.quests,
+            worldLore = base.worldLore?.copy(factions = snap.factions, npcs = lore),
+            worldMap = mergedMap,
+            sceneSummaries = scenes
+        )
     }
 }
