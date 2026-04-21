@@ -46,6 +46,8 @@ import com.realmsoffate.game.game.reducers.NpcLogReducer
 import com.realmsoffate.game.game.reducers.QuestReducer
 import com.realmsoffate.game.game.reducers.PartyReducer
 import com.realmsoffate.game.game.reducers.WorldReducer
+import com.realmsoffate.game.game.reducers.SceneBoundaryDetector
+import kotlinx.coroutines.flow.update
 
 enum class Screen { ApiSetup, Title, CharacterCreation, Game, Death }
 
@@ -199,6 +201,8 @@ class GameViewModel(
     private val _restOverlay = MutableStateFlow<String?>(null)
     private val _activeShop = MutableStateFlow<String?>(null)
     private val _buybackStocks = MutableStateFlow<Map<String, List<com.realmsoffate.game.ui.overlays.BuybackEntry>>>(emptyMap())
+
+    private val sceneSummarizer = SceneSummarizer(ai)
 
     private val progressionHandler = ProgressionHandler(_ui, _pendingLevelUp, _pendingStatPoints, _pendingFeat)
     val pendingLevelUpFlow: StateFlow<Int?> = progressionHandler.pendingLevelUpFlow
@@ -760,6 +764,14 @@ class GameViewModel(
             val prof = if (skill != null && classProficient(char.cls, skill)) char.proficiency else 0
             val total = roll + mod + prof
 
+            val preSnapshot = SceneBoundaryDetector.Snapshot(
+                sceneTag = state.currentScene,
+                locationName = state.worldMap?.locations?.getOrNull(state.currentLoc)?.name ?: "",
+                inCombat = state.combat != null
+            )
+            val turnsBeforeResponse = state.turns
+            val priorSummaryEndTurn = state.sceneSummaries.lastOrNull()?.turnEnd ?: 0
+
             val sessionSystem = sessionSystemFor(state, char)
             val sys = Prompts.SYS + "\n\n" + sessionSystem
             val userPrompt = buildUserPrompt(state, char, action, skill, ability, roll, mod, prof, total, suppressDice = seed)
@@ -837,6 +849,41 @@ class GameViewModel(
                 npcLog = combatResult.npcLog,
                 messages = combatMessages
             )
+
+            val finalState = _ui.value
+            val postSnapshot = SceneBoundaryDetector.Snapshot(
+                sceneTag = finalState.currentScene,
+                locationName = finalState.worldMap?.locations?.getOrNull(finalState.currentLoc)?.name ?: "",
+                inCombat = finalState.combat != null
+            )
+            val boundary = SceneBoundaryDetector.detect(preSnapshot, postSnapshot)
+            if (boundary != null) {
+                val apiKey = _apiKey.value
+                val sceneName = preSnapshot.sceneTag.ifBlank { "default" }
+                val locationName = preSnapshot.locationName
+                // Slice the history that belongs to the completed scene: from after
+                // the previous summary's end turn through this turn. Each turn is
+                // roughly 2 messages (user + assistant), so window by turn count.
+                val turnsCovered = (turnsBeforeResponse - priorSummaryEndTurn).coerceAtLeast(1)
+                val approxMessages = (turnsCovered * 2).coerceAtMost(finalState.history.size)
+                val sceneHistory = finalState.history.takeLast(approxMessages + 2) // +2 = current user+assistant
+                val turnStart = priorSummaryEndTurn + 1
+                val turnEnd = finalState.turns
+                viewModelScope.launch {
+                    val updatedSummaries = sceneSummarizer.summarizeIfPossible(
+                        apiKey = apiKey,
+                        priorSummaries = finalState.sceneSummaries,
+                        scene = sceneName,
+                        location = locationName,
+                        history = sceneHistory,
+                        turnStart = turnStart,
+                        turnEnd = turnEnd
+                    )
+                    if (updatedSummaries !== finalState.sceneSummaries) {
+                        _ui.update { cur -> cur.copy(sceneSummaries = updatedSummaries) }
+                    }
+                }
+            }
 
             // Possibly generate a world event
             maybeRollWorldEvent()
