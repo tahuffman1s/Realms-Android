@@ -956,28 +956,28 @@ class GameViewModel(
         val inv = ch.inventory.filter { it.equipped }.joinToString(", ") { it.name }.ifBlank { "nothing" }
         val invAll = ch.inventory.joinToString(", ") { "${it.name} (x${it.qty})" }
 
-        // Build a compact known-NPC roster for the LLM — stable IDs let it emit
-        // correct ID-first tags without guessing. Include recently dead NPCs (within
-        // 3 turns) so the narrator doesn't forget them; cap at 20 by recency.
-        val currentTurnNum = s.turns + 1
-        val rosterEntries = s.npcLog
-            .filter { npc ->
-                npc.status != "dead" || (currentTurnNum - npc.lastSeenTurn) <= 3
-            }
-            .sortedByDescending { it.lastSeenTurn }
-            .take(20)
-        val knownNpcsCtx = if (rosterEntries.isNotEmpty()) {
+        val currentLocName = s.worldMap?.locations?.getOrNull(s.currentLoc)?.name ?: ""
+        val relevantNpcs = filterRelevantNpcs(
+            all = s.npcLog,
+            currentTurn = s.turns,
+            currentLocation = currentLocName
+        )
+        val knownNpcsCtx = if (relevantNpcs.isNotEmpty()) {
             buildString {
-                append("\nKNOWN NPCS (reference these by id in your tags):")
-                rosterEntries.forEach { npc ->
-                    val racePart = npc.race.ifBlank { null }
-                    val rolePart = npc.role.ifBlank { null }
-                    val desc = listOfNotNull(racePart, rolePart).joinToString(" ")
-                    val statusLabel = npc.status
-                    val idPart = npc.id.ifBlank { "?" }
-                    append("\n  $idPart — ${npc.name}")
-                    if (desc.isNotBlank()) append(" ($desc, $statusLabel)")
-                    else append(" ($statusLabel)")
+                append("\n\nKNOWN NPCs (scene-relevant):")
+                relevantNpcs.forEach { n ->
+                    append("\n• ${n.name}")
+                    if (n.race.isNotBlank()) append(" (${n.race}")
+                    if (n.role.isNotBlank()) append(", ${n.role}")
+                    if (n.race.isNotBlank() || n.role.isNotBlank()) append(")")
+                    append(" — ${n.relationship}")
+                    if (n.status != "alive") append(" [${n.status}]")
+                    if (n.lastLocation.isNotBlank()) append(" @ ${n.lastLocation}")
+                    append(" (T${n.lastSeenTurn})")
+                    if (n.personality.isNotBlank()) append("\n  Personality: ${n.personality.take(120)}")
+                    if (n.relationshipNote.isNotBlank()) append("\n  Note: ${n.relationshipNote.take(120)}")
+                    val recentQuote = n.memorableQuotes.lastOrNull()
+                    if (!recentQuote.isNullOrBlank()) append("\n  Memorable: $recentQuote")
                 }
             }
         } else ""
@@ -1644,4 +1644,19 @@ internal fun renderSceneSummariesBlock(
             if (sm.keyFacts.isNotEmpty()) append(" FACTS: ${sm.keyFacts.joinToString("; ")}")
         }
     }
+}
+
+internal fun filterRelevantNpcs(
+    all: List<com.realmsoffate.game.data.LogNpc>,
+    currentTurn: Int,
+    currentLocation: String,
+    recencyWindow: Int = 10,
+    cap: Int = 30
+): List<com.realmsoffate.game.data.LogNpc> {
+    val recencyFloor = currentTurn - recencyWindow
+    val relevant = all.filter { n ->
+        n.lastSeenTurn >= recencyFloor ||
+            (currentLocation.isNotBlank() && n.lastLocation.equals(currentLocation, ignoreCase = true))
+    }
+    return relevant.sortedByDescending { it.lastSeenTurn }.take(cap)
 }
