@@ -994,6 +994,7 @@ class GameViewModel(
             append(partyCtx); append(questCtx); append(npcCtx); append(knownNpcsCtx); append(eventCtx)
             append("\nEquipped: $inv")
             append("\nInventory: ${invAll.ifBlank { "empty" }}")
+            append(renderSceneSummariesBlock(s.sceneSummaries))
             // Feed recent narration context so the AI doesn't lose the thread
             val recentNarration = s.messages
                 .filterIsInstance<DisplayMessage.Narration>()
@@ -1612,6 +1613,35 @@ class GameViewModel(
             2 -> 300; 3 -> 900; 4 -> 2700; 5 -> 6500; 6 -> 14000; 7 -> 23000
             8 -> 34000; 9 -> 48000; 10 -> 64000; 11 -> 85000; 12 -> 100000
             else -> level * 12000
+        }
+    }
+}
+
+internal fun renderSceneSummariesBlock(
+    summaries: List<com.realmsoffate.game.data.SceneSummary>,
+    tokenBudget: Int = 2000
+): String {
+    if (summaries.isEmpty()) return ""
+    val kept = ArrayDeque<com.realmsoffate.game.data.SceneSummary>()
+    var used = 0
+    for (sm in summaries.asReversed()) {
+        val block = buildString {
+            append("• [T${sm.turnStart}-${sm.turnEnd} @ ${sm.locationName}] ")
+            append(sm.summary)
+            if (sm.keyFacts.isNotEmpty()) append(" FACTS: ${sm.keyFacts.joinToString("; ")}")
+        }
+        val cost = com.realmsoffate.game.util.TokenEstimate.ofText(block)
+        if (used + cost > tokenBudget && kept.isNotEmpty()) break
+        kept.addFirst(sm)
+        used += cost
+    }
+    if (kept.isEmpty()) return ""
+    return buildString {
+        append("\n\nSTORY SO FAR (earlier scenes compressed):")
+        kept.forEach { sm ->
+            append("\n• [T${sm.turnStart}-${sm.turnEnd} @ ${sm.locationName}] ")
+            append(sm.summary)
+            if (sm.keyFacts.isNotEmpty()) append(" FACTS: ${sm.keyFacts.joinToString("; ")}")
         }
     }
 }
