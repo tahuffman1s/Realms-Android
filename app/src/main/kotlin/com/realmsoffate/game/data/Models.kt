@@ -322,7 +322,7 @@ data class DebugTurn(
 
 @Serializable
 data class SaveData(
-    val version: Int = 2,
+    val version: Int = 3,
     val character: Character,
     val morality: Int,
     val factionRep: Map<String, Int>,
@@ -360,7 +360,9 @@ data class SaveData(
     val debugLog: List<DebugTurn> = emptyList(),
     val availableMerchants: List<String> = emptyList(),
     /** Scene summaries persisted for reload. Empty on legacy saves; rebuilt forward from next scene boundary. */
-    val sceneSummaries: List<SceneSummary> = emptyList()
+    val sceneSummaries: List<SceneSummary> = emptyList(),
+    /** Arc summaries — scene-rollup records from [ArcSummarizer]. Phase 2 addition. */
+    val arcSummaries: List<ArcSummary> = emptyList()
 )
 
 /**
