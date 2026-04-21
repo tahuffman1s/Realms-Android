@@ -189,10 +189,10 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // Room
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
-    testImplementation("androidx.room:room-testing:2.6.1")
+    implementation("androidx.room:room-runtime:2.7.0-alpha12")
+    implementation("androidx.room:room-ktx:2.7.0-alpha12")
+    ksp("androidx.room:room-compiler:2.7.0-alpha12")
+    testImplementation("androidx.room:room-testing:2.7.0-alpha12")
 
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")
