@@ -573,6 +573,24 @@ Now here are the full narrator instructions:
 
 """.trimIndent()
 
+    /**
+     * System prompt for the scene-summarizer utility call. Expected output is
+     * a JSON object: {"summary": "...", "keyFacts": ["...", "..."]}. We lean
+     * on structured output because DeepSeek tends to add prose intros otherwise.
+     *
+     * The model sees the raw ChatMsg history for the scene and the scene/location
+     * name; it does NOT see full character state — that would blow token budget
+     * and isn't needed for narrative compression.
+     */
+    const val SCENE_SUMMARY_SYS: String = """You are the historian for an ongoing tabletop RPG session. You receive the dialogue and narration for ONE completed scene, plus the scene name and location. Your job is to compress that scene into:
+  - A "summary": a single paragraph, 3-6 sentences, ~150 tokens. Capture: who was present, what was said/done, how it ended, any promises or threats made. Name NPCs explicitly. Write in past tense.
+  - "keyFacts": 0-6 bullet strings capturing facts that MUST be preserved (e.g. "Mira now owes the player 5 gold", "The tavern burned down", "Garrick swore revenge on Lord Corwin"). Skip flavor. Only facts that could change future turns.
+
+Return ONLY a JSON object of the form:
+{"summary":"...","keyFacts":["...","..."]}
+
+No markdown fences. No prose outside the JSON. No additional keys."""
+
     val PER_TURN_REMINDER: String =
         "[TURN REMINDER — READ EVERY TIME]\n" +
         "FIRST PARAGRAPH: Directly address the player's action. Do NOT start with unrelated scene-setting.\n" +
