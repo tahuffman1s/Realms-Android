@@ -14,7 +14,6 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -88,6 +87,102 @@ internal fun formatSignedRoll(n: Int) = if (n >= 0) "+$n" else n.toString()
 // COMPOSABLES
 // ============================================================
 
+/** Avatar diameter — Material 3 list-item leading-icon size. */
+private val BubbleAvatarSize = 36.dp
+
+/**
+ * Shared bubble frame used by every chat message type. Guarantees consistent
+ * avatar size, spacing token usage, tail-corner treatment, and label tracking
+ * across PlayerBubble / NpcDialogueBubble / NarratorProseBubble.
+ */
+@Composable
+internal fun BubbleFrame(
+    avatarInitial: String?,
+    avatarAccent: Color,
+    label: String?,
+    accent: Color,
+    bgColor: Color,
+    avatarOnRight: Boolean,
+    tailOnTop: Boolean,
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    contentAlign: TextAlign? = null,
+    content: @Composable () -> Unit
+) {
+    // Tail corner: use extraSmall radius on the side closest to the avatar so
+    // the shape reads as attached. Everything else uses shapes.medium.
+    val mediumRadius = 14.dp
+    val tailRadius = 4.dp
+    val shape = when {
+        avatarOnRight && tailOnTop ->
+            RoundedCornerShape(mediumRadius, tailRadius, mediumRadius, mediumRadius)
+        avatarOnRight ->
+            RoundedCornerShape(mediumRadius, mediumRadius, tailRadius, mediumRadius)
+        tailOnTop ->
+            RoundedCornerShape(tailRadius, mediumRadius, mediumRadius, mediumRadius)
+        else ->
+            RoundedCornerShape(mediumRadius, mediumRadius, mediumRadius, tailRadius)
+    }
+    Row(
+        modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
+    ) {
+        if (!avatarOnRight && avatarInitial != null) BubbleAvatar(avatarInitial, avatarAccent)
+        val bubble: @Composable () -> Unit = {
+            Surface(
+                color = bgColor,
+                shape = shape,
+                border = BorderStroke(1.dp, accent.copy(alpha = 0.22f)),
+                onClick = onClick ?: {},
+                enabled = onClick != null,
+                modifier = Modifier.weight(1f, fill = true)
+            ) {
+                Column(Modifier.padding(RealmsSpacing.m)) {
+                    if (!label.isNullOrBlank()) {
+                        Text(
+                            label.uppercase(),
+                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.6.sp),
+                            color = accent,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = contentAlign,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(RealmsSpacing.xs))
+                    }
+                    content()
+                }
+            }
+        }
+        bubble()
+        if (avatarOnRight && avatarInitial != null) BubbleAvatar(avatarInitial, avatarAccent)
+    }
+}
+
+@Composable
+private fun BubbleAvatar(initial: String, accent: Color) {
+    Box(
+        Modifier
+            .size(BubbleAvatarSize)
+            .clip(CircleShape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(accent.copy(alpha = 0.42f), accent.copy(alpha = 0.18f))
+                )
+            )
+            .border(1.dp, accent.copy(alpha = 0.5f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            initial,
+            style = MaterialTheme.typography.labelLarge,
+            color = accent,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
 @Composable
 internal fun PlayerBubble(
     text: String,
@@ -97,77 +192,35 @@ internal fun PlayerBubble(
     val (accent, bgTint) = npcColor(characterName ?: "You", realms.npcPalette)
     val displayName = characterName ?: "You"
     val initial = displayName.take(1).uppercase()
-    Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
+    val cleanText = text
+        .removeSurrounding("\"")
+        .removeSurrounding("\u201C", "\u201D")
+        .trim()
+    BubbleFrame(
+        avatarInitial = initial,
+        avatarAccent = accent,
+        label = displayName,
+        accent = accent,
+        bgColor = bgTint.copy(alpha = 0.14f),
+        avatarOnRight = true,
+        tailOnTop = true,
+        contentAlign = TextAlign.End
     ) {
-        // Left: bubble with asymmetric corners (tail points right toward avatar)
-        Surface(
-            color = bgTint.copy(alpha = 0.12f),
-            shape = RoundedCornerShape(14.dp, 4.dp, 14.dp, 14.dp),
-            border = BorderStroke(1.dp, accent.copy(alpha = 0.2f)),
-            modifier = Modifier.weight(1f)
-        ) {
-            Row(
-                Modifier.padding(12.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        Text(
-                            displayName.uppercase(),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                letterSpacing = 0.5.sp
-                            ),
-                            color = accent,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    val cleanText = text
-                        .removeSurrounding("\"")
-                        .removeSurrounding("\u201C", "\u201D")
-                        .trim()
-                    Text(
-                        text = com.realmsoffate.game.util.parseInline(
-                            cleanText,
-                            boldColor = accent,
-                            codeBackground = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            codeText = MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontStyle = FontStyle.Italic,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = (15f * LocalFontScale.current).sp
-                        ),
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.width(8.dp))
-        // Right: 32dp gold avatar
-        Box(
-            Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(accent.copy(alpha = 0.4f), accent.copy(alpha = 0.15f))
-                    )
-                )
-                .border(1.dp, accent.copy(alpha = 0.5f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                initial,
-                style = MaterialTheme.typography.labelMedium,
-                color = accent,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        Text(
+            text = com.realmsoffate.game.util.parseInline(
+                cleanText,
+                boldColor = accent,
+                codeBackground = MaterialTheme.colorScheme.surfaceContainerHigh,
+                codeText = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontStyle = FontStyle.Italic,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = (15f * LocalFontScale.current).sp
+            ),
+            textAlign = TextAlign.End,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -283,82 +336,36 @@ internal fun NpcDialogueBubble(
     isInteractive: Boolean = true
 ) {
     val (accent, bgTint) = npcColor(name, RealmsTheme.colors.npcPalette)
-
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(enabled = isInteractive) { onTap() },
-        verticalAlignment = Alignment.Top
+    val initial = if (name.isNotBlank()) name.take(1).uppercase() else null
+    val cleanQuote = quote
+        .removeSurrounding("\"")
+        .removeSurrounding("\u201C", "\u201D")
+        .removeSurrounding("'")
+        .removeSurrounding("\u2018", "\u2019")
+        .trim()
+    BubbleFrame(
+        avatarInitial = initial,
+        avatarAccent = accent,
+        label = name.takeIf { it.isNotBlank() },
+        accent = accent,
+        bgColor = bgTint.copy(alpha = 0.14f),
+        avatarOnRight = false,
+        tailOnTop = true,
+        onClick = if (isInteractive) onTap else null
     ) {
-        // Left: 32dp avatar circle with gradient background
-        if (name.isNotBlank()) {
-            Box(
-                Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(accent.copy(alpha = 0.4f), accent.copy(alpha = 0.15f))
-                        )
-                    )
-                    .border(1.dp, accent.copy(alpha = 0.5f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    name.take(1).uppercase(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = accent,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-        }
-        // Right: bubble with asymmetric corners (small top-left = speech tail)
-        Surface(
-            color = bgTint.copy(alpha = 0.12f),
-            shape = RoundedCornerShape(4.dp, 14.dp, 14.dp, 14.dp),
-            border = BorderStroke(1.dp, accent.copy(alpha = 0.2f)),
-            modifier = Modifier.weight(1f)
-        ) {
-            Row(
-                Modifier.padding(12.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(Modifier.weight(1f)) {
-                    if (name.isNotBlank()) {
-                        Text(
-                            name.uppercase(),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                letterSpacing = 0.5.sp
-                            ),
-                            color = accent,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(Modifier.height(4.dp))
-                    }
-                    val cleanQuote = quote
-                        .removeSurrounding("\"")
-                        .removeSurrounding("\u201C", "\u201D")
-                        .removeSurrounding("'")
-                        .removeSurrounding("\u2018", "\u2019")
-                        .trim()
-                    Text(
-                        text = com.realmsoffate.game.util.parseInline(
-                            cleanQuote,
-                            boldColor = accent,
-                            codeBackground = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            codeText = MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontStyle = FontStyle.Italic,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = (15f * LocalFontScale.current).sp
-                        )
-                    )
-                }
-            }
-        }
+        Text(
+            text = com.realmsoffate.game.util.parseInline(
+                cleanQuote,
+                boldColor = accent,
+                codeBackground = MaterialTheme.colorScheme.surfaceContainerHigh,
+                codeText = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontStyle = FontStyle.Italic,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = (15f * LocalFontScale.current).sp
+            )
+        )
     }
 }
 
@@ -448,19 +455,19 @@ internal fun EventCard(icon: String, title: String, text: String) {
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.4f))
     ) {
-        Column(Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.s)) {
+        Column(Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.m)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(icon, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(RealmsSpacing.s))
                 Text(
                     "WORLD EVENT · ${title.uppercase()}",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(RealmsSpacing.s))
             Text(text, style = com.realmsoffate.game.ui.theme.NarrationBodyStyle, color = MaterialTheme.colorScheme.onSecondaryContainer)
         }
     }
@@ -499,13 +506,15 @@ internal fun NarratorThinking() {
         animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
         label = "alpha"
     )
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.xs)) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.s),
+        horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.xs)
+    ) {
         Box(Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = alpha)))
-        Spacer(Modifier.width(6.dp))
         Box(Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = alpha * 0.75f)))
-        Spacer(Modifier.width(6.dp))
         Box(Modifier.size(6.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = alpha * 0.5f)))
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(RealmsSpacing.s))
         Text(
             "The narrator weighs your words\u2026",
             style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
@@ -520,28 +529,33 @@ internal fun ChoiceTile(c: Choice, onClick: () -> Unit) {
         onClick = onClick,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
+        tonalElevation = 0.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.m),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.m)
         ) {
             Box(
-                Modifier.size(26.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+                Modifier.size(28.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Text("${c.n}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text(
+                    "${c.n}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontWeight = FontWeight.Bold
+                )
             }
-            Spacer(Modifier.width(12.dp))
             Text(c.text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             if (c.skill.isNotBlank()) {
-                Spacer(Modifier.width(8.dp))
                 Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = MaterialTheme.shapes.extraSmall) {
                     Text(
                         c.skill.uppercase(),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.padding(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.xxs)
+                        modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs)
                     )
                 }
             }

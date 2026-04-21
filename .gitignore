@@ -25,8 +25,14 @@ keystore.properties
 # Local Android tooling when ANDROID_USER_HOME points inside the repo (debug.keystore, locks)
 .android-user/
 
-# IDE / editor — machine-local (team shares convention via docs, not IDE dirs)
+# IDE / editor — machine-local except shared Android Studio project config
 .idea/
+!.idea/gradle.xml
+!.idea/misc.xml
+!.idea/vcs.xml
+!.idea/AndroidProjectSystem.xml
+!.idea/runConfigurations.xml
+!.idea/runConfigurations/
 *.iml
 .vscode/
 

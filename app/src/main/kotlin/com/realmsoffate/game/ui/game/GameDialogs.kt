@@ -458,9 +458,10 @@ internal fun DeathSaveDialog(
                     Button(
                         onClick = onRoll,
                         shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
                         )
                     ) { Text("ROLL SAVE", fontWeight = FontWeight.Bold, letterSpacing = 3.sp) }
                 }

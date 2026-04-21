@@ -1,6 +1,5 @@
 package com.realmsoffate.game.ui.game
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
@@ -15,10 +14,10 @@ import com.realmsoffate.game.ui.components.PanelTabRow
 import com.realmsoffate.game.ui.panels.*
 import kotlinx.coroutines.launch
 
-private enum class JournalTab(val label: String, val icon: String) {
-    Quests("Quests", "📜"),
-    Npcs("NPCs", "👤"),
-    Lore("Lore", "📖")
+private enum class JournalTab(val label: String) {
+    Quests("Quests"),
+    Npcs("NPCs"),
+    Lore("Lore")
 }
 
 @Composable
@@ -33,13 +32,17 @@ internal fun JournalPager(
 
     Column(Modifier.fillMaxSize()) {
         PanelTabRow(
-            tabs = tabs.map { PanelTab(it.label, it.icon) },
+            tabs = tabs.map { PanelTab(it.label) },
             selectedIndex = pagerState.currentPage,
             onSelect = { index -> scope.launch { pagerState.animateScrollToPage(index) } }
         )
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-            val mod = if (page != pagerState.currentPage) Modifier.clearAndSetSemantics {} else Modifier
-            Box(mod) {
+            val mod = if (page != pagerState.currentPage) {
+                Modifier.fillMaxSize().clearAndSetSemantics {}
+            } else {
+                Modifier.fillMaxSize()
+            }
+            Column(mod) {
                 when (tabs[page]) {
                     JournalTab.Quests -> QuestsContent(state, onAbandon)
                     JournalTab.Npcs -> JournalContent(state, focusNpc)

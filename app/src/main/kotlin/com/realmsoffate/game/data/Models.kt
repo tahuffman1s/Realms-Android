@@ -83,8 +83,6 @@ data class Character(
     var backstory: Backstory? = null,
     var racialPhysique: String = "",
     var appearance: CharacterAppearance = CharacterAppearance(),
-    /** Per-faction local currency holdings (name → amount). Gold lives in `gold`. */
-    val currencyBalances: MutableMap<String, Int> = mutableMapOf(),
     /** Active conditions — Poisoned, Blessed, Cursed, Charmed, Frightened, etc. */
     val conditions: MutableList<String> = mutableListOf(),
     /** Feats selected on level-up (every 4th level). */
@@ -101,7 +99,6 @@ fun Character.deepCopy(): Character = copy(
     knownSpells = knownSpells.toMutableList(),
     spellSlots = spellSlots.toMutableMap(),
     maxSpellSlots = maxSpellSlots.toMutableMap(),
-    currencyBalances = currencyBalances.toMutableMap(),
     conditions = conditions.toMutableList(),
     feats = feats.toMutableList()
 )
@@ -189,7 +186,6 @@ data class Faction(
     val mood: String = "",
     val disposition: String = "",
     val goal: String = "",
-    val currency: String = "gold",
     var status: String = "active", // active, destroyed, player_controlled, subjugated
     var ruler: String = ""
 )
@@ -362,7 +358,9 @@ data class SaveData(
     val deathSave: com.realmsoffate.game.game.DeathSaveState? = null,
     // ---- diagnostic trail: last ~50 AI exchanges, preserved across reloads ----
     val debugLog: List<DebugTurn> = emptyList(),
-    val availableMerchants: List<String> = emptyList()
+    val availableMerchants: List<String> = emptyList(),
+    /** Scene summaries persisted for reload. Empty on legacy saves; rebuilt forward from next scene boundary. */
+    val sceneSummaries: List<SceneSummary> = emptyList()
 )
 
 /**
@@ -383,6 +381,8 @@ data class Choice(val n: Int, val text: String, val skill: String)
  * - If the name is blank, falls back to a short timestamp-based suffix.
  */
 object IdGen {
+    private val SLUG_REGEX = Regex("^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
     fun forName(name: String, existingIds: Set<String>): String {
         val base = slug(name).ifBlank { "entity-${(System.currentTimeMillis() % 100000)}" }
         if (base !in existingIds) return base
@@ -390,6 +390,20 @@ object IdGen {
         while ("$base-$n" in existingIds) n++
         return "$base-$n"
     }
+
+    /** Dedup key that collapses separator and case variants so
+     *  "Mira Cole" / "Mira-Cole" / "mira-cole" / "MIRA COLE" are equivalent. */
+    fun nameKey(s: String): String =
+        s.lowercase().replace(Regex("[\\s-]+"), " ").trim()
+
+    /** Title-case reverse of a slug for display: "mira-cole" -> "Mira Cole". */
+    fun slugToDisplay(slug: String): String =
+        slug.split('-', '_', ' ')
+            .filter { it.isNotBlank() }
+            .joinToString(" ") { it.replaceFirstChar(Char::uppercaseChar) }
+
+    /** True when `s` looks like a slug — lowercase alnum words joined by single dashes. */
+    fun isSlug(s: String): Boolean = s.isNotBlank() && s.matches(SLUG_REGEX)
 
     private fun slug(name: String): String {
         return name.lowercase()
@@ -399,6 +413,16 @@ object IdGen {
             .trim('-')
             .take(60)                                  // cap length
     }
+}
+
+/**
+ * Fixes a LogNpc whose display name leaked from the slug ID (e.g., name="mira-cole").
+ * Applied on save load so older games that accumulated broken entries read cleanly.
+ */
+fun LogNpc.sanitizeDisplayName(): LogNpc {
+    if (!IdGen.isSlug(name)) return this
+    val looksLikeSlug = id.isBlank() || name.equals(id, ignoreCase = true)
+    return if (looksLikeSlug) copy(name = IdGen.slugToDisplay(name)) else this
 }
 
 // ============================================================================

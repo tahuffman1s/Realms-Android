@@ -3,6 +3,7 @@ package com.realmsoffate.game.game.handlers
 import com.realmsoffate.game.data.DebugTurn
 import com.realmsoffate.game.data.GraveyardEntry
 import com.realmsoffate.game.data.SaveData
+import com.realmsoffate.game.data.sanitizeDisplayName
 import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
 import com.realmsoffate.game.data.SerializedBuyback
@@ -39,7 +40,7 @@ class SaveService(
 
     /**
      * Captures every piece of state the player should see when reloading:
-     * character (with conditions + currency), world, NPC dialogue history,
+     * character (with conditions), world, NPC dialogue history,
      * timeline, conditions, in-flight shop/buyback, weather, accumulator, the
      * full chat-feed display messages, and the AI conversation history.
      */
@@ -76,7 +77,8 @@ class SaveService(
             timeline = timeline.toList(),
             displayMessages = s.messages,
             deathSave = s.deathSave,
-            debugLog = debugLog.takeLast(50)
+            debugLog = debugLog.takeLast(50),
+            sceneSummaries = s.sceneSummaries
         )
     }
 
@@ -101,7 +103,7 @@ class SaveService(
                 worldLore = d.worldLore,
                 worldEvents = d.worldEvents,
                 lastEventTurn = d.lastEventTurn,
-                npcLog = d.npcLog,
+                npcLog = d.npcLog.map { it.sanitizeDisplayName() },
                 party = d.party,
                 quests = d.quests,
                 hotbar = d.hotbar,
@@ -124,7 +126,8 @@ class SaveService(
                 turnStartIndex = if (d.displayMessages.isNotEmpty()) d.displayMessages.lastIndex else 0,
                 // Restore in-flight death-save tracker so reload picks the player up
                 // exactly where they fell.
-                deathSave = d.deathSave
+                deathSave = d.deathSave,
+                sceneSummaries = d.sceneSummaries
             )
             // Clear any stale ephemeral overlays so they don't leak into the loaded run.
             clearOverlays()

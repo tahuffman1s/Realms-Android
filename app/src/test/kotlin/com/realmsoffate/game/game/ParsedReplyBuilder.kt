@@ -92,6 +92,8 @@ class ParsedReplyBuilder {
     }
     fun addNpcDeath(id: String) = apply { npcDeaths.add(id) }
     fun addNpcQuote(ref: String, quote: String) = apply { npcQuotes.add(Pair(ref, quote)) }
+    fun addNpcDialog(ref: String, quote: String) = apply { npcDialogs.add(Pair(ref, quote)) }
+    fun addNpcAction(ref: String, action: String) = apply { npcActions.add(Pair(ref, action)) }
 
     fun addQuestStart(quest: Quest) = apply { questStarts.add(quest) }
     fun addQuestUpdate(title: String, objective: String) = apply {

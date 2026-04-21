@@ -4,6 +4,7 @@ import com.realmsoffate.game.data.IdGen
 import com.realmsoffate.game.data.LogNpc
 import com.realmsoffate.game.data.ParsedReply
 import com.realmsoffate.game.data.TimelineEntry
+import com.realmsoffate.game.data.sanitizeDisplayName
 import com.realmsoffate.game.game.CombatState
 import com.realmsoffate.game.game.DisplayMessage
 
@@ -44,21 +45,40 @@ object NpcLogReducer {
         currentTurn: Int,
         currentLocName: String
     ): NpcLogApplyResult {
-        // 1) Clone npcLog into a mutable working copy
-        val workingLog = npcLog.toMutableList()
+        // 1) Clone npcLog into a mutable working copy. Sanitize any legacy entries
+        //    that have slug-form display names lingering from pre-fix saves.
+        val workingLog = npcLog.map { it.sanitizeDisplayName() }.toMutableList()
 
         // 2) Build the current ID set once for collision checks during this merge pass.
         val existingNpcIds = workingLog.map { it.id }.filter { it.isNotBlank() }.toMutableSet()
 
-        // 3) parsed.npcsMet merge — ID-first branch + legacy-name branch
+        // 3) parsed.npcsMet merge — ID-first branch + legacy-name branch.
+        //    Dedup uses IdGen.nameKey so "Mira Cole" / "Mira-Cole" / "mira-cole"
+        //    all collapse to the same entry. If the AI emits a slug in the name
+        //    field, we reverse-slug it so the journal never displays hyphens.
         parsed.npcsMet.forEach { n ->
+            // Canonical display: if incoming name equals the slug form (AI put the
+            // ID in the name field), reverse-slug it for UI presentation.
+            val cleanName = when {
+                n.name.isBlank() -> n.name
+                IdGen.isSlug(n.name) && (n.id.isBlank() || n.name.equals(n.id, ignoreCase = true)) ->
+                    IdGen.slugToDisplay(n.name)
+                else -> n.name
+            }
             if (n.id.isNotBlank()) {
-                // New ID-first format — look up by stable ID first.
-                val existing = workingLog.indexOfFirst { it.id == n.id }
+                // ID-first: prefer stable-ID match, fall back to name-key equivalence
+                // so a hallucinated ID for the same NPC still dedupes.
+                val byId = workingLog.indexOfFirst { it.id == n.id }
+                val existing = if (byId >= 0) byId else workingLog.indexOfFirst {
+                    cleanName.isNotBlank() && IdGen.nameKey(it.name) == IdGen.nameKey(cleanName)
+                }
                 if (existing >= 0) {
                     val old = workingLog[existing]
+                    // Don't clobber a pretty display name with the slug form.
+                    val keepOldName = cleanName.isBlank() ||
+                        (IdGen.isSlug(cleanName) && !IdGen.isSlug(old.name))
                     workingLog[existing] = old.copy(
-                        name = n.name.ifBlank { old.name },
+                        name = if (keepOldName) old.name else cleanName,
                         race = n.race.ifBlank { old.race },
                         role = n.role.ifBlank { old.role },
                         age = n.age.ifBlank { old.age },
@@ -70,18 +90,19 @@ object NpcLogReducer {
                         lastLocation = currentLocName.ifBlank { old.lastLocation }
                     )
                 } else {
-                    // No match by ID — use AI-supplied ID, collision-check then add.
                     val safeId = if (n.id !in existingNpcIds) {
                         n.id
                     } else {
-                        IdGen.forName(n.name, existingNpcIds)
+                        IdGen.forName(cleanName, existingNpcIds)
                     }
                     existingNpcIds.add(safeId)
-                    workingLog.add(n.copy(id = safeId, lastLocation = currentLocName))
+                    workingLog.add(n.copy(id = safeId, name = cleanName, lastLocation = currentLocName))
                 }
             } else {
-                // Legacy format — look up by name (case-insensitive).
-                val existing = workingLog.indexOfFirst { it.name.equals(n.name, true) }
+                // Legacy format — match by name-key so separator variants dedupe.
+                val existing = workingLog.indexOfFirst {
+                    IdGen.nameKey(it.name) == IdGen.nameKey(cleanName)
+                }
                 if (existing >= 0) {
                     val old = workingLog[existing]
                     workingLog[existing] = old.copy(
@@ -90,10 +111,9 @@ object NpcLogReducer {
                         lastLocation = currentLocName.ifBlank { old.lastLocation }
                     )
                 } else {
-                    // Generate a fresh stable ID for this legacy-format NPC.
-                    val newId = IdGen.forName(n.name, existingNpcIds)
+                    val newId = IdGen.forName(cleanName, existingNpcIds)
                     existingNpcIds.add(newId)
-                    workingLog.add(n.copy(id = newId, lastLocation = currentLocName))
+                    workingLog.add(n.copy(id = newId, name = cleanName, lastLocation = currentLocName))
                 }
             }
         }
@@ -105,7 +125,7 @@ object NpcLogReducer {
         val autoRefs = buildList {
             parsed.npcDialogs.forEach { (ref, _) -> if (ref.isNotBlank()) add(ref) }
             parsed.npcActions.forEach { (ref, _) -> if (ref.isNotBlank()) add(ref) }
-        }.distinctBy { it.lowercase() }
+        }.distinctBy { IdGen.nameKey(it) }
         autoRefs.forEach { ref ->
             val idx = resolveNpcIdx(ref, workingLog)
             if (idx >= 0) {
@@ -116,18 +136,19 @@ object NpcLogReducer {
                     lastLocation = currentLocName.ifBlank { old.lastLocation }
                 )
             } else {
-                // Stub entry — if ref is a slug ID, use it verbatim (collision-checked);
-                // otherwise generate a fresh ID from the display name.
-                val isSlug = ref.isNotBlank() && ref.matches(Regex("^[a-z0-9]+(?:-[a-z0-9]+)*$"))
+                // Stub entry. If ref is slug-form, use it as the ID and reverse-slug
+                // for the display name so the journal never shows "mira-cole".
+                val isSlug = IdGen.isSlug(ref)
                 val stubId = if (isSlug) {
                     if (ref !in existingNpcIds) ref else IdGen.forName(ref, existingNpcIds)
                 } else {
                     IdGen.forName(ref, existingNpcIds)
                 }
+                val displayName = if (isSlug) IdGen.slugToDisplay(ref) else ref
                 existingNpcIds.add(stubId)
                 workingLog.add(LogNpc(
                     id = stubId,
-                    name = ref,
+                    name = displayName,
                     lastLocation = currentLocName,
                     metTurn = currentTurn,
                     lastSeenTurn = currentTurn
@@ -278,7 +299,8 @@ object NpcLogReducer {
         if (ref.isBlank()) return -1
         val byId = npcLog.indexOfFirst { it.id == ref }
         if (byId >= 0) return byId
-        return npcLog.indexOfFirst { it.name.equals(ref, ignoreCase = true) }
+        val refKey = IdGen.nameKey(ref)
+        return npcLog.indexOfFirst { IdGen.nameKey(it.name) == refKey }
     }
 
     /** Private merge helper — used only by the rename-fallback in npcUpdates. */

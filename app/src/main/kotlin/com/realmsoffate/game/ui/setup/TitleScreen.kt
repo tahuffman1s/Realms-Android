@@ -290,7 +290,7 @@ private fun LoadSheet(
     // Optimistic list — slots removed immediately; restored if Undo is tapped
     var visibleSlots by remember(slots) { mutableStateOf(slots) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) {
+    ModalBottomSheet(onDismissRequest = onDismiss, shape = BottomSheetDefaults.ExpandedShape) {
         Box {
             Column(Modifier.padding(horizontal = RealmsSpacing.xl, vertical = RealmsSpacing.s)) {
                 Text("LOAD SAVE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
@@ -384,7 +384,7 @@ private fun GraveyardSheet(
     onForget: (GraveyardEntry) -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) {
+    ModalBottomSheet(onDismissRequest = onDismiss, shape = BottomSheetDefaults.ExpandedShape) {
         Column(Modifier.padding(horizontal = RealmsSpacing.xl, vertical = RealmsSpacing.s)) {
             Text("GRAVEYARD", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
             Spacer(Modifier.height(4.dp))
@@ -519,7 +519,7 @@ private fun GraveDetailDialog(entry: GraveyardEntry, onDismiss: () -> Unit) {
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                                 ),
-                                color = MaterialTheme.colorScheme.error,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
                                 modifier = Modifier.padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.s),
                                 textAlign = TextAlign.Center
                             )
@@ -554,7 +554,7 @@ private fun GraveDetailDialog(entry: GraveyardEntry, onDismiss: () -> Unit) {
                                         Box(
                                             Modifier.size(20.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiaryContainer),
                                             contentAlignment = Alignment.Center
-                                        ) { Text(name.take(1), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary) }
+                                        ) { Text(name.take(1), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onTertiaryContainer) }
                                         Spacer(Modifier.width(6.dp))
                                         Text(name, style = MaterialTheme.typography.labelMedium)
                                     }
@@ -633,7 +633,7 @@ private fun GraveDetailDialog(entry: GraveyardEntry, onDismiss: () -> Unit) {
                                             Text(
                                                 "T${t.turn}",
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.primary,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
                                                 fontWeight = FontWeight.Bold,
                                                 modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
                                             )

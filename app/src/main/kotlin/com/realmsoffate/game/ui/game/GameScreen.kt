@@ -162,35 +162,11 @@ fun GameScreen(vm: GameViewModel) {
                 )
             }
         },
-        floatingActionButton = {
-            if (tab == GameTab.Chat && !state.isGenerating) {
-                when {
-                    state.combat != null -> {
-                        FloatingActionButton(
-                            onClick = {
-                                vm.requestTargetPrompt(TargetPromptSpec(
-                                    title = "Attack",
-                                    verb = "I attack",
-                                    recentTargets = state.combat!!.order.filter { !it.isPlayer }.map { it.name }
-                                ))
-                            },
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        ) {
-                            Icon(Icons.Default.GpsFixed, "Attack")
-                        }
-                    }
-                }
-            }
-        },
-        floatingActionButtonPosition = androidx.compose.material3.FabPosition.End,
         containerColor = MaterialTheme.colorScheme.background
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
             when (tab) {
                 GameTab.Chat -> {
-                    // Combat HUD — visible only during battle scenes.
-                    state.combat?.let { combat -> CombatHud(combat, state.npcLog, state.turns) }
                     ChatFeed(
                         state = state,
                         listState = listState,
@@ -220,7 +196,6 @@ fun GameScreen(vm: GameViewModel) {
                         state = state,
                         onEquip = vm::equipToggle,
                         onDismiss = vm::dismissCompanion,
-                        onExchange = vm::exchange,
                         onHotbar = vm::updateHotbar,
                         onCast = { spell ->
                             val activeCombat = state.combat

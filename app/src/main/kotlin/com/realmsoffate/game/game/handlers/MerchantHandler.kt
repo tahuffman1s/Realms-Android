@@ -79,45 +79,6 @@ class MerchantHandler(
         buybackStocks.value = current
     }
 
-    /**
-     * Exchange gold ↔ a faction's local currency at a rate derived from its
-     * economy. 1 gold → `rate` local coins; `rate = 0.6 + 0.2 * (wealth - 3)`
-     * clamped to [0.3, 1.6]. Directions: "to" = gold → local, "from" = local → gold.
-     */
-    fun exchange(factionName: String, direction: String, goldAmount: Int) {
-        val s = ui.value
-        val ch = s.character?.deepCopy() ?: return
-        val faction = s.worldLore?.factions?.firstOrNull { it.name == factionName } ?: return
-        val wealth = faction.economy?.wealth ?: 3
-        val rate = (0.6 + 0.2 * (wealth - 3)).coerceIn(0.3, 1.6)
-        val localCurrency = faction.currency
-        when (direction) {
-            "to" -> {
-                if (ch.gold < goldAmount) return
-                val localGained = (goldAmount * rate).toInt()
-                ch.gold -= goldAmount
-                ch.currencyBalances[localCurrency] =
-                    (ch.currencyBalances[localCurrency] ?: 0) + localGained
-                ui.value = s.copy(
-                    character = ch,
-                    messages = s.messages + DisplayMessage.System("Exchanged ${goldAmount}g → $localGained $localCurrency.")
-                )
-            }
-            "from" -> {
-                val currentLocal = ch.currencyBalances[localCurrency] ?: 0
-                val localNeeded = goldAmount // caller passes local-amount-to-spend in this path
-                if (currentLocal < localNeeded) return
-                val goldGained = (localNeeded / rate).toInt()
-                ch.currencyBalances[localCurrency] = currentLocal - localNeeded
-                ch.gold += goldGained
-                ui.value = s.copy(
-                    character = ch,
-                    messages = s.messages + DisplayMessage.System("Exchanged $localNeeded $localCurrency → ${goldGained}g.")
-                )
-            }
-        }
-    }
-
     /** CHA check haggle — returns price multiplier (1.0 = no discount, down to 0.8). */
     fun haggle(chaMod: Int): Float {
         val roll = Dice.d20() + chaMod

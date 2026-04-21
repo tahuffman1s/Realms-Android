@@ -34,12 +34,7 @@ internal fun StatsContent(state: GameUiState) {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = RealmsSpacing.l, vertical = RealmsSpacing.xs)
     ) {
-        Text(ch.name, style = MaterialTheme.typography.headlineSmall)
-        Text(
-            "L${ch.level} ${ch.race} ${ch.cls}",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary
-        )
+
         Spacer(Modifier.height(RealmsSpacing.m))
 
         Row(horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s), modifier = Modifier.fillMaxWidth()) {
@@ -98,7 +93,7 @@ internal fun StatsContent(state: GameUiState) {
                         Text(
                             cond,
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.tertiary,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs)
                         )
@@ -111,18 +106,20 @@ internal fun StatsContent(state: GameUiState) {
             Spacer(Modifier.height(RealmsSpacing.m))
             SectionHeader("BACKSTORY")
             Column(verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)) {
-                BackstoryCard("\uD83C\uDF05", "Origin", bs.origin, MaterialTheme.colorScheme.secondary)
-                BackstoryCard("\uD83C\uDFAF", "Motivation", bs.motivation, MaterialTheme.colorScheme.tertiary)
-                BackstoryCard("\uD83D\uDC94", "Flaw", bs.flaw, MaterialTheme.colorScheme.error)
-                BackstoryCard("\uD83D\uDD17", "Bond", bs.bond, MaterialTheme.colorScheme.primary)
-                BackstoryCard("\uD83D\uDD73\uFE0F", "Dark Secret", bs.darkSecret, MaterialTheme.colorScheme.secondary)
-                BackstoryCard("\uD83D\uDD0D", "Lost Item", bs.lostItem, MaterialTheme.colorScheme.tertiary)
-                BackstoryCard("\u2620\uFE0F", "Personal Enemy", bs.personalEnemy, MaterialTheme.colorScheme.error)
+                BackstoryCard("\uD83C\uDF05", "Origin", bs.origin.replaceFirstChar { it.uppercase() }, MaterialTheme.colorScheme.secondary)
+                BackstoryCard("\uD83C\uDFAF", "Motivation", bs.motivation.replaceFirstChar { it.uppercase() }, MaterialTheme.colorScheme.tertiary)
+                BackstoryCard("\uD83D\uDC94", "Flaw", bs.flaw.replaceFirstChar { it.uppercase() }, MaterialTheme.colorScheme.error)
+                BackstoryCard("\uD83D\uDD17", "Bond", bs.bond.replaceFirstChar { it.uppercase() }, MaterialTheme.colorScheme.primary)
+                BackstoryCard("\uD83D\uDD73\uFE0F", "Dark Secret", bs.darkSecret.replaceFirstChar { it.uppercase() }, MaterialTheme.colorScheme.secondary)
+                BackstoryCard("\uD83D\uDD0D", "Lost Item", bs.lostItem.replaceFirstChar { it.uppercase() }, MaterialTheme.colorScheme.tertiary)
+                BackstoryCard("\u2620\uFE0F", "Personal Enemy", bs.personalEnemy.replaceFirstChar { it.uppercase() }, MaterialTheme.colorScheme.error)
                 bs.prophecy?.let { p ->
                     if (p.isNotBlank()) BackstoryCard("\uD83D\uDD2E", "Prophecy", p, MaterialTheme.colorScheme.secondary)
                 }
             }
         }
+
+        Spacer(Modifier.height(RealmsSpacing.m))
     }
 }
 

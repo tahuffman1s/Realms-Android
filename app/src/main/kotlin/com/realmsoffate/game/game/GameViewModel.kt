@@ -23,6 +23,7 @@ import com.realmsoffate.game.data.GraveyardEntry
 import com.realmsoffate.game.data.DebugTurn
 import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
+import com.realmsoffate.game.data.SceneSummary
 import com.realmsoffate.game.data.NarrationSegmentData
 import com.realmsoffate.game.data.TagParser
 import com.realmsoffate.game.data.TimelineEntry
@@ -45,6 +46,8 @@ import com.realmsoffate.game.game.reducers.NpcLogReducer
 import com.realmsoffate.game.game.reducers.QuestReducer
 import com.realmsoffate.game.game.reducers.PartyReducer
 import com.realmsoffate.game.game.reducers.WorldReducer
+import com.realmsoffate.game.game.reducers.SceneBoundaryDetector
+import kotlinx.coroutines.flow.update
 
 enum class Screen { ApiSetup, Title, CharacterCreation, Game, Death }
 
@@ -96,7 +99,13 @@ data class GameUiState(
      * cleared on level-up, mutation change, character replacement, or load. See
      * Prompts.buildSessionSystem.
      */
-    val cachedSessionSystem: String? = null
+    val cachedSessionSystem: String? = null,
+    /**
+     * Ordered list of compressed scene records. Prepended during the session
+     * by [SceneSummarizer] when a scene boundary is crossed; injected into
+     * the prompt via [GameViewModel.buildUserPrompt] with a token budget cap.
+     */
+    val sceneSummaries: List<SceneSummary> = emptyList()
 )
 
 data class CheckDisplay(
@@ -192,6 +201,8 @@ class GameViewModel(
     private val _restOverlay = MutableStateFlow<String?>(null)
     private val _activeShop = MutableStateFlow<String?>(null)
     private val _buybackStocks = MutableStateFlow<Map<String, List<com.realmsoffate.game.ui.overlays.BuybackEntry>>>(emptyMap())
+
+    private val sceneSummarizer = SceneSummarizer(ai)
 
     private val progressionHandler = ProgressionHandler(_ui, _pendingLevelUp, _pendingStatPoints, _pendingFeat)
     val pendingLevelUpFlow: StateFlow<Int?> = progressionHandler.pendingLevelUpFlow
@@ -310,7 +321,7 @@ class GameViewModel(
             appendLine()
             appendLine("── FACTIONS ──")
             s.worldLore?.factions?.forEach { f ->
-                appendLine("  ${f.name} (${f.type}) status=${f.status} ruler=${f.ruler} currency=${f.currency}")
+                appendLine("  ${f.name} (${f.type}) status=${f.status} ruler=${f.ruler}")
             }
 
             appendLine()
@@ -423,7 +434,6 @@ class GameViewModel(
     fun sellItem(merchant: String, item: Item, price: Int) = merchantHandler.sellItem(merchant, item, price)
     fun buybackItem(merchant: String, item: Item, price: Int) = merchantHandler.buybackItem(merchant, item, price)
     fun rollDeathSave() = restHandler.rollDeathSave()
-    fun exchange(factionName: String, direction: String, goldAmount: Int) = merchantHandler.exchange(factionName, direction, goldAmount)
     fun haggle(chaMod: Int): Float = merchantHandler.haggle(chaMod)
 
     private val saveService = SaveService(
@@ -754,6 +764,14 @@ class GameViewModel(
             val prof = if (skill != null && classProficient(char.cls, skill)) char.proficiency else 0
             val total = roll + mod + prof
 
+            val preSnapshot = SceneBoundaryDetector.Snapshot(
+                sceneTag = state.currentScene,
+                locationName = state.worldMap?.locations?.getOrNull(state.currentLoc)?.name ?: "",
+                inCombat = state.combat != null
+            )
+            val turnsBeforeResponse = state.turns
+            val priorSummaryEndTurn = state.sceneSummaries.lastOrNull()?.turnEnd ?: 0
+
             val sessionSystem = sessionSystemFor(state, char)
             val sys = Prompts.SYS + "\n\n" + sessionSystem
             val userPrompt = buildUserPrompt(state, char, action, skill, ability, roll, mod, prof, total, suppressDice = seed)
@@ -832,6 +850,41 @@ class GameViewModel(
                 messages = combatMessages
             )
 
+            val finalState = _ui.value
+            val postSnapshot = SceneBoundaryDetector.Snapshot(
+                sceneTag = finalState.currentScene,
+                locationName = finalState.worldMap?.locations?.getOrNull(finalState.currentLoc)?.name ?: "",
+                inCombat = finalState.combat != null
+            )
+            val boundary = SceneBoundaryDetector.detect(preSnapshot, postSnapshot)
+            if (boundary != null) {
+                val apiKey = _apiKey.value
+                val sceneName = preSnapshot.sceneTag.ifBlank { "default" }
+                val locationName = preSnapshot.locationName
+                // Slice the history that belongs to the completed scene: from after
+                // the previous summary's end turn through this turn. Each turn is
+                // roughly 2 messages (user + assistant), so window by turn count.
+                val turnsCovered = (turnsBeforeResponse - priorSummaryEndTurn).coerceAtLeast(1)
+                val approxMessages = (turnsCovered * 2).coerceAtMost(finalState.history.size)
+                val sceneHistory = finalState.history.takeLast(approxMessages + 2) // +2 = current user+assistant
+                val turnStart = priorSummaryEndTurn + 1
+                val turnEnd = finalState.turns
+                viewModelScope.launch {
+                    val updatedSummaries = sceneSummarizer.summarizeIfPossible(
+                        apiKey = apiKey,
+                        priorSummaries = finalState.sceneSummaries,
+                        scene = sceneName,
+                        location = locationName,
+                        history = sceneHistory,
+                        turnStart = turnStart,
+                        turnEnd = turnEnd
+                    )
+                    if (updatedSummaries !== finalState.sceneSummaries) {
+                        _ui.update { cur -> cur.copy(sceneSummaries = updatedSummaries) }
+                    }
+                }
+            }
+
             // Possibly generate a world event
             maybeRollWorldEvent()
             // Autosave every turn so crashes / background kills don't lose progress.
@@ -903,28 +956,28 @@ class GameViewModel(
         val inv = ch.inventory.filter { it.equipped }.joinToString(", ") { it.name }.ifBlank { "nothing" }
         val invAll = ch.inventory.joinToString(", ") { "${it.name} (x${it.qty})" }
 
-        // Build a compact known-NPC roster for the LLM — stable IDs let it emit
-        // correct ID-first tags without guessing. Include recently dead NPCs (within
-        // 3 turns) so the narrator doesn't forget them; cap at 20 by recency.
-        val currentTurnNum = s.turns + 1
-        val rosterEntries = s.npcLog
-            .filter { npc ->
-                npc.status != "dead" || (currentTurnNum - npc.lastSeenTurn) <= 3
-            }
-            .sortedByDescending { it.lastSeenTurn }
-            .take(20)
-        val knownNpcsCtx = if (rosterEntries.isNotEmpty()) {
+        val currentLocName = s.worldMap?.locations?.getOrNull(s.currentLoc)?.name ?: ""
+        val relevantNpcs = filterRelevantNpcs(
+            all = s.npcLog,
+            currentTurn = s.turns,
+            currentLocation = currentLocName
+        )
+        val knownNpcsCtx = if (relevantNpcs.isNotEmpty()) {
             buildString {
-                append("\nKNOWN NPCS (reference these by id in your tags):")
-                rosterEntries.forEach { npc ->
-                    val racePart = npc.race.ifBlank { null }
-                    val rolePart = npc.role.ifBlank { null }
-                    val desc = listOfNotNull(racePart, rolePart).joinToString(" ")
-                    val statusLabel = npc.status
-                    val idPart = npc.id.ifBlank { "?" }
-                    append("\n  $idPart — ${npc.name}")
-                    if (desc.isNotBlank()) append(" ($desc, $statusLabel)")
-                    else append(" ($statusLabel)")
+                append("\n\nKNOWN NPCs (scene-relevant):")
+                relevantNpcs.forEach { n ->
+                    append("\n• ${n.name}")
+                    if (n.race.isNotBlank()) append(" (${n.race}")
+                    if (n.role.isNotBlank()) append(", ${n.role}")
+                    if (n.race.isNotBlank() || n.role.isNotBlank()) append(")")
+                    append(" — ${n.relationship}")
+                    if (n.status != "alive") append(" [${n.status}]")
+                    if (n.lastLocation.isNotBlank()) append(" @ ${n.lastLocation}")
+                    append(" (T${n.lastSeenTurn})")
+                    if (n.personality.isNotBlank()) append("\n  Personality: ${n.personality.take(120)}")
+                    if (n.relationshipNote.isNotBlank()) append("\n  Note: ${n.relationshipNote.take(120)}")
+                    val recentQuote = n.memorableQuotes.lastOrNull()
+                    if (!recentQuote.isNullOrBlank()) append("\n  Memorable: $recentQuote")
                 }
             }
         } else ""
@@ -935,12 +988,13 @@ class GameViewModel(
             append("\nMORALITY: ${s.morality}   ")
             append("FACTION REP: ${s.factionRep.entries.joinToString { "${it.key}:${it.value}" }.ifBlank { "none" }}")
             loc?.let { append("\nLOCATION: ${it.name} (${it.type})") }
-            localFaction?.let { append("\nLOCAL FACTION: ${it.name} (${it.type}); currency: ${it.currency}") }
+            localFaction?.let { append("\nLOCAL FACTION: ${it.name} (${it.type})") }
             append("\nNEARBY: ${nearby.joinToString(", ") { "${it.first.name} (${it.second}lg)" }}")
             append("\nTURN: ${s.turns + 1}")
             append(partyCtx); append(questCtx); append(npcCtx); append(knownNpcsCtx); append(eventCtx)
             append("\nEquipped: $inv")
             append("\nInventory: ${invAll.ifBlank { "empty" }}")
+            append(renderSceneSummariesBlock(s.sceneSummaries))
             // Feed recent narration context so the AI doesn't lose the thread
             val recentNarration = s.messages
                 .filterIsInstance<DisplayMessage.Narration>()
@@ -1561,4 +1615,48 @@ class GameViewModel(
             else -> level * 12000
         }
     }
+}
+
+internal fun renderSceneSummariesBlock(
+    summaries: List<com.realmsoffate.game.data.SceneSummary>,
+    tokenBudget: Int = 2000
+): String {
+    if (summaries.isEmpty()) return ""
+    val kept = ArrayDeque<com.realmsoffate.game.data.SceneSummary>()
+    var used = 0
+    for (sm in summaries.asReversed()) {
+        val block = buildString {
+            append("• [T${sm.turnStart}-${sm.turnEnd} @ ${sm.locationName}] ")
+            append(sm.summary)
+            if (sm.keyFacts.isNotEmpty()) append(" FACTS: ${sm.keyFacts.joinToString("; ")}")
+        }
+        val cost = com.realmsoffate.game.util.TokenEstimate.ofText(block)
+        if (used + cost > tokenBudget && kept.isNotEmpty()) break
+        kept.addFirst(sm)
+        used += cost
+    }
+    if (kept.isEmpty()) return ""
+    return buildString {
+        append("\n\nSTORY SO FAR (earlier scenes compressed):")
+        kept.forEach { sm ->
+            append("\n• [T${sm.turnStart}-${sm.turnEnd} @ ${sm.locationName}] ")
+            append(sm.summary)
+            if (sm.keyFacts.isNotEmpty()) append(" FACTS: ${sm.keyFacts.joinToString("; ")}")
+        }
+    }
+}
+
+internal fun filterRelevantNpcs(
+    all: List<com.realmsoffate.game.data.LogNpc>,
+    currentTurn: Int,
+    currentLocation: String,
+    recencyWindow: Int = 10,
+    cap: Int = 30
+): List<com.realmsoffate.game.data.LogNpc> {
+    val recencyFloor = currentTurn - recencyWindow
+    val relevant = all.filter { n ->
+        n.lastSeenTurn >= recencyFloor ||
+            (currentLocation.isNotBlank() && n.lastLocation.equals(currentLocation, ignoreCase = true))
+    }
+    return relevant.sortedByDescending { it.lastSeenTurn }.take(cap)
 }

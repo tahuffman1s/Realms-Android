@@ -1,6 +1,5 @@
 package com.realmsoffate.game.ui.game
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
@@ -21,8 +20,7 @@ private enum class CharacterTab(val label: String) {
     Stats("Stats"),
     Inventory("Inventory"),
     Spells("Spells"),
-    Party("Party"),
-    Currency("Currency")
+    Party("Party")
 }
 
 @Composable
@@ -30,7 +28,6 @@ internal fun CharacterPager(
     state: GameUiState,
     onEquip: (Item) -> Unit,
     onDismiss: (String) -> Unit,
-    onExchange: (String, String, Int) -> Unit,
     onHotbar: (Int, String?) -> Unit,
     onCast: (Spell) -> Unit
 ) {
@@ -45,14 +42,17 @@ internal fun CharacterPager(
             onSelect = { index -> scope.launch { pagerState.animateScrollToPage(index) } }
         )
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-            val mod = if (page != pagerState.currentPage) Modifier.clearAndSetSemantics {} else Modifier
-            Box(mod) {
+            val mod = if (page != pagerState.currentPage) {
+                Modifier.fillMaxSize().clearAndSetSemantics {}
+            } else {
+                Modifier.fillMaxSize()
+            }
+            Column(mod) {
                 when (tabs[page]) {
                     CharacterTab.Stats -> StatsContent(state)
                     CharacterTab.Inventory -> InventoryContent(state, onEquip)
                     CharacterTab.Spells -> SpellsContent(state, onHotbar, onCast)
                     CharacterTab.Party -> PartyContent(state, onDismiss)
-                    CharacterTab.Currency -> CurrencyContent(state, onExchange)
                 }
             }
         }

@@ -38,6 +38,64 @@ class AiRepository(
 
     /** Cache-hit token count from the most recent DeepSeek response. Not thread-safe; called serially. */
     var lastCacheHit: Int = 0
+
+    companion object {
+        /** Default history budget in tokens — leaves headroom for system + scene summaries + per-turn context. */
+        const val HISTORY_TOKEN_BUDGET: Int = 8000
+
+        /**
+         * Keep the largest suffix of [history] whose summed token estimate ≤ [budget].
+         * Always preserves the final message even if it alone exceeds the budget
+         * (a dropped final user turn would break the turn contract).
+         */
+        fun windowByTokenBudget(history: List<ChatMsg>, budget: Int): List<ChatMsg> {
+            if (history.isEmpty()) return emptyList()
+            val kept = ArrayDeque<ChatMsg>()
+            var used = 0
+            for (m in history.asReversed()) {
+                val cost = com.realmsoffate.game.util.TokenEstimate.ofMessage(m)
+                if (kept.isEmpty()) {
+                    // Always keep the final message.
+                    kept.addFirst(m)
+                    used += cost
+                    continue
+                }
+                if (used + cost > budget) break
+                kept.addFirst(m)
+                used += cost
+            }
+            return kept.toList()
+        }
+
+        /**
+         * Extract (summary, keyFacts) from a DeepSeek response. Tolerates code
+         * fences and surrounding prose because models don't always behave.
+         * Returns null if no valid JSON object with a "summary" string is found.
+         */
+        fun parseSummaryResponse(raw: String): Pair<String, List<String>>? {
+            val stripped = raw
+                .substringAfter("```json", raw)
+                .substringAfter("```", raw)
+                .substringBeforeLast("```", raw)
+            val start = stripped.indexOf('{')
+            val end = stripped.lastIndexOf('}')
+            if (start < 0 || end < 0 || end <= start) return null
+            val jsonSlice = stripped.substring(start, end + 1)
+            return try {
+                val j = kotlinx.serialization.json.Json {
+                    ignoreUnknownKeys = true; isLenient = true
+                }
+                val obj = j.parseToJsonElement(jsonSlice).jsonObject
+                val summary = obj["summary"]?.jsonPrimitive?.content ?: return null
+                val facts = obj["keyFacts"]?.jsonArray
+                    ?.mapNotNull { it.jsonPrimitive.content.takeIf { s -> s.isNotBlank() } }
+                    ?: emptyList()
+                summary to facts
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
     /** Total prompt token count from the most recent DeepSeek response. Not thread-safe; called serially. */
     var lastPromptTokens: Int = 0
 
@@ -51,7 +109,7 @@ class AiRepository(
     }
 
     private fun callDeepSeek(apiKey: String, sys: String, history: List<ChatMsg>): String {
-        val trimmed = history.takeLast(40).toMutableList()
+        val trimmed = windowByTokenBudget(history, HISTORY_TOKEN_BUDGET).toMutableList()
         if (trimmed.isNotEmpty() && trimmed.last().role == "user") {
             val last = trimmed.last()
             trimmed[trimmed.size - 1] = last.copy(content = last.content + Prompts.PER_TURN_REMINDER)
@@ -169,6 +227,63 @@ If the action is combat/attacking, respond "Attack". If purely dialogue with no 
                     found == "attack" -> "Attack"
                     else -> found.split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
                 }
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Compress a completed scene's history into a short summary + key facts.
+     * Uses the scene-summary system prompt and low temperature for consistency.
+     * Returns null on network error or unparseable response — caller should
+     * treat missing summaries as "better to miss one than crash the turn flow".
+     */
+    suspend fun summarizeScene(
+        apiKey: String,
+        sceneName: String,
+        locationName: String,
+        sceneHistory: List<ChatMsg>
+    ): Pair<String, List<String>>? = withContext(Dispatchers.IO) {
+        if (sceneHistory.isEmpty()) return@withContext null
+        try {
+            val header = "SCENE: $sceneName\nLOCATION: $locationName"
+            val transcript = sceneHistory.joinToString("\n\n") { m ->
+                "[${m.role.uppercase()}]\n${m.content}"
+            }
+            val userContent = "$header\n\n---\n\n$transcript"
+            val messages = buildJsonArray {
+                add(buildJsonObject {
+                    put("role", "system")
+                    put("content", Prompts.SCENE_SUMMARY_SYS)
+                })
+                add(buildJsonObject {
+                    put("role", "user")
+                    put("content", userContent)
+                })
+            }
+            val body = buildJsonObject {
+                put("model", "deepseek-chat")
+                put("max_tokens", 400)
+                put("temperature", 0.2)
+                put("messages", messages)
+            }
+            val req = Request.Builder()
+                .url("https://api.deepseek.com/v1/chat/completions")
+                .post(body.toString().toRequestBody("application/json".toMediaType()))
+                .addHeader("Authorization", "Bearer $apiKey")
+                .addHeader("Content-Type", "application/json")
+                .build()
+            val resp = client.newCall(req).execute()
+            resp.use {
+                if (!it.isSuccessful) return@withContext null
+                val text = it.body?.string().orEmpty()
+                val root = json.parseToJsonElement(text).jsonObject
+                val content = root["choices"]?.jsonArray?.firstOrNull()
+                    ?.jsonObject?.get("message")?.jsonObject?.get("content")
+                    ?.jsonPrimitive?.content
+                    ?: return@withContext null
+                parseSummaryResponse(content)
             }
         } catch (_: Exception) {
             null

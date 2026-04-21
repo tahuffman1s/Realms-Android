@@ -118,6 +118,22 @@ object DebugSerializer {
                     })
                 }
             }
+
+            // Scene summaries — Phase 1 infinite-turn memory
+            putJsonArray("sceneSummaries") {
+                state.sceneSummaries.forEach { sm ->
+                    add(buildJsonObject {
+                        put("turnStart", sm.turnStart)
+                        put("turnEnd", sm.turnEnd)
+                        put("sceneName", sm.sceneName)
+                        put("locationName", sm.locationName)
+                        put("summary", sm.summary)
+                        putJsonArray("keyFacts") {
+                            sm.keyFacts.forEach { add(JsonPrimitive(it)) }
+                        }
+                    })
+                }
+            }
         }.toString()
     }
 
