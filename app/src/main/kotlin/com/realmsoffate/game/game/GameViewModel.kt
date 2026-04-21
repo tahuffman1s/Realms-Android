@@ -1144,12 +1144,22 @@ class GameViewModel(
             }
         }
 
+        val currentLocNameForParse = worldMap?.locations?.getOrNull(currentLoc)?.name.orEmpty()
+        val autoTagged = com.realmsoffate.game.data.AutoTagUnknownNpcs.scan(
+            narration = parsed.narration,
+            existingNpcs = state.npcLog,
+            currentLoc = currentLocNameForParse,
+            turn = state.turns + 1
+        )
+        val parsedAugmented = if (autoTagged.isEmpty()) parsed
+        else parsed.copy(npcsMet = parsed.npcsMet + autoTagged)
+
         val npcLogResult = NpcLogReducer.apply(
             npcLog = state.npcLog,
             combat = state.combat,
-            parsed = parsed,
+            parsed = parsedAugmented,
             currentTurn = state.turns + 1,
-            currentLocName = worldMap?.locations?.getOrNull(currentLoc)?.name.orEmpty()
+            currentLocName = currentLocNameForParse
         )
         val npcLog = npcLogResult.npcLog
         var combatState = npcLogResult.combat
