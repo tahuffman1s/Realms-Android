@@ -147,6 +147,7 @@ val generateDebugSourceIndex by tasks.registering {
     }
 }
 tasks.matching { it.name == "compileDebugKotlin" }.configureEach { dependsOn(generateDebugSourceIndex) }
+tasks.matching { it.name.startsWith("ksp") && it.name.contains("Debug") }.configureEach { dependsOn(generateDebugSourceIndex) }
 
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.09.02")
