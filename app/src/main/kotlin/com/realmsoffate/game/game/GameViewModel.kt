@@ -773,7 +773,8 @@ class GameViewModel(
             val priorSummaryEndTurn = state.sceneSummaries.lastOrNull()?.turnEnd ?: 0
 
             val sessionSystem = sessionSystemFor(state, char)
-            val sys = Prompts.SYS + "\n\n" + sessionSystem
+            val sys = Prompts.SYS + "\n\n" + sessionSystem +
+                "\n\n" + com.realmsoffate.game.data.CANONICAL_FACTS_DIRECTIVE
             val userPrompt = buildUserPrompt(state, char, action, skill, ability, roll, mod, prof, total, suppressDice = seed)
             val userMsg = ChatMsg(role = "user", content = userPrompt)
             val nh = state.history + userMsg
@@ -1003,6 +1004,13 @@ class GameViewModel(
             if (recentNarration.isNotBlank()) {
                 append("\n\nRECENT STORY (continue from here, do not reset or contradict):\n$recentNarration")
             }
+            // CANONICAL FACTS block — ground-truth entities pinned by scene relevance
+            // plus keyword matches from the player's current action and last narration.
+            val canonical = buildCanonicalFacts(s, action, recentNarration)
+            if (!canonical.isEmpty) {
+                append("\n\n")
+                append(canonical.render())
+            }
         }
 
         val diceLine = if (suppressDice) "" else "\nDICE: d20=$roll" +
@@ -1010,6 +1018,53 @@ class GameViewModel(
             (skill?.let { "  SKILL:$it($ability) modifier:+$mod proficiency:+$prof total:$total" }.orEmpty())
 
         return "$cs\n\nACTION: $action$diceLine"
+    }
+
+    /**
+     * Assembles the CANONICAL FACTS block. Ground-truth entities derived from
+     * in-memory VM state: scene-relevant NPCs, keyword-matched NPCs / factions /
+     * locations drawn from the player's current input and the last narration.
+     */
+    private fun buildCanonicalFacts(
+        s: GameUiState,
+        playerAction: String,
+        recentNarration: String
+    ): com.realmsoffate.game.data.CanonicalFacts {
+        val locName = s.worldMap?.locations?.getOrNull(s.currentLoc)?.name.orEmpty()
+        val sceneRelevant = filterRelevantNpcs(
+            all = s.npcLog,
+            currentTurn = s.turns,
+            currentLocation = locName,
+            recencyWindow = 10,
+            cap = 8
+        )
+        val tokens = (com.realmsoffate.game.util.PromptKeywords.extract(playerAction) +
+            com.realmsoffate.game.util.PromptKeywords.extract(recentNarration)).distinct()
+
+        val kwNpcs = if (tokens.isEmpty()) emptyList() else s.npcLog.filter { n ->
+            val key = n.name.lowercase()
+            tokens.any { tok -> key.contains(tok) }
+        }.take(6)
+
+        val activeGivers = s.quests.filter { it.status == "active" }.mapNotNull { it.giver.takeIf(String::isNotBlank) }.toSet()
+        val partyNames = s.party.map { it.name }.toSet()
+        val pinned = s.npcLog.filter { it.name in activeGivers || it.name in partyNames }
+
+        val npcs = (sceneRelevant + kwNpcs + pinned).distinctBy { it.id }.take(10)
+
+        val allFactions = s.worldLore?.factions.orEmpty()
+        val factions = if (tokens.isEmpty()) emptyList() else allFactions.filter { f ->
+            val key = f.name.lowercase()
+            tokens.any { tok -> key.contains(tok) }
+        }.take(4)
+
+        val allLocs = s.worldMap?.locations.orEmpty()
+        val locations = if (tokens.isEmpty()) emptyList() else allLocs.filter { l ->
+            val key = l.name.lowercase()
+            tokens.any { tok -> key.contains(tok) }
+        }.take(4)
+
+        return com.realmsoffate.game.data.CanonicalFacts(npcs, factions, locations)
     }
 
     internal fun applyParsed(
