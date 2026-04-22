@@ -14,6 +14,7 @@ interface EntityRepository {
     suspend fun snapshotForReducers(): EntitySnapshot
     suspend fun sceneRelevantNpcs(location: String, currentTurn: Int, withinTurns: Int = 10): List<LogNpc>
     suspend fun keywordMatchedEntities(tokens: List<String>, limit: Int = 15): KeywordHits
+    suspend fun keywordMatchedSummaries(tokens: List<String>, sceneLimit: Int = 5, arcLimit: Int = 5): SummaryHits
 
     // Writes
     suspend fun applyChanges(changes: EntityChanges)

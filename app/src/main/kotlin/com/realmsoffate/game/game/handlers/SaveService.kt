@@ -28,7 +28,10 @@ class SaveService(
     // Callbacks for clearing ephemeral overlays owned by other handlers
     private val clearOverlays: () -> Unit,
     /** Provides the current arc summaries at save time (pulled from Room). */
-    private val arcSummaryProvider: suspend () -> List<com.realmsoffate.game.data.ArcSummary> = { emptyList() }
+    private val arcSummaryProvider: suspend () -> List<com.realmsoffate.game.data.ArcSummary> = { emptyList() },
+    /** Invoked after [loadSlot] restores ui state, with the SaveData from disk.
+     *  Used to rehydrate the narrative Room DB from the authoritative on-disk save. */
+    private val onSaveLoaded: (SaveData) -> Unit = {}
 ) {
 
     val saveSlotsMeta: StateFlow<List<SaveSlotMeta>> = saveSlots.asStateFlow()
@@ -135,6 +138,9 @@ class SaveService(
             // Clear any stale ephemeral overlays so they don't leak into the loaded run.
             clearOverlays()
             screen.value = Screen.Game
+            // Rehydrate the narrative Room DB from the authoritative on-disk save
+            // (includes arcSummaries, which the VM-local snapshot lacks).
+            onSaveLoaded(d)
         }
     }
 

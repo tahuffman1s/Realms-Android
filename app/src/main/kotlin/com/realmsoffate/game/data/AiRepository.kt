@@ -290,6 +290,57 @@ If the action is combat/attacking, respond "Attack". If purely dialogue with no 
         }
     }
 
+    /**
+     * One-shot arc summarization — compresses a batch of scene summaries into a
+     * single long-term arc. Mirrors [summarizeScene]'s slim call shape: no
+     * per-turn reminder, no DS_PREFIX, no history windowing. Returns the raw
+     * model response (expected to be `{"summary":"..."}` JSON per [Prompts.ARC_SUMMARY_SYS]);
+     * [com.realmsoffate.game.game.ArcSummarizer] unwraps the envelope.
+     */
+    suspend fun summarizeArc(
+        apiKey: String,
+        sceneInputs: List<String>
+    ): String = withContext(Dispatchers.IO) {
+        if (sceneInputs.isEmpty() || apiKey.isBlank()) return@withContext ""
+        try {
+            val userContent = sceneInputs.joinToString("\n\n")
+            val messages = buildJsonArray {
+                add(buildJsonObject {
+                    put("role", "system")
+                    put("content", ARC_SUMMARY_SYS)
+                })
+                add(buildJsonObject {
+                    put("role", "user")
+                    put("content", userContent)
+                })
+            }
+            val body = buildJsonObject {
+                put("model", "deepseek-chat")
+                put("max_tokens", 500)
+                put("temperature", 0.2)
+                put("messages", messages)
+            }
+            val req = Request.Builder()
+                .url("https://api.deepseek.com/v1/chat/completions")
+                .post(body.toString().toRequestBody("application/json".toMediaType()))
+                .addHeader("Authorization", "Bearer $apiKey")
+                .addHeader("Content-Type", "application/json")
+                .build()
+            val resp = client.newCall(req).execute()
+            resp.use {
+                if (!it.isSuccessful) return@withContext ""
+                val text = it.body?.string().orEmpty()
+                val root = json.parseToJsonElement(text).jsonObject
+                root["choices"]?.jsonArray?.firstOrNull()
+                    ?.jsonObject?.get("message")?.jsonObject?.get("content")
+                    ?.jsonPrimitive?.content
+                    .orEmpty()
+            }
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
     private fun fallback(err: String): String {
         return "[SCENE:default|Mystery] *(Connection flickers...)* Try again, adventurer.\n" +
                 "[CHOICES]\n" +

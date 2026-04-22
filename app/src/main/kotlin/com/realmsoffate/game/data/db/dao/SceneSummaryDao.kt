@@ -19,6 +19,15 @@ interface SceneSummaryDao {
     @Query("SELECT * FROM scene_summary")
     suspend fun getAll(): List<SceneSummaryEntity>
 
+    /** Case-insensitive substring match against summary text, scene_name, location,
+     *  or key_facts_json. Newest-first so the caller can early-exit once it has enough. */
+    @Query(
+        "SELECT * FROM scene_summary WHERE " +
+            "summary LIKE :pattern OR scene_name LIKE :pattern OR location LIKE :pattern OR key_facts_json LIKE :pattern " +
+            "ORDER BY turn_end DESC LIMIT :limit"
+    )
+    suspend fun matchKeyword(pattern: String, limit: Int): List<SceneSummaryEntity>
+
     @Insert
     suspend fun insert(row: SceneSummaryEntity): Long
 

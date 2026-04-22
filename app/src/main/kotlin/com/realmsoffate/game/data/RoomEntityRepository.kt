@@ -76,6 +76,34 @@ class RoomEntityRepository(private val db: RealmsDb) : EntityRepository {
         return KeywordHits(npcHits.values.toList().take(limit), factionHits.take(limit), locationHits.take(limit))
     }
 
+    override suspend fun keywordMatchedSummaries(
+        tokens: List<String>,
+        sceneLimit: Int,
+        arcLimit: Int
+    ): SummaryHits {
+        if (tokens.isEmpty()) return SummaryHits.EMPTY
+        val sceneById = mutableMapOf<Long, SceneSummary>()
+        val arcById = mutableMapOf<Long, ArcSummary>()
+        for (tok in tokens) {
+            val pattern = "%$tok%"
+            if (sceneById.size < sceneLimit) {
+                db.sceneSummaryDao().matchKeyword(pattern, sceneLimit).forEach { e ->
+                    sceneById.putIfAbsent(e.id, Mappers.toSceneSummary(e))
+                }
+            }
+            if (arcById.size < arcLimit) {
+                db.arcSummaryDao().matchKeyword(pattern, arcLimit).forEach { e ->
+                    arcById.putIfAbsent(e.id, Mappers.toArcSummary(e))
+                }
+            }
+            if (sceneById.size >= sceneLimit && arcById.size >= arcLimit) break
+        }
+        return SummaryHits(
+            scenes = sceneById.values.toList().take(sceneLimit),
+            arcs = arcById.values.toList().take(arcLimit)
+        )
+    }
+
     override suspend fun applyChanges(changes: EntityChanges) {
         if (changes.isEmpty) return
         db.withTransaction {
