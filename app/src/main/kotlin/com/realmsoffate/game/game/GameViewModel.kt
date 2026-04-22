@@ -613,6 +613,11 @@ class GameViewModel(
                     DisplayMessage.System("${scenario.name} — ${char.name} the ${char.race} ${char.cls} arrives in ${startLoc.name}.")
                 )
             )
+            // Route the narrative DB to this character's file and clear any prior data.
+            com.realmsoffate.game.data.db.RealmsDbHolder.switchTo(
+                SaveStore.slotKeyFor(char.name)
+            )
+            viewModelScope.launch { runCatching { repo.clear() } }
             _screen.value = Screen.Game
 
             // Seed opening narration with the scenario prompt template.

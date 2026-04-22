@@ -39,7 +39,12 @@ class SaveService(
 
     fun saveToSlot(slot: String = "autosave") {
         scope.launch {
-            SaveStore.write(slot, snapshotSaveData() ?: return@launch)
+            val data = snapshotSaveData() ?: return@launch
+            // Route the narrative DB to the character-keyed file (shared with autosave).
+            com.realmsoffate.game.data.db.RealmsDbHolder.switchTo(
+                com.realmsoffate.game.data.db.dbKeyForSave(slot, data.character.name)
+            )
+            SaveStore.write(slot, data)
         }
     }
 
@@ -138,6 +143,10 @@ class SaveService(
             // Clear any stale ephemeral overlays so they don't leak into the loaded run.
             clearOverlays()
             screen.value = Screen.Game
+            // Route narrative DB to the loaded character's file BEFORE reseeding.
+            com.realmsoffate.game.data.db.RealmsDbHolder.switchTo(
+                SaveStore.slotKeyFor(d.character.name)
+            )
             // Rehydrate the narrative Room DB from the authoritative on-disk save
             // (includes arcSummaries, which the VM-local snapshot lacks).
             onSaveLoaded(d)

@@ -2,7 +2,19 @@ package com.realmsoffate.game.data.db
 
 import android.content.Context
 import com.realmsoffate.game.data.RoomEntityRepository
+import com.realmsoffate.game.data.SaveStore
 import java.io.File
+
+/**
+ * Resolves the DB-file key for a given save slot. "autosave" collapses to the
+ * character-keyed slot so both slots for one character share a DB.
+ */
+fun dbKeyForSave(slot: String, characterName: String?): String {
+    val safeName = characterName?.takeIf { it.isNotBlank() } ?: return slot
+    return if (slot == SaveStore.AUTOSAVE_KEY)
+        SaveStore.slotKeyFor(safeName)
+    else slot
+}
 
 /**
  * App-scoped singleton for the narrative [RealmsDb]. Initialized once from
