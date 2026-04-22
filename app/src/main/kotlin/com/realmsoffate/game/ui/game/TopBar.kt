@@ -51,6 +51,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -163,7 +165,11 @@ internal fun GameTopBar(
                     }
                     if (cheatsEnabled) {
                         IconButton(onClick = onCheatsClick) {
-                            Text("🃏", fontSize = 22.sp)
+                            Text(
+                                "🃏",
+                                fontSize = 22.sp,
+                                modifier = Modifier.semantics { contentDescription = "Cheats" }
+                            )
                         }
                     }
                     IconButton(onClick = onSettingsClick) {
