@@ -28,9 +28,12 @@ class StyleExemplarTest {
     fun `block wraps non-blank sample in a STYLE section`() {
         val block = StyleExemplar.block("Hello world.")
         assertTrue(block.contains("# STYLE"))
-        assertTrue(block.contains("Hello world."))
-        // Block ends with a newline so concat keeps formatting clean.
-        assertTrue(block.endsWith("\n"))
+        // Pin the wrapping format (leading newline, STYLE header, quoted content,
+        // trailing newline) so a future refactor of the wrapper is caught here.
+        assertEquals(
+            "\n# STYLE (match this voice — tone, cadence, word choice)\n\"Hello world.\"\n",
+            block
+        )
     }
 
     @Test
