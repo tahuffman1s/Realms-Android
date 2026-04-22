@@ -1184,10 +1184,13 @@ class GameViewModel(
             tokens.any { tok -> key.contains(tok) }
         }
 
-        val currentLoc = s.worldMap?.locations?.getOrNull(s.currentLoc)
+        val worldMap = s.worldMap
+        val currentLoc = worldMap?.locations?.getOrNull(s.currentLoc)
+        // cap=6 in the locations list below must exceed 1 (current) + expected
+        // neighbor count (~2-3) so renderCurrentLocation never drops adjacent names.
         val adjacents: List<com.realmsoffate.game.data.MapLocation> =
-            if (currentLoc != null)
-                com.realmsoffate.game.game.WorldGen.connected(s.worldMap!!, currentLoc.id).map { it.first }
+            if (currentLoc != null && worldMap != null)
+                com.realmsoffate.game.game.WorldGen.connected(worldMap, currentLoc.id).map { it.first }
             else emptyList()
 
         val baseLocations = (memLocs + repoHits.locations).distinctBy { it.id }.take(4)
