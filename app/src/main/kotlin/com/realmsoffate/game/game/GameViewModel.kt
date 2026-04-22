@@ -293,6 +293,7 @@ class GameViewModel(
     fun assignStatPoint(stat: String) = progressionHandler.assignStatPoint(stat)
     fun selectFeat(featName: String) = progressionHandler.selectFeat(featName)
     fun dismissFeat() = progressionHandler.dismissFeat()
+    fun applyOverprepared() = progressionHandler.applyOverprepared()
 
     fun unlockCheats() {
         viewModelScope.launch { cheatsStore.unlock() }

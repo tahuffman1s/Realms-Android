@@ -83,6 +83,8 @@ internal fun GameTopBar(
     showSceneContext: Boolean = false,
     onSettingsClick: () -> Unit = {},
     infiniteGold: Boolean = false,
+    cheatsEnabled: Boolean = false,
+    onCheatsClick: () -> Unit = {},
 ) {
     val ch = state.character ?: return
     val location = state.worldMap?.locations?.getOrNull(state.currentLoc)
@@ -158,6 +160,11 @@ internal fun GameTopBar(
                             },
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                    if (cheatsEnabled) {
+                        IconButton(onClick = onCheatsClick) {
+                            Text("🃏", fontSize = 22.sp)
+                        }
                     }
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
