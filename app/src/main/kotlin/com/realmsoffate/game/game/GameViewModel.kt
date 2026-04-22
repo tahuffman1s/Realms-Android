@@ -47,6 +47,7 @@ import com.realmsoffate.game.game.reducers.QuestReducer
 import com.realmsoffate.game.game.reducers.PartyReducer
 import com.realmsoffate.game.game.reducers.WorldReducer
 import com.realmsoffate.game.game.reducers.SceneBoundaryDetector
+import com.realmsoffate.game.data.db.RealmsDbHolder
 import kotlinx.coroutines.flow.update
 
 enum class Screen { ApiSetup, Title, CharacterCreation, Game, Death }
@@ -167,8 +168,13 @@ sealed interface DisplayMessage {
 class GameViewModel(
     private val ai: AiRepository,
     private val prefs: PreferencesStore,
-    private val repo: com.realmsoffate.game.data.EntityRepository = com.realmsoffate.game.data.db.RealmsDbHolder.repo
 ) : ViewModel() {
+
+    /** Re-resolved per access so post-switchTo writes hit the current character's DB.
+     *  Note: Flows already subscribed via collectAsState remain bound to the previous
+     *  repo — UI recomposition will need a key change to re-subscribe (future work). */
+    private val repo: com.realmsoffate.game.data.EntityRepository
+        get() = RealmsDbHolder.repo
 
     /** Expose repo flows so UI panels can observe entity lists live. */
     val loggedNpcsFlow: kotlinx.coroutines.flow.Flow<List<LogNpc>> get() = repo.observeLoggedNpcs()
@@ -614,10 +620,10 @@ class GameViewModel(
                 )
             )
             // Route the narrative DB to this character's file and clear any prior data.
-            com.realmsoffate.game.data.db.RealmsDbHolder.switchTo(
+            RealmsDbHolder.switchTo(
                 SaveStore.slotKeyFor(char.name)
             )
-            viewModelScope.launch { runCatching { repo.clear() } }
+            runCatching { repo.clear() }
             _screen.value = Screen.Game
 
             // Seed opening narration with the scenario prompt template.

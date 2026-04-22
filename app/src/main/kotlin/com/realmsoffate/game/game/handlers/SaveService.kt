@@ -8,6 +8,8 @@ import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
 import com.realmsoffate.game.data.SerializedBuyback
 import com.realmsoffate.game.data.TimelineEntry
+import com.realmsoffate.game.data.db.RealmsDbHolder
+import com.realmsoffate.game.data.db.dbKeyForSave
 import com.realmsoffate.game.game.*
 import com.realmsoffate.game.ui.overlays.BuybackEntry
 import kotlinx.coroutines.CoroutineScope
@@ -41,8 +43,8 @@ class SaveService(
         scope.launch {
             val data = snapshotSaveData() ?: return@launch
             // Route the narrative DB to the character-keyed file (shared with autosave).
-            com.realmsoffate.game.data.db.RealmsDbHolder.switchTo(
-                com.realmsoffate.game.data.db.dbKeyForSave(slot, data.character.name)
+            RealmsDbHolder.switchTo(
+                dbKeyForSave(slot, data.character.name)
             )
             SaveStore.write(slot, data)
         }
@@ -140,13 +142,13 @@ class SaveService(
                 deathSave = d.deathSave,
                 sceneSummaries = d.sceneSummaries
             )
+            // Route narrative DB to the loaded character's file BEFORE the UI goes live.
+            RealmsDbHolder.switchTo(
+                SaveStore.slotKeyFor(d.character.name)
+            )
             // Clear any stale ephemeral overlays so they don't leak into the loaded run.
             clearOverlays()
             screen.value = Screen.Game
-            // Route narrative DB to the loaded character's file BEFORE reseeding.
-            com.realmsoffate.game.data.db.RealmsDbHolder.switchTo(
-                SaveStore.slotKeyFor(d.character.name)
-            )
             // Rehydrate the narrative Room DB from the authoritative on-disk save
             // (includes arcSummaries, which the VM-local snapshot lacks).
             onSaveLoaded(d)

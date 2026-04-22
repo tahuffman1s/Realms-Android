@@ -1,6 +1,7 @@
 package com.realmsoffate.game.data
 
 import android.content.Context
+import com.realmsoffate.game.data.db.RealmsDbHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -183,16 +184,12 @@ object SaveStore {
         if (characterName.isNullOrBlank()) return@withContext
         // Sweep the sibling slot that shares this character.
         val sibling = if (slot == AUTOSAVE_KEY) slotKeyFor(characterName) else AUTOSAVE_KEY
-        var siblingDeleted = false
         if (sibling != slot && peekCharacterName(sibling) == characterName) {
             deleteAllFor(sibling)
-            siblingDeleted = true
         }
-        // If no remaining slot refers to this character, drop the per-character DB.
-        val anyRemaining = if (!siblingDeleted && sibling != slot) peekCharacterName(sibling) == characterName else false
-        if (!anyRemaining) {
-            com.realmsoffate.game.data.db.RealmsDbHolder.deleteSlotDb(slotKeyFor(characterName))
-        }
+        // Both JSON slots for this character have been swept (delete() always pairs them).
+        // Drop the per-character narrative DB.
+        RealmsDbHolder.deleteSlotDb(slotKeyFor(characterName))
     }
 
     private fun deleteAllFor(slot: String) {
