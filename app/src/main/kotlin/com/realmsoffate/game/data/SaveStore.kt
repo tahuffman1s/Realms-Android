@@ -174,26 +174,30 @@ object SaveStore {
             }.getOrNull()?.let { migrateIds(it) } ?: return@withContext null
 
             // Extract DB payload if present (legacy saves have no db entry — skip silently).
-            SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB)?.let { dbBytes ->
-                val targetSlot = slotKeyFor(parsed.character.name)
-                // Release Room's hold on the target file before overwriting it.
-                RealmsDbHolder.closeSlotIfOpen(targetSlot)
-                val target = File(ctx().filesDir, RealmsDb.fileNameForSlot(targetSlot))
-                target.outputStream().use { it.write(dbBytes) }
-                SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB_WAL)?.let { b ->
-                    File(target.absolutePath + "-wal").outputStream().use { it.write(b) }
+            runCatching {
+                SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB)?.let { dbBytes ->
+                    val targetSlot = slotKeyFor(parsed.character.name)
+                    // Release Room's hold on the target file before overwriting it.
+                    RealmsDbHolder.closeSlotIfOpen(targetSlot)
+                    val target = File(ctx().filesDir, RealmsDb.fileNameForSlot(targetSlot))
+                    target.outputStream().use { it.write(dbBytes) }
+                    // Read each sidecar once; extract if present, delete stale if absent so
+                    // SQLite doesn't attempt to reconcile against stale WAL content.
+                    val walBytes = SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB_WAL)
+                    val shmBytes = SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB_SHM)
+                    if (walBytes != null) {
+                        File(target.absolutePath + "-wal").outputStream().use { it.write(walBytes) }
+                    } else {
+                        File(target.absolutePath + "-wal").delete()
+                    }
+                    if (shmBytes != null) {
+                        File(target.absolutePath + "-shm").outputStream().use { it.write(shmBytes) }
+                    } else {
+                        File(target.absolutePath + "-shm").delete()
+                    }
                 }
-                SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB_SHM)?.let { b ->
-                    File(target.absolutePath + "-shm").outputStream().use { it.write(b) }
-                }
-                // If sidecars were absent in the zip but exist on disk, remove them so
-                // SQLite doesn't attempt to reconcile against stale WAL content.
-                if (SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB_WAL) == null) {
-                    File(target.absolutePath + "-wal").delete()
-                }
-                if (SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB_SHM) == null) {
-                    File(target.absolutePath + "-shm").delete()
-                }
+            }.onFailure { e ->
+                android.util.Log.e("SaveStore", "DB extract failed during load", e)
             }
 
             return@withContext parsed

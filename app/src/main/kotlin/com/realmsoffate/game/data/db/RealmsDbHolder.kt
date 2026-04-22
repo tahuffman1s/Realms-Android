@@ -83,8 +83,15 @@ object RealmsDbHolder {
 
     /**
      * Release the Room handle for [slot] without opening a new DB, so its files
-     * can be overwritten (e.g. by a .rofsave import). The next [switchTo] will
-     * reopen Room against whatever files now exist on disk.
+     * can be overwritten (e.g. during a .rofsave import). The subsequent
+     * [switchTo] will reopen Room against whatever files now exist on disk.
+     *
+     * Thread contract: between this call and the next [switchTo], [_db] / [_repo]
+     * are null. Callers must ensure no other thread or coroutine reads [db] or
+     * [repo] during that window, or the getters will throw
+     * [IllegalStateException]. In practice this is safe when called sequentially
+     * inside a single load/import coroutine that immediately follows with
+     * [switchTo].
      *
      * If [slot] is not the currently active slot, this is a no-op.
      */
