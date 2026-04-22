@@ -793,6 +793,17 @@ class GameViewModel(
     }
 
     fun submitAction(action: String, skill: String? = null, seed: Boolean = false) {
+        // Konami intercept — swallow the message, unlock cheats, show system toast.
+        if (!seed && isKonami(action)) {
+            val wasEnabled = Cheats.enabled
+            viewModelScope.launch { cheatsStore.unlock() }
+            val msg = if (wasEnabled) "Cheats already unlocked" else "🎉 Cheats unlocked — see the 🃏 in the top bar"
+            _ui.value = _ui.value.copy(
+                messages = _ui.value.messages + DisplayMessage.System(msg)
+            )
+            return
+        }
+
         val state = tryClaimSubmit() ?: return
         val char = state.character ?: return  // re-checked for the type checker
 
@@ -1908,6 +1919,16 @@ class GameViewModel(
                 )
             }
         }
+
+        /** Emoji Konami code that unlocks the cheat menu when typed as the full chat message.
+         *  Defined with explicit unicode codepoints so IDE reformatting can't break the literal. */
+        const val KONAMI_CODE = "⬆️⬆️" +
+                "⬇️⬇️" +
+                "⬅️➡️⬅️➡️" +
+                "🅱️🅰️"
+
+        /** Returns true iff [text] (after trimming) exactly equals the Konami code. */
+        fun isKonami(text: String): Boolean = text.trim() == KONAMI_CODE
 
         /** XP required to reach the given level (D&D 5e thresholds). */
         fun levelThreshold(level: Int): Int = when (level) {
