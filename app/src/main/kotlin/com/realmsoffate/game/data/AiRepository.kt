@@ -5,6 +5,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -44,6 +45,10 @@ class AiRepository(
         /** Default history budget in tokens — leaves headroom for system + scene summaries + per-turn context. */
         const val HISTORY_TOKEN_BUDGET: Int = 8000
 
+        /** Shared lenient parser — reused by [parseBalance] and [parseSummaryResponse] so we
+         *  don't allocate a configuration object on every parse. */
+        private val lenientJson = Json { ignoreUnknownKeys = true; isLenient = true }
+
         /**
          * Keep the largest suffix of [history] whose summed token estimate ≤ [budget].
          * Always preserves the final message even if it alone exceeds the budget
@@ -70,10 +75,12 @@ class AiRepository(
 
         /** Extract the USD total_balance from a DeepSeek /user/balance payload.
          *  Falls back to the first balance entry when USD is not present. Returns
-         *  null on any parse failure or when balance_infos is empty. */
+         *  null on any parse failure, when the account is marked unavailable, or
+         *  when balance_infos is empty. */
         fun parseBalance(raw: String): String? = runCatching {
-            val j = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; isLenient = true }
-            val root = j.parseToJsonElement(raw).jsonObject
+            val root = lenientJson.parseToJsonElement(raw).jsonObject
+            val available = root["is_available"]?.jsonPrimitive?.booleanOrNull ?: true
+            if (!available) return@runCatching null
             val infos = root["balance_infos"]?.jsonArray ?: return@runCatching null
             if (infos.isEmpty()) return@runCatching null
             val usd = infos.firstOrNull { it.jsonObject["currency"]?.jsonPrimitive?.contentOrNull == "USD" }
@@ -96,10 +103,7 @@ class AiRepository(
             if (start < 0 || end < 0 || end <= start) return null
             val jsonSlice = stripped.substring(start, end + 1)
             return try {
-                val j = kotlinx.serialization.json.Json {
-                    ignoreUnknownKeys = true; isLenient = true
-                }
-                val obj = j.parseToJsonElement(jsonSlice).jsonObject
+                val obj = lenientJson.parseToJsonElement(jsonSlice).jsonObject
                 val summary = obj["summary"]?.jsonPrimitive?.content ?: return null
                 val facts = obj["keyFacts"]?.jsonArray
                     ?.mapNotNull { it.jsonPrimitive.content.takeIf { s -> s.isNotBlank() } }
