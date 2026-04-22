@@ -12,6 +12,7 @@ import com.realmsoffate.game.data.AiRepository
 import com.realmsoffate.game.data.ChatMsg
 import com.realmsoffate.game.data.Character
 import com.realmsoffate.game.data.Choice
+import com.realmsoffate.game.data.CheatsStore
 import com.realmsoffate.game.data.EntityRepository
 import com.realmsoffate.game.data.PartyCompanion
 import com.realmsoffate.game.data.Item
@@ -35,6 +36,7 @@ import com.realmsoffate.game.data.WorldLore
 import com.realmsoffate.game.data.WorldMap
 import com.realmsoffate.game.data.deepCopy
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
@@ -172,7 +174,7 @@ sealed interface DisplayMessage {
 class GameViewModel(
     private val ai: AiRepository,
     private val prefs: PreferencesStore,
-    private val cheatsStore: com.realmsoffate.game.data.CheatsStore,
+    private val cheatsStore: CheatsStore,
 ) : ViewModel() {
 
     /** Re-resolved per access so post-switchTo writes hit the current character's DB.
@@ -275,16 +277,16 @@ class GameViewModel(
     val pendingFeat: StateFlow<Boolean> = progressionHandler.pendingFeatFlow
 
     val cheatsEnabled: StateFlow<Boolean> = cheatsStore.enabled.stateIn(
-        viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false
+        viewModelScope, SharingStarted.Eagerly, false
     )
     val cheatUnnaturalTwenty: StateFlow<Boolean> = cheatsStore.unnaturalTwenty.stateIn(
-        viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false
+        viewModelScope, SharingStarted.Eagerly, false
     )
     val cheatLoser: StateFlow<Boolean> = cheatsStore.loser.stateIn(
-        viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false
+        viewModelScope, SharingStarted.Eagerly, false
     )
     val cheatInfiniteGold: StateFlow<Boolean> = cheatsStore.infiniteGold.stateIn(
-        viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false
+        viewModelScope, SharingStarted.Eagerly, false
     )
 
     fun dismissLevelUp() = progressionHandler.dismissLevelUp()
@@ -599,16 +601,16 @@ class GameViewModel(
         }
         viewModelScope.launch { prefs.fontScale.collect { _fontScale.value = it } }
         viewModelScope.launch {
-            cheatsStore.enabled.collect { com.realmsoffate.game.game.Cheats.enabled = it }
+            cheatsStore.enabled.collect { Cheats.enabled = it }
         }
         viewModelScope.launch {
-            cheatsStore.unnaturalTwenty.collect { com.realmsoffate.game.game.Cheats.forceCrit = it }
+            cheatsStore.unnaturalTwenty.collect { Cheats.forceCrit = it }
         }
         viewModelScope.launch {
-            cheatsStore.loser.collect { com.realmsoffate.game.game.Cheats.forceFail = it }
+            cheatsStore.loser.collect { Cheats.forceFail = it }
         }
         viewModelScope.launch {
-            cheatsStore.infiniteGold.collect { com.realmsoffate.game.game.Cheats.infiniteGold = it }
+            cheatsStore.infiniteGold.collect { Cheats.infiniteGold = it }
         }
     }
 
@@ -1902,7 +1904,7 @@ class GameViewModel(
                 GameViewModel(
                     ai = AiRepository(),
                     prefs = PreferencesStore(ctx),
-                    cheatsStore = com.realmsoffate.game.data.CheatsStore(ctx)
+                    cheatsStore = CheatsStore(ctx)
                 )
             }
         }
