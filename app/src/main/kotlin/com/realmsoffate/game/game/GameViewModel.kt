@@ -11,6 +11,7 @@ import com.realmsoffate.game.data.AiRepository
 import com.realmsoffate.game.data.ChatMsg
 import com.realmsoffate.game.data.Character
 import com.realmsoffate.game.data.Choice
+import com.realmsoffate.game.data.EntityRepository
 import com.realmsoffate.game.data.PartyCompanion
 import com.realmsoffate.game.data.Item
 import com.realmsoffate.game.data.LogNpc
@@ -173,7 +174,7 @@ class GameViewModel(
     /** Re-resolved per access so post-switchTo writes hit the current character's DB.
      *  Note: Flows already subscribed via collectAsState remain bound to the previous
      *  repo — UI recomposition will need a key change to re-subscribe (future work). */
-    private val repo: com.realmsoffate.game.data.EntityRepository
+    private val repo: EntityRepository
         get() = RealmsDbHolder.repo
 
     /** Expose repo flows so UI panels can observe entity lists live. */
