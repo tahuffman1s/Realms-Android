@@ -1183,9 +1183,26 @@ class GameViewModel(
             val key = l.name.lowercase()
             tokens.any { tok -> key.contains(tok) }
         }
-        val locations = (memLocs + repoHits.locations).distinctBy { it.id }.take(4)
 
-        return com.realmsoffate.game.data.CanonicalFacts(npcs, factions, locations)
+        val currentLoc = s.worldMap?.locations?.getOrNull(s.currentLoc)
+        val adjacents: List<com.realmsoffate.game.data.MapLocation> =
+            if (currentLoc != null)
+                com.realmsoffate.game.game.WorldGen.connected(s.worldMap!!, currentLoc.id).map { it.first }
+            else emptyList()
+
+        val baseLocations = (memLocs + repoHits.locations).distinctBy { it.id }.take(4)
+        val locations = (listOfNotNull(currentLoc) + adjacents + baseLocations)
+            .distinctBy { it.id }
+            .take(6)
+
+        val adjacencyMap: Map<Int, List<Int>> =
+            if (currentLoc != null) mapOf(currentLoc.id to adjacents.map { it.id }) else emptyMap()
+
+        return com.realmsoffate.game.data.CanonicalFacts(
+            npcs, factions, locations,
+            currentLocationId = currentLoc?.id,
+            adjacencies = adjacencyMap
+        )
     }
 
     internal fun applyParsed(
