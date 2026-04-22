@@ -60,10 +60,13 @@ class ProgressionHandler(
 
     /**
      * One-shot cheat: jump the current character from current level to 20.
-     * - HP gains: class hit die + CON mod per level (averaged to max for simplicity)
-     * - Stat points auto-assigned to class primary on non-feat levels (2 per level)
-     * - Feat levels (4/8/12/16/20): grants "Tough" as the default
-     * - XP set to level-20 threshold
+     * - HP gains: class hit die + CON mod per level (deterministic max, matches
+     *   [com.realmsoffate.game.game.reducers.CharacterReducer]).
+     * - Stat points auto-assigned to class primary on non-feat levels (+2 per level;
+     *   CON also bumps maxHp).
+     * - Grants "Tough" once at the final level so its retroactive HP bonus
+     *   (ch.level * 2) reflects the L20 state.
+     * - XP set to level-20 threshold.
      *
      * No-ops if the character is already level 20 or if mid-combat.
      */
@@ -85,14 +88,7 @@ class ProgressionHandler(
             ch.level = target
             val hpGain = (hitDie + conMod).coerceAtLeast(1)
             ch.maxHp += hpGain
-            if (target % 4 == 0) {
-                if (!ch.feats.any { it.equals("Tough", ignoreCase = true) }) {
-                    Feats.find("Tough")?.let { feat ->
-                        feat.apply(ch)
-                        ch.feats.add("Tough")
-                    }
-                }
-            } else {
+            if (target % 4 != 0) {
                 // Non-feat level: +2 stat points auto-assigned to class primary.
                 when (primary.uppercase()) {
                     "STR" -> ch.abilities.str += 2
@@ -102,6 +98,15 @@ class ProgressionHandler(
                     "WIS" -> ch.abilities.wis += 2
                     "CHA" -> ch.abilities.cha += 2
                 }
+            }
+            // feat levels (target % 4 == 0): deferred to single grant after loop
+        }
+        // Grant "Tough" once at final level so its retroactive ch.level * 2 HP bonus
+        // reflects the L20 state.
+        if (!ch.feats.any { it.equals("Tough", ignoreCase = true) }) {
+            Feats.find("Tough")?.let { feat ->
+                feat.apply(ch)
+                ch.feats.add("Tough")
             }
         }
         ch.hp = ch.maxHp
