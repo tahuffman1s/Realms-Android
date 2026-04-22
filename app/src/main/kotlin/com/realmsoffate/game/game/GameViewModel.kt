@@ -856,7 +856,13 @@ class GameViewModel(
             val nh = state.history + userMsg
 
             val raw = try {
-                ai.generate(_provider.value, _apiKey.value, sys, nh)
+                ai.generate(
+                    provider = _provider.value,
+                    apiKey = _apiKey.value,
+                    systemPrompt = sys,
+                    history = nh,
+                    styleSample = _ui.value.sceneSummaries.firstOrNull()?.summary
+                )
             } catch (t: Throwable) {
                 _ui.value = _ui.value.copy(isGenerating = false, error = "Network error: ${t.message}")
                 return@launch

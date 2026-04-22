@@ -103,22 +103,24 @@ class AiRepository(
         provider: AiProvider,
         apiKey: String,
         systemPrompt: String,
-        history: List<ChatMsg>
+        history: List<ChatMsg>,
+        styleSample: String? = null
     ): String = withContext(Dispatchers.IO) {
-        callDeepSeek(apiKey, systemPrompt, history)
+        callDeepSeek(apiKey, systemPrompt, history, styleSample)
     }
 
-    private fun callDeepSeek(apiKey: String, sys: String, history: List<ChatMsg>): String {
+    private fun callDeepSeek(apiKey: String, sys: String, history: List<ChatMsg>, styleSample: String? = null): String {
         val trimmed = windowByTokenBudget(history, HISTORY_TOKEN_BUDGET).toMutableList()
         if (trimmed.isNotEmpty() && trimmed.last().role == "user") {
             val last = trimmed.last()
             trimmed[trimmed.size - 1] = last.copy(content = last.content + Prompts.PER_TURN_REMINDER)
         }
         val messages = buildJsonArray {
-            // Stable system message — cache target.
+            // Stable system message — cache target. Style block (if any) is part
+            // of the stable prefix because the earliest scene summary never changes.
             add(buildJsonObject {
                 put("role", "system")
-                put("content", Prompts.DS_PREFIX + sys)
+                put("content", Prompts.DS_PREFIX + sys + StyleExemplar.block(styleSample))
             })
             trimmed.forEach { m ->
                 add(buildJsonObject {
