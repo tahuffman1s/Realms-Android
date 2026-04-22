@@ -8,6 +8,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
@@ -66,6 +67,19 @@ class AiRepository(
             }
             return kept.toList()
         }
+
+        /** Extract the USD total_balance from a DeepSeek /user/balance payload.
+         *  Falls back to the first balance entry when USD is not present. Returns
+         *  null on any parse failure or when balance_infos is empty. */
+        fun parseBalance(raw: String): String? = runCatching {
+            val j = kotlinx.serialization.json.Json { ignoreUnknownKeys = true; isLenient = true }
+            val root = j.parseToJsonElement(raw).jsonObject
+            val infos = root["balance_infos"]?.jsonArray ?: return@runCatching null
+            if (infos.isEmpty()) return@runCatching null
+            val usd = infos.firstOrNull { it.jsonObject["currency"]?.jsonPrimitive?.contentOrNull == "USD" }
+            val pick = usd ?: infos.first()
+            pick.jsonObject["total_balance"]?.jsonPrimitive?.contentOrNull
+        }.getOrNull()
 
         /**
          * Extract (summary, keyFacts) from a DeepSeek response. Tolerates code
@@ -341,6 +355,23 @@ If the action is combat/attacking, respond "Attack". If purely dialogue with no 
         } catch (_: Exception) {
             ""
         }
+    }
+
+    /** Fetches the current DeepSeek account USD balance as a string (e.g. "4.12").
+     *  Null on network failure, auth failure, or parse failure. Blocking I/O. */
+    suspend fun fetchBalance(apiKey: String): String? = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank()) return@withContext null
+        val req = Request.Builder()
+            .url("https://api.deepseek.com/user/balance")
+            .get()
+            .addHeader("Authorization", "Bearer $apiKey")
+            .build()
+        runCatching {
+            client.newCall(req).execute().use { r ->
+                if (!r.isSuccessful) return@use null
+                parseBalance(r.body?.string().orEmpty())
+            }
+        }.getOrNull()
     }
 
     private fun fallback(err: String): String {

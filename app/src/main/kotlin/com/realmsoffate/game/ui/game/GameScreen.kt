@@ -321,6 +321,9 @@ fun GameScreen(vm: GameViewModel) {
         )
     }
 
+    val balance by vm.balanceUsd.collectAsState()
+    LaunchedEffect(Unit) { vm.refreshBalance() }
+
     when (panel) {
         Panel.Settings -> SettingsPanel(
             fontScale = fontScale,
@@ -338,7 +341,9 @@ fun GameScreen(vm: GameViewModel) {
             onShortRest = { vm.shortRest() },
             onLongRest = { vm.longRest() },
             onDebugDump = { dumpDebugToFile() },
-            onReturnToTitle = { vm.returnToTitle() }
+            onReturnToTitle = { vm.returnToTitle() },
+            balanceUsd = balance,
+            onRefreshBalance = { vm.refreshBalance(force = true) }
         )
         else -> {}
     }

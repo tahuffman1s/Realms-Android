@@ -280,6 +280,24 @@ class GameViewModel(
     private val _fontScale = MutableStateFlow(1.0f)
     val fontScale: StateFlow<Float> = _fontScale.asStateFlow()
 
+    private val _balanceUsd = MutableStateFlow<String?>(null)
+    val balanceUsd: StateFlow<String?> = _balanceUsd.asStateFlow()
+    private var balanceFetchedAt: Long = 0L
+
+    /** Fetches the DeepSeek USD balance on demand. Results are cached for 60s so
+     *  opening Settings repeatedly doesn't hammer the endpoint. Passing force=true
+     *  skips the cache (used by the explicit refresh button). */
+    fun refreshBalance(force: Boolean = false) {
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            if (!force && now - balanceFetchedAt < 60_000 && _balanceUsd.value != null) return@launch
+            val key = _apiKey.value
+            if (key.isBlank()) { _balanceUsd.value = null; return@launch }
+            _balanceUsd.value = ai.fetchBalance(key)
+            balanceFetchedAt = now
+        }
+    }
+
     fun setFontScale(scale: Float) {
         _fontScale.value = scale.coerceIn(0.7f, 1.6f)
         viewModelScope.launch { prefs.saveFontScale(_fontScale.value) }
