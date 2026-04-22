@@ -178,7 +178,7 @@ private fun Tile(
             .border(if (active) 2.dp else 1.dp, borderColor, MaterialTheme.shapes.medium)
     ) {
         Column(
-            Modifier.fillMaxSize().padding(RealmsSpacing.m),
+            Modifier.fillMaxWidth().padding(RealmsSpacing.m),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
