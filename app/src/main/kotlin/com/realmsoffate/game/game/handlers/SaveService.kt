@@ -26,7 +26,12 @@ class SaveService(
     private val timeline: MutableList<TimelineEntry>,
     private val scope: CoroutineScope,
     // Callbacks for clearing ephemeral overlays owned by other handlers
-    private val clearOverlays: () -> Unit
+    private val clearOverlays: () -> Unit,
+    /** Provides the current arc summaries at save time (pulled from Room). */
+    private val arcSummaryProvider: suspend () -> List<com.realmsoffate.game.data.ArcSummary> = { emptyList() },
+    /** Invoked after [loadSlot] restores ui state, with the SaveData from disk.
+     *  Used to rehydrate the narrative Room DB from the authoritative on-disk save. */
+    private val onSaveLoaded: (SaveData) -> Unit = {}
 ) {
 
     val saveSlotsMeta: StateFlow<List<SaveSlotMeta>> = saveSlots.asStateFlow()
@@ -44,7 +49,7 @@ class SaveService(
      * timeline, conditions, in-flight shop/buyback, weather, accumulator, the
      * full chat-feed display messages, and the AI conversation history.
      */
-    private fun snapshotSaveData(): SaveData? {
+    private suspend fun snapshotSaveData(): SaveData? {
         val s = ui.value
         val ch = s.character ?: return null
         val wm = s.worldMap ?: return null
@@ -78,7 +83,8 @@ class SaveService(
             displayMessages = s.messages,
             deathSave = s.deathSave,
             debugLog = debugLog.takeLast(50),
-            sceneSummaries = s.sceneSummaries
+            sceneSummaries = s.sceneSummaries,
+            arcSummaries = runCatching { arcSummaryProvider() }.getOrDefault(emptyList())
         )
     }
 
@@ -132,6 +138,9 @@ class SaveService(
             // Clear any stale ephemeral overlays so they don't leak into the loaded run.
             clearOverlays()
             screen.value = Screen.Game
+            // Rehydrate the narrative Room DB from the authoritative on-disk save
+            // (includes arcSummaries, which the VM-local snapshot lacks).
+            onSaveLoaded(d)
         }
     }
 
@@ -146,7 +155,9 @@ class SaveService(
     }
 
     /** Serialises the live in-memory state to a JSON string for export. */
-    fun exportCurrentJson(): String? = snapshotSaveData()?.let { SaveStore.toJson(it) }
+    fun exportCurrentJson(): String? = kotlinx.coroutines.runBlocking {
+        snapshotSaveData()?.let { SaveStore.toJson(it) }
+    }
 
     /** Suggested filename for a save export, e.g. `Kaelis_L4_turn31.json`. */
     fun exportFilename(): String {

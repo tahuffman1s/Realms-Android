@@ -4,6 +4,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("com.google.devtools.ksp")
 }
 
 val keystoreProperties = Properties().apply {
@@ -146,6 +147,7 @@ val generateDebugSourceIndex by tasks.registering {
     }
 }
 tasks.matching { it.name == "compileDebugKotlin" }.configureEach { dependsOn(generateDebugSourceIndex) }
+tasks.matching { it.name.startsWith("ksp") && it.name.contains("Debug") }.configureEach { dependsOn(generateDebugSourceIndex) }
 
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.09.02")
@@ -185,6 +187,12 @@ dependencies {
 
     // OkHttp
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Room
+    implementation("androidx.room:room-runtime:2.7.0-alpha12")
+    implementation("androidx.room:room-ktx:2.7.0-alpha12")
+    ksp("androidx.room:room-compiler:2.7.0-alpha12")
+    testImplementation("androidx.room:room-testing:2.7.0-alpha12")
 
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")

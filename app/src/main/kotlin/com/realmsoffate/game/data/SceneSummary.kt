@@ -19,5 +19,7 @@ data class SceneSummary(
     val sceneName: String,
     val locationName: String,
     val summary: String,
-    val keyFacts: List<String> = emptyList()
+    val keyFacts: List<String> = emptyList(),
+    val id: Long = 0,
+    val createdAt: Long = System.currentTimeMillis()
 )

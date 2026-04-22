@@ -166,8 +166,55 @@ sealed interface DisplayMessage {
 
 class GameViewModel(
     private val ai: AiRepository,
-    private val prefs: PreferencesStore
+    private val prefs: PreferencesStore,
+    private val repo: com.realmsoffate.game.data.EntityRepository = com.realmsoffate.game.data.db.RealmsDbHolder.repo
 ) : ViewModel() {
+
+    /** Expose repo flows so UI panels can observe entity lists live. */
+    val loggedNpcsFlow: kotlinx.coroutines.flow.Flow<List<LogNpc>> get() = repo.observeLoggedNpcs()
+    val loreNpcsFlow: kotlinx.coroutines.flow.Flow<List<com.realmsoffate.game.data.LoreNpc>> get() = repo.observeLoreNpcs()
+    val activeQuestsFlow: kotlinx.coroutines.flow.Flow<List<Quest>> get() = repo.observeActiveQuests()
+    val factionsFlow: kotlinx.coroutines.flow.Flow<List<com.realmsoffate.game.data.Faction>> get() = repo.observeFactions()
+    val locationsFlow: kotlinx.coroutines.flow.Flow<List<com.realmsoffate.game.data.MapLocation>> get() = repo.observeLocations()
+
+    /** Arc summaries accessor for debug endpoints / retrospection UI. */
+    suspend fun readArcSummaries() = repo.allArcSummaries()
+
+    /** Rehydrates the narrative Room DB from a loaded [com.realmsoffate.game.data.SaveData].
+     *  Called on load with the authoritative on-disk payload (includes arcSummaries,
+     *  which the VM-local [snapshotSaveData] cannot provide without a blocking repo read). */
+    internal fun seedRepoFromLoadedSave(save: com.realmsoffate.game.data.SaveData) {
+        viewModelScope.launch { runCatching { repo.seedFromSaveData(save) } }
+    }
+
+    private fun snapshotSaveData(): com.realmsoffate.game.data.SaveData {
+        val s = _ui.value
+        val ch = s.character ?: com.realmsoffate.game.data.Character(name = "", race = "", cls = "")
+        val wm = s.worldMap ?: com.realmsoffate.game.data.WorldMap(
+            locations = mutableListOf(), roads = emptyList(), startId = 0,
+            terrain = emptyList(), rivers = emptyList(), lakes = emptyList()
+        )
+        return com.realmsoffate.game.data.SaveData(
+            character = ch,
+            morality = s.morality,
+            factionRep = s.factionRep,
+            worldMap = wm,
+            currentLoc = s.currentLoc,
+            playerPos = s.playerPos,
+            worldLore = s.worldLore,
+            worldEvents = s.worldEvents,
+            lastEventTurn = s.lastEventTurn,
+            npcLog = s.npcLog,
+            party = s.party,
+            quests = s.quests,
+            hotbar = s.hotbar,
+            history = s.history,
+            turns = s.turns,
+            scene = s.currentScene,
+            savedAt = "",
+            sceneSummaries = s.sceneSummaries
+        )
+    }
 
     private val _screen = MutableStateFlow(Screen.ApiSetup)
     val screen: StateFlow<Screen> = _screen.asStateFlow()
@@ -203,6 +250,14 @@ class GameViewModel(
     private val _buybackStocks = MutableStateFlow<Map<String, List<com.realmsoffate.game.ui.overlays.BuybackEntry>>>(emptyMap())
 
     private val sceneSummarizer = SceneSummarizer(ai)
+
+    /** Compresses batches of [com.realmsoffate.game.data.SceneSummary] into
+     *  [com.realmsoffate.game.data.ArcSummary] records via a dedicated slim AI
+     *  call — no DS_PREFIX, no per-turn reminder, no history windowing. Shares
+     *  the current api-key by reading it from the StateFlow at call time. */
+    private val arcSummarizer = com.realmsoffate.game.game.ArcSummarizer { inputs ->
+        ai.summarizeArc(_apiKey.value, inputs)
+    }
 
     private val progressionHandler = ProgressionHandler(_ui, _pendingLevelUp, _pendingStatPoints, _pendingFeat)
     val pendingLevelUpFlow: StateFlow<Int?> = progressionHandler.pendingLevelUpFlow
@@ -446,19 +501,28 @@ class GameViewModel(
             _targetPrompt.value = null
             _showInitiative.value = false
             _lastDeath.value = null
-        }
+        },
+        arcSummaryProvider = { repo.allArcSummaries() },
+        onSaveLoaded = { save -> seedRepoFromLoadedSave(save) }
     )
     val saveSlots: StateFlow<List<SaveSlotMeta>> = saveService.saveSlotsMeta
     val graveyard: StateFlow<List<GraveyardEntry>> = saveService.graveyardEntries
     fun refreshSlots() = saveService.refreshSlots()
     fun deleteSlot(slot: String) = saveService.deleteSlot(slot)
     fun exhumeGrave(entry: GraveyardEntry) = saveService.exhumeGrave(entry)
-    fun saveToSlot(slot: String = "autosave") = saveService.saveToSlot(slot)
+    fun saveToSlot(slot: String = "autosave") {
+        saveService.saveToSlot(slot)
+    }
     fun exportCurrentJson(): String? = saveService.exportCurrentJson()
     fun exportFilename(): String = saveService.exportFilename()
     fun debugDumpFilename(): String = saveService.debugDumpFilename()
     fun importSave(json: String) = saveService.importSave(json)
-    fun loadSlot(slot: String = "autosave") = saveService.loadSlot(slot)
+    fun loadSlot(slot: String = "autosave") {
+        // Room rehydration happens via the onSaveLoaded callback wired in the
+        // SaveService constructor — fires with the authoritative on-disk SaveData
+        // (includes arcSummaries) right after ui.value is restored.
+        saveService.loadSlot(slot)
+    }
 
     init {
         viewModelScope.launch {
@@ -773,7 +837,8 @@ class GameViewModel(
             val priorSummaryEndTurn = state.sceneSummaries.lastOrNull()?.turnEnd ?: 0
 
             val sessionSystem = sessionSystemFor(state, char)
-            val sys = Prompts.SYS + "\n\n" + sessionSystem
+            val sys = Prompts.SYS + "\n\n" + sessionSystem +
+                "\n\n" + com.realmsoffate.game.data.CANONICAL_FACTS_DIRECTIVE
             val userPrompt = buildUserPrompt(state, char, action, skill, ability, roll, mod, prof, total, suppressDice = seed)
             val userMsg = ChatMsg(role = "user", content = userPrompt)
             val nh = state.history + userMsg
@@ -851,6 +916,22 @@ class GameViewModel(
             )
 
             val finalState = _ui.value
+            // Diff pre-turn state against the authoritative post-turn state and
+            // persist the delta so Room stays in sync with in-memory lists.
+            val changes = com.realmsoffate.game.data.EntityDiff.computeAll(
+                oldNpcs = state.npcLog,
+                newNpcs = finalState.npcLog,
+                oldQuests = state.quests,
+                newQuests = finalState.quests,
+                oldFactions = state.worldLore?.factions.orEmpty(),
+                newFactions = finalState.worldLore?.factions.orEmpty(),
+                oldLocations = state.worldMap?.locations.orEmpty(),
+                newLocations = finalState.worldMap?.locations.orEmpty()
+            )
+            if (!changes.isEmpty) {
+                runCatching { repo.applyChanges(changes) }
+            }
+
             val postSnapshot = SceneBoundaryDetector.Snapshot(
                 sceneTag = finalState.currentScene,
                 locationName = finalState.worldMap?.locations?.getOrNull(finalState.currentLoc)?.name ?: "",
@@ -879,8 +960,14 @@ class GameViewModel(
                         turnStart = turnStart,
                         turnEnd = turnEnd
                     )
-                    if (updatedSummaries !== finalState.sceneSummaries) {
+                    if (updatedSummaries !== finalState.sceneSummaries && updatedSummaries.size > finalState.sceneSummaries.size) {
                         _ui.update { cur -> cur.copy(sceneSummaries = updatedSummaries) }
+                        // Persist the newly produced summary and trigger arc rollup
+                        // once enough unrolled scenes have accumulated.
+                        val newSummary = updatedSummaries.last()
+                        runCatching {
+                            sceneSummarizer.persistAndMaybeRollup(repo, newSummary, arcSummarizer)
+                        }
                     }
                 }
             }
@@ -923,7 +1010,7 @@ class GameViewModel(
      * world palette have all moved to buildSessionSystem (now in the system message)
      * so DeepSeek's prefix cache can hit them across turns.
      */
-    private fun buildUserPrompt(
+    private suspend fun buildUserPrompt(
         s: GameUiState, ch: Character, action: String, skill: String?, ability: String,
         roll: Int, mod: Int, prof: Int, total: Int, suppressDice: Boolean = false
     ): String {
@@ -982,6 +1069,25 @@ class GameViewModel(
             }
         } else ""
 
+        // Recent narration — used both in the prompt body and to compute keyword
+        // tokens for retrieval. Extract once.
+        val recentNarration = s.messages
+            .filterIsInstance<DisplayMessage.Narration>()
+            .takeLast(2)
+            .joinToString("\n---\n") { it.text.take(300) }
+
+        // Compute retrieval tokens and run both summary + entity keyword queries
+        // concurrently so long-term memory is relevance-ranked, not recency-ranked.
+        val tokens = (com.realmsoffate.game.util.PromptKeywords.extract(action) +
+            com.realmsoffate.game.util.PromptKeywords.extract(recentNarration)).distinct()
+        val entityHits = if (tokens.isEmpty()) com.realmsoffate.game.data.KeywordHits.EMPTY
+            else runCatching { repo.keywordMatchedEntities(tokens, limit = 8) }
+                .getOrDefault(com.realmsoffate.game.data.KeywordHits.EMPTY)
+        val summaryHits = if (tokens.isEmpty()) com.realmsoffate.game.data.SummaryHits.EMPTY
+            else runCatching { repo.keywordMatchedSummaries(tokens, sceneLimit = 5, arcLimit = 5) }
+                .getOrDefault(com.realmsoffate.game.data.SummaryHits.EMPTY)
+        val allArcs = runCatching { repo.allArcSummaries() }.getOrDefault(emptyList())
+
         val cs = buildString {
             // Per-turn volatile state — HP/AC/Gold change every turn so stay here
             append("HP:${ch.hp}/${ch.maxHp}  AC:${ch.ac}  Gold:${ch.gold}")
@@ -994,14 +1100,22 @@ class GameViewModel(
             append(partyCtx); append(questCtx); append(npcCtx); append(knownNpcsCtx); append(eventCtx)
             append("\nEquipped: $inv")
             append("\nInventory: ${invAll.ifBlank { "empty" }}")
+            // Long-term memory: arcs (matched first, then newest to fill), then
+            // scene summaries (recent working set), then keyword-matched past scenes
+            // that sit outside the working set. All live in the user message — they
+            // change per turn, so they don't belong in the cached system prompt.
+            append(renderArcSummariesBlock(allArcs, matched = summaryHits.arcs))
             append(renderSceneSummariesBlock(s.sceneSummaries))
-            // Feed recent narration context so the AI doesn't lose the thread
-            val recentNarration = s.messages
-                .filterIsInstance<DisplayMessage.Narration>()
-                .takeLast(2)
-                .joinToString("\n---\n") { it.text.take(300) }
+            append(renderMatchedPastScenesBlock(summaryHits.scenes, alreadyShown = s.sceneSummaries))
             if (recentNarration.isNotBlank()) {
                 append("\n\nRECENT STORY (continue from here, do not reset or contradict):\n$recentNarration")
+            }
+            // CANONICAL FACTS block — ground-truth entities pinned by scene relevance
+            // plus keyword matches from repo + in-memory state.
+            val canonical = buildCanonicalFacts(s, entityHits, tokens)
+            if (!canonical.isEmpty) {
+                append("\n\n")
+                append(canonical.render())
             }
         }
 
@@ -1010,6 +1124,56 @@ class GameViewModel(
             (skill?.let { "  SKILL:$it($ability) modifier:+$mod proficiency:+$prof total:$total" }.orEmpty())
 
         return "$cs\n\nACTION: $action$diceLine"
+    }
+
+    /**
+     * Assembles the CANONICAL FACTS block. Ground-truth entities derived from
+     * in-memory VM state plus pre-fetched keyword hits from the persistent Room
+     * repo, so older NPCs/factions/locations that have fallen out of the
+     * in-memory window still surface when the player or narration mentions them.
+     * [repoHits] and [tokens] are computed once upstream to avoid double queries.
+     */
+    private fun buildCanonicalFacts(
+        s: GameUiState,
+        repoHits: com.realmsoffate.game.data.KeywordHits,
+        tokens: List<String>
+    ): com.realmsoffate.game.data.CanonicalFacts {
+        val locName = s.worldMap?.locations?.getOrNull(s.currentLoc)?.name.orEmpty()
+        val sceneRelevant = filterRelevantNpcs(
+            all = s.npcLog,
+            currentTurn = s.turns,
+            currentLocation = locName,
+            recencyWindow = 10,
+            cap = 8
+        )
+
+        val kwNpcsInMem = if (tokens.isEmpty()) emptyList() else s.npcLog.filter { n ->
+            val key = n.name.lowercase()
+            tokens.any { tok -> key.contains(tok) }
+        }.take(6)
+
+        val activeGivers = s.quests.filter { it.status == "active" }.mapNotNull { it.giver.takeIf(String::isNotBlank) }.toSet()
+        val partyNames = s.party.map { it.name }.toSet()
+        val pinned = s.npcLog.filter { it.name in activeGivers || it.name in partyNames }
+
+        val npcs = (sceneRelevant + kwNpcsInMem + pinned + repoHits.npcs)
+            .distinctBy { it.id }.take(10)
+
+        val allFactions = s.worldLore?.factions.orEmpty()
+        val memFactions = if (tokens.isEmpty()) emptyList() else allFactions.filter { f ->
+            val key = f.name.lowercase()
+            tokens.any { tok -> key.contains(tok) }
+        }
+        val factions = (memFactions + repoHits.factions).distinctBy { it.id }.take(4)
+
+        val allLocs = s.worldMap?.locations.orEmpty()
+        val memLocs = if (tokens.isEmpty()) emptyList() else allLocs.filter { l ->
+            val key = l.name.lowercase()
+            tokens.any { tok -> key.contains(tok) }
+        }
+        val locations = (memLocs + repoHits.locations).distinctBy { it.id }.take(4)
+
+        return com.realmsoffate.game.data.CanonicalFacts(npcs, factions, locations)
     }
 
     internal fun applyParsed(
@@ -1089,12 +1253,22 @@ class GameViewModel(
             }
         }
 
+        val currentLocNameForParse = worldMap?.locations?.getOrNull(currentLoc)?.name.orEmpty()
+        val autoTagged = com.realmsoffate.game.data.AutoTagUnknownNpcs.scan(
+            narration = parsed.narration,
+            existingNpcs = state.npcLog,
+            currentLoc = currentLocNameForParse,
+            turn = state.turns + 1
+        )
+        val parsedAugmented = if (autoTagged.isEmpty()) parsed
+        else parsed.copy(npcsMet = parsed.npcsMet + autoTagged)
+
         val npcLogResult = NpcLogReducer.apply(
             npcLog = state.npcLog,
             combat = state.combat,
-            parsed = parsed,
+            parsed = parsedAugmented,
             currentTurn = state.turns + 1,
-            currentLocName = worldMap?.locations?.getOrNull(currentLoc)?.name.orEmpty()
+            currentLocName = currentLocNameForParse
         )
         val npcLog = npcLogResult.npcLog
         var combatState = npcLogResult.combat
@@ -1639,6 +1813,82 @@ internal fun renderSceneSummariesBlock(
     return buildString {
         append("\n\nSTORY SO FAR (earlier scenes compressed):")
         kept.forEach { sm ->
+            append("\n• [T${sm.turnStart}-${sm.turnEnd} @ ${sm.locationName}] ")
+            append(sm.summary)
+            if (sm.keyFacts.isNotEmpty()) append(" FACTS: ${sm.keyFacts.joinToString("; ")}")
+        }
+    }
+}
+
+/**
+ * Renders a compressed-arc block for injection into the user prompt. Arcs
+ * matched by keyword retrieval take priority — they are most relevant to the
+ * current turn. Remaining budget is filled with newest arcs so recent narrative
+ * beats survive. Output is chronologically sorted so the model reads the arc
+ * as it happened.
+ */
+internal fun renderArcSummariesBlock(
+    arcs: List<com.realmsoffate.game.data.ArcSummary>,
+    matched: List<com.realmsoffate.game.data.ArcSummary> = emptyList(),
+    tokenBudget: Int = com.realmsoffate.game.data.BUDGET_ARC_SUMMARIES
+): String {
+    if (arcs.isEmpty() && matched.isEmpty()) return ""
+    val selected = mutableMapOf<Long, com.realmsoffate.game.data.ArcSummary>()
+    var used = 0
+    fun costOf(a: com.realmsoffate.game.data.ArcSummary): Int =
+        com.realmsoffate.game.util.TokenEstimate.ofText("• [T${a.turnStart}-${a.turnEnd}] ${a.summary}")
+    // Pass 1: prioritize keyword-matched arcs.
+    for (a in matched) {
+        if (a.id in selected) continue
+        val cost = costOf(a)
+        if (used + cost > tokenBudget && selected.isNotEmpty()) break
+        selected[a.id] = a; used += cost
+    }
+    // Pass 2: fill remaining budget with newest arcs.
+    val sortedNewestFirst = arcs.sortedByDescending { it.turnEnd }
+    for (a in sortedNewestFirst) {
+        if (a.id in selected) continue
+        val cost = costOf(a)
+        if (used + cost > tokenBudget && selected.isNotEmpty()) break
+        selected[a.id] = a; used += cost
+    }
+    if (selected.isEmpty()) return ""
+    val ordered = selected.values.sortedBy { it.turnEnd }
+    return buildString {
+        append("\n\nLONG-TERM HISTORY (earlier arcs — ground truth, do not contradict):")
+        ordered.forEach { a ->
+            append("\n• [T${a.turnStart}-${a.turnEnd}] ")
+            append(a.summary)
+        }
+    }
+}
+
+/**
+ * Renders keyword-matched scene summaries that are NOT in the working-set
+ * in-memory list — typically scenes that have already been rolled into arcs.
+ * Deduped against [alreadyShown] by (turnStart, turnEnd, summary) so a scene
+ * isn't injected twice if it's still in the working set.
+ */
+internal fun renderMatchedPastScenesBlock(
+    matched: List<com.realmsoffate.game.data.SceneSummary>,
+    alreadyShown: List<com.realmsoffate.game.data.SceneSummary>,
+    tokenBudget: Int = 1000
+): String {
+    if (matched.isEmpty()) return ""
+    val shownKey = alreadyShown.map { Triple(it.turnStart, it.turnEnd, it.summary) }.toSet()
+    val kept = mutableListOf<com.realmsoffate.game.data.SceneSummary>()
+    var used = 0
+    for (sm in matched) {
+        if (Triple(sm.turnStart, sm.turnEnd, sm.summary) in shownKey) continue
+        val block = "• [T${sm.turnStart}-${sm.turnEnd} @ ${sm.locationName}] ${sm.summary}"
+        val cost = com.realmsoffate.game.util.TokenEstimate.ofText(block)
+        if (used + cost > tokenBudget && kept.isNotEmpty()) break
+        kept += sm; used += cost
+    }
+    if (kept.isEmpty()) return ""
+    return buildString {
+        append("\n\nRELEVANT PAST SCENES (retrieved by keyword — ground truth, do not contradict):")
+        kept.sortedBy { it.turnEnd }.forEach { sm ->
             append("\n• [T${sm.turnStart}-${sm.turnEnd} @ ${sm.locationName}] ")
             append(sm.summary)
             if (sm.keyFacts.isNotEmpty()) append(" FACTS: ${sm.keyFacts.joinToString("; ")}")

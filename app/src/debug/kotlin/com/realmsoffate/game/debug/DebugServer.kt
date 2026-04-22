@@ -61,6 +61,7 @@ object DebugServer {
         InjectionEndpoints.register()
         MacroEndpoints.register()
         DescribeEndpoints.register()
+        RepoEndpoints.register()
 
         scope.launch {
             try {
