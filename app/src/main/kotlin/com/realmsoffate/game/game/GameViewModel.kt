@@ -1921,7 +1921,8 @@ class GameViewModel(
         }
 
         /** Emoji Konami code that unlocks the cheat menu when typed as the full chat message.
-         *  Defined with explicit unicode codepoints so IDE reformatting can't break the literal. */
+         *  Written as literal glyphs for readability; [KonamiInterceptTest] pins the exact
+         *  string so an accidental edit (including stripped variation selectors) fails fast. */
         const val KONAMI_CODE = "⬆️⬆️" +
                 "⬇️⬇️" +
                 "⬅️➡️⬅️➡️" +
