@@ -40,9 +40,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.realmsoffate.game.game.handlers.DeathHandler
 import com.realmsoffate.game.game.handlers.MerchantHandler
 import com.realmsoffate.game.game.handlers.ProgressionHandler
-import com.realmsoffate.game.game.handlers.RestHandler
 import com.realmsoffate.game.game.handlers.SaveService
 import com.realmsoffate.game.game.reducers.CombatReducer
 import com.realmsoffate.game.game.reducers.NpcLogReducer
@@ -484,14 +484,22 @@ class GameViewModel(
         }
     }
 
-    private val restHandler = RestHandler(
-        _ui, _restOverlay, _screen, _lastDeath,
-        ::logTimeline, viewModelScope, { saveService.refreshSlots() }, timeline
+    private val deathHandler = DeathHandler(
+        ui = _ui,
+        screen = _screen,
+        lastDeath = _lastDeath,
+        logTimeline = ::logTimeline,
+        scope = viewModelScope,
+        refreshSlots = { saveService.refreshSlots() },
+        timeline = timeline
     )
-    val restOverlay: StateFlow<String?> = restHandler.restOverlayState
-    fun shortRest() = restHandler.shortRest()
-    fun longRest() = restHandler.longRest()
-    fun dismissRest() = restHandler.dismissRest()
+
+    // Rest-overlay shims — kept for compile compat while UI is still wired;
+    // removed in D2 along with the rest UI.
+    val restOverlay: StateFlow<String?> = _restOverlay.asStateFlow()
+    fun shortRest() {}
+    fun longRest() {}
+    fun dismissRest() { _restOverlay.value = null }
 
     /** Current target-prompt spec — null when no picker is showing. */
     private val _targetPrompt = MutableStateFlow<com.realmsoffate.game.ui.overlays.TargetPromptSpec?>(null)
@@ -515,7 +523,7 @@ class GameViewModel(
     fun buyItem(merchant: String, itemName: String, price: Int) = merchantHandler.buyItem(merchant, itemName, price)
     fun sellItem(merchant: String, item: Item, price: Int) = merchantHandler.sellItem(merchant, item, price)
     fun buybackItem(merchant: String, item: Item, price: Int) = merchantHandler.buybackItem(merchant, item, price)
-    fun rollDeathSave() = restHandler.rollDeathSave()
+    fun rollDeathSave() = deathHandler.rollDeathSave()
     fun haggle(chaMod: Int): Float = merchantHandler.haggle(chaMod)
 
     private val saveService = SaveService(
