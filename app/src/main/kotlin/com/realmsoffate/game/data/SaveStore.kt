@@ -1,6 +1,7 @@
 package com.realmsoffate.game.data
 
 import android.content.Context
+import com.realmsoffate.game.data.db.RealmsDb
 import com.realmsoffate.game.data.db.RealmsDbHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -134,6 +135,16 @@ object SaveStore {
         val manifestJson = json.encodeToString(manifest)
         val saveJson = json.encodeToString(data)
 
+        // Collect DB sibling files. RealmsDbHolder.switchTo was called (A2) before
+        // write runs, so currentDbFile() already points at the correct per-character file.
+        val dbFile = RealmsDbHolder.currentDbFile()
+        val walFile = File(dbFile.absolutePath + "-wal")
+        val shmFile = File(dbFile.absolutePath + "-shm")
+        val dbEntries = mutableMapOf<String, File>()
+        if (dbFile.exists()) dbEntries[SaveRofZip.REALMS_DB] = dbFile
+        if (walFile.exists()) dbEntries[SaveRofZip.REALMS_DB_WAL] = walFile
+        if (shmFile.exists()) dbEntries[SaveRofZip.REALMS_DB_SHM] = shmFile
+
         // Write to a .tmp sibling first so an interrupted write can't corrupt the slot.
         val tmp = File(rof.parentFile, rof.name + ".tmp")
         SaveRofZip.writeMixed(
@@ -141,7 +152,8 @@ object SaveStore {
             textEntries = mapOf(
                 SaveRofZip.MANIFEST to manifestJson,
                 SaveRofZip.SAVE_JSON to saveJson
-            )
+            ),
+            fileEntries = dbEntries
         )
         if (rof.exists()) rof.delete()
         if (!tmp.renameTo(rof)) {
@@ -157,9 +169,34 @@ object SaveStore {
         if (rof.exists()) {
             val body = SaveRofZip.readTextEntry(rof, SaveRofZip.SAVE_JSON)
                 ?: return@withContext null
-            return@withContext runCatching {
+            val parsed = runCatching {
                 json.decodeFromString<SaveData>(body)
-            }.getOrNull()?.let { migrateIds(it) }
+            }.getOrNull()?.let { migrateIds(it) } ?: return@withContext null
+
+            // Extract DB payload if present (legacy saves have no db entry — skip silently).
+            SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB)?.let { dbBytes ->
+                val targetSlot = slotKeyFor(parsed.character.name)
+                // Release Room's hold on the target file before overwriting it.
+                RealmsDbHolder.closeSlotIfOpen(targetSlot)
+                val target = File(ctx().filesDir, RealmsDb.fileNameForSlot(targetSlot))
+                target.outputStream().use { it.write(dbBytes) }
+                SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB_WAL)?.let { b ->
+                    File(target.absolutePath + "-wal").outputStream().use { it.write(b) }
+                }
+                SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB_SHM)?.let { b ->
+                    File(target.absolutePath + "-shm").outputStream().use { it.write(b) }
+                }
+                // If sidecars were absent in the zip but exist on disk, remove them so
+                // SQLite doesn't attempt to reconcile against stale WAL content.
+                if (SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB_WAL) == null) {
+                    File(target.absolutePath + "-wal").delete()
+                }
+                if (SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB_SHM) == null) {
+                    File(target.absolutePath + "-shm").delete()
+                }
+            }
+
+            return@withContext parsed
         }
         // Legacy v2 fallback. The next write will upgrade this slot to .rofsave.
         val legacy = legacyJsonFile(slot)

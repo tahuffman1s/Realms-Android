@@ -21,6 +21,8 @@ object SaveRofZip {
     const val MANIFEST = "manifest.json"
     const val SAVE_JSON = "save.json"
     const val REALMS_DB = "realms.db"
+    const val REALMS_DB_WAL = "realms.db-wal"
+    const val REALMS_DB_SHM = "realms.db-shm"
 
     /** Write a zip containing every `name -> file` entry (skipping missing files). */
     fun write(out: File, files: Map<String, File>) {

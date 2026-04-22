@@ -81,6 +81,25 @@ object RealmsDbHolder {
     /** Returns the current live [RoomEntityRepository]. Not safe to read concurrently with [switchTo]. */
     val repo: RoomEntityRepository get() = _repo ?: error("RealmsDbHolder not initialized")
 
+    /**
+     * Release the Room handle for [slot] without opening a new DB, so its files
+     * can be overwritten (e.g. by a .rofsave import). The next [switchTo] will
+     * reopen Room against whatever files now exist on disk.
+     *
+     * If [slot] is not the currently active slot, this is a no-op.
+     */
+    fun closeSlotIfOpen(slot: String) {
+        synchronized(this) {
+            if (_currentSlot == slot) {
+                _db?.close()
+                _db = null
+                _repo = null
+                // Keep _currentSlot/_currentFile so the subsequent switchTo(slot)
+                // detects _db == null and fully reopens against the restored files.
+            }
+        }
+    }
+
     @androidx.annotation.VisibleForTesting
     internal fun resetForTest() {
         synchronized(this) {

@@ -52,4 +52,22 @@ class RealmsDbHolderTest {
         assertEquals("something", dbKeyForSave("something", ""))
         assertEquals("something", dbKeyForSave("something", null))
     }
+
+    @Test
+    fun `closeSlotIfOpen nulls db when on target slot and leaves it alone otherwise`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        RealmsDbHolder.init(ctx)
+        RealmsDbHolder.switchTo("alpha")
+        RealmsDbHolder.closeSlotIfOpen("beta")   // different slot — no-op
+        // Still readable — db is still open on alpha
+        @Suppress("UNUSED_VARIABLE") val stillAlpha = RealmsDbHolder.db
+        RealmsDbHolder.closeSlotIfOpen("alpha")  // target matches — closes
+        // `db` getter must now throw the "not initialized" error
+        try {
+            RealmsDbHolder.db
+            org.junit.Assert.fail("expected db getter to throw after closeSlotIfOpen")
+        } catch (e: IllegalStateException) {
+            // expected
+        }
+    }
 }
