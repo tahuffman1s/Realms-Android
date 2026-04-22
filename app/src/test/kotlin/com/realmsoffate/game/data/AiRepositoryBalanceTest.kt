@@ -42,4 +42,15 @@ class AiRepositoryBalanceTest {
         assertNull(AiRepository.parseBalance("{}"))
         assertNull(AiRepository.parseBalance("""{"balance_infos":[]}"""))
     }
+
+    @Test
+    fun `parseBalance returns null when total_balance is missing`() {
+        assertNull(AiRepository.parseBalance("""{"balance_infos":[{"currency":"USD"}]}"""))
+    }
+
+    @Test
+    fun `parseBalance returns null when account is marked unavailable`() {
+        val sample = """{"is_available":false,"balance_infos":[{"currency":"USD","total_balance":"4.12"}]}"""
+        assertNull(AiRepository.parseBalance(sample))
+    }
 }

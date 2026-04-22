@@ -282,7 +282,7 @@ class GameViewModel(
 
     private val _balanceUsd = MutableStateFlow<String?>(null)
     val balanceUsd: StateFlow<String?> = _balanceUsd.asStateFlow()
-    private var balanceFetchedAt: Long = 0L
+    @Volatile private var balanceFetchedAt: Long = 0L
 
     /** Fetches the DeepSeek USD balance on demand. Results are cached for 60s so
      *  opening Settings repeatedly doesn't hammer the endpoint. Passing force=true
