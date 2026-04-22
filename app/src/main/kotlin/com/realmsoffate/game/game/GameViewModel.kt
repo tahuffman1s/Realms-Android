@@ -1123,6 +1123,18 @@ class GameViewModel(
             // that sit outside the working set. All live in the user message — they
             // change per turn, so they don't belong in the cached system prompt.
             append(renderArcSummariesBlock(allArcs, matched = summaryHits.arcs))
+            // Every 10th turn, if there's a genuinely-dormant arc that isn't already
+            // surfacing via the matched retrieval path, offer it as an optional callback.
+            if ((s.turns + 1) % 10 == 0) {
+                val excludedIds = summaryHits.arcs.map { it.id }.toSet()
+                val dormant = com.realmsoffate.game.data.DormantCallback.pick(
+                    arcs = allArcs,
+                    currentTurn = s.turns + 1,
+                    dormantAfter = 50,
+                    excludeIds = excludedIds
+                )
+                append(com.realmsoffate.game.data.DormantCallback.renderBlock(dormant))
+            }
             append(renderSceneSummariesBlock(s.sceneSummaries))
             append(renderMatchedPastScenesBlock(summaryHits.scenes, alreadyShown = s.sceneSummaries))
             if (recentNarration.isNotBlank()) {
