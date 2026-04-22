@@ -35,6 +35,13 @@ class DormantCallbackTest {
     }
 
     @Test
+    fun `pick includes arc whose gap equals dormantAfter exactly`() {
+        val onBoundary = arc(1L, turnEnd = 50) // currentTurn 100, gap = 50 = threshold
+        val pick = DormantCallback.pick(listOf(onBoundary), currentTurn = 100, dormantAfter = 50, excludeIds = emptySet())
+        assertEquals(1L, pick?.id)
+    }
+
+    @Test
     fun `pick returns null on empty arc list`() {
         assertNull(DormantCallback.pick(emptyList(), currentTurn = 100, dormantAfter = 10, excludeIds = emptySet()))
     }
