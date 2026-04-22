@@ -1,6 +1,7 @@
 package com.realmsoffate.game.game
 
 import com.realmsoffate.game.data.AiRepository
+import com.realmsoffate.game.data.ArcSummary
 import com.realmsoffate.game.data.ChatMsg
 import com.realmsoffate.game.data.EntityRepository
 import com.realmsoffate.game.data.ROLLUP_BATCH_SIZE
@@ -59,24 +60,28 @@ class SceneSummarizer(
      * the number of unrolled scene summaries reaches [ROLLUP_THRESHOLD]. Pass a
      * null [arcSummarizer] to disable rollup (tests, or when the API key is
      * missing).
+     *
+     * Returns the produced [ArcSummary] if a rollup occurred, null otherwise.
+     * Callers that discard the return value remain source-compatible.
      */
     suspend fun persistAndMaybeRollup(
         repo: EntityRepository,
         summary: SceneSummary,
         arcSummarizer: ArcSummarizer?
-    ) {
+    ): ArcSummary? {
         repo.appendSceneSummary(summary)
-        maybeRollupArcs(repo, arcSummarizer)
+        return maybeRollupArcs(repo, arcSummarizer)
     }
 
-    internal suspend fun maybeRollupArcs(repo: EntityRepository, arcSummarizer: ArcSummarizer?) {
-        val arc = arcSummarizer ?: return
-        if (repo.countUnrolledScenes() < ROLLUP_THRESHOLD) return
+    internal suspend fun maybeRollupArcs(repo: EntityRepository, arcSummarizer: ArcSummarizer?): ArcSummary? {
+        val arc = arcSummarizer ?: return null
+        if (repo.countUnrolledScenes() < ROLLUP_THRESHOLD) return null
         val batch = repo.recentSceneSummaries(limit = Int.MAX_VALUE)
             .sortedBy { it.turnEnd }
             .take(ROLLUP_BATCH_SIZE)
-        if (batch.size < ROLLUP_BATCH_SIZE) return
+        if (batch.size < ROLLUP_BATCH_SIZE) return null
         val arcSummary = arc.run(batch)
         repo.rollupScenes(batch.map { it.id }, arcSummary)
+        return arcSummary
     }
 }

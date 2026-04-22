@@ -72,5 +72,11 @@ object RepoEndpoints {
             }
             HttpResponse.json(json.encodeToString(JsonArray.serializer(), arr))
         }
+
+        DebugServer.route("GET", "/repo/contradictions") { _ ->
+            val items = com.realmsoffate.game.data.ContradictionQueue.snapshot()
+            val arr = buildJsonArray { for (s in items) add(JsonPrimitive(s)) }
+            HttpResponse.json(json.encodeToString(JsonArray.serializer(), arr))
+        }
     }
 }

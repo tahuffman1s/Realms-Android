@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.realmsoffate.game.RealmsApp
 import com.realmsoffate.game.data.AiProvider
+import com.realmsoffate.game.data.ContradictionQueue
 import com.realmsoffate.game.data.AiRepository
 import com.realmsoffate.game.data.ChatMsg
 import com.realmsoffate.game.data.Character
@@ -985,7 +986,13 @@ class GameViewModel(
                         // once enough unrolled scenes have accumulated.
                         val newSummary = updatedSummaries.last()
                         runCatching {
-                            sceneSummarizer.persistAndMaybeRollup(repo, newSummary, arcSummarizer)
+                            val producedArc = sceneSummarizer.persistAndMaybeRollup(repo, newSummary, arcSummarizer)
+                            if (producedArc != null) {
+                                ContradictionQueue.checkArc(
+                                    canonicalNpcs = _ui.value.npcLog,
+                                    arc = producedArc
+                                )
+                            }
                         }
                     }
                 }
