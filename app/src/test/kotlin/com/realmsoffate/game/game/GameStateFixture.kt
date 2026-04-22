@@ -93,7 +93,7 @@ object GameStateFixture {
         val ctx = ApplicationProvider.getApplicationContext<Context>()
         val prefs = PreferencesStore(ctx)
         val ai = AiRepository()
-        val vm = GameViewModel(ai, prefs)
+        val vm = GameViewModel(ai, prefs, com.realmsoffate.game.data.CheatsStore(ctx))
         injectState(vm, initialState)
         return vm
     }

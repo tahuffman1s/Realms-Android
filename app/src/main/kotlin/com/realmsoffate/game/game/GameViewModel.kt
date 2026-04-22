@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.realmsoffate.game.game.handlers.DeathHandler
 import com.realmsoffate.game.game.handlers.MerchantHandler
@@ -171,6 +172,7 @@ sealed interface DisplayMessage {
 class GameViewModel(
     private val ai: AiRepository,
     private val prefs: PreferencesStore,
+    private val cheatsStore: com.realmsoffate.game.data.CheatsStore,
 ) : ViewModel() {
 
     /** Re-resolved per access so post-switchTo writes hit the current character's DB.
@@ -271,10 +273,44 @@ class GameViewModel(
     val pendingLevelUpFlow: StateFlow<Int?> = progressionHandler.pendingLevelUpFlow
     val pendingStatPoints: StateFlow<Int> = progressionHandler.pendingStatPointsFlow
     val pendingFeat: StateFlow<Boolean> = progressionHandler.pendingFeatFlow
+
+    val cheatsEnabled: StateFlow<Boolean> = cheatsStore.enabled.stateIn(
+        viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false
+    )
+    val cheatUnnaturalTwenty: StateFlow<Boolean> = cheatsStore.unnaturalTwenty.stateIn(
+        viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false
+    )
+    val cheatLoser: StateFlow<Boolean> = cheatsStore.loser.stateIn(
+        viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false
+    )
+    val cheatInfiniteGold: StateFlow<Boolean> = cheatsStore.infiniteGold.stateIn(
+        viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false
+    )
+
     fun dismissLevelUp() = progressionHandler.dismissLevelUp()
     fun assignStatPoint(stat: String) = progressionHandler.assignStatPoint(stat)
     fun selectFeat(featName: String) = progressionHandler.selectFeat(featName)
     fun dismissFeat() = progressionHandler.dismissFeat()
+
+    fun unlockCheats() {
+        viewModelScope.launch { cheatsStore.unlock() }
+    }
+
+    fun disableCheats() {
+        viewModelScope.launch { cheatsStore.disable() }
+    }
+
+    fun setUnnaturalTwenty(on: Boolean) {
+        viewModelScope.launch { cheatsStore.setUnnaturalTwenty(on) }
+    }
+
+    fun setLoser(on: Boolean) {
+        viewModelScope.launch { cheatsStore.setLoser(on) }
+    }
+
+    fun setInfiniteGold(on: Boolean) {
+        viewModelScope.launch { cheatsStore.setInfiniteGold(on) }
+    }
 
     private val _fontScale = MutableStateFlow(1.0f)
     val fontScale: StateFlow<Float> = _fontScale.asStateFlow()
@@ -562,6 +598,18 @@ class GameViewModel(
             }
         }
         viewModelScope.launch { prefs.fontScale.collect { _fontScale.value = it } }
+        viewModelScope.launch {
+            cheatsStore.enabled.collect { com.realmsoffate.game.game.Cheats.enabled = it }
+        }
+        viewModelScope.launch {
+            cheatsStore.unnaturalTwenty.collect { com.realmsoffate.game.game.Cheats.forceCrit = it }
+        }
+        viewModelScope.launch {
+            cheatsStore.loser.collect { com.realmsoffate.game.game.Cheats.forceFail = it }
+        }
+        viewModelScope.launch {
+            cheatsStore.infiniteGold.collect { com.realmsoffate.game.game.Cheats.infiniteGold = it }
+        }
     }
 
     /** Returns to the title screen without wiping state (for pause/menu). */
@@ -1853,7 +1901,8 @@ class GameViewModel(
                 val ctx = RealmsApp.instance
                 GameViewModel(
                     ai = AiRepository(),
-                    prefs = PreferencesStore(ctx)
+                    prefs = PreferencesStore(ctx),
+                    cheatsStore = com.realmsoffate.game.data.CheatsStore(ctx)
                 )
             }
         }
