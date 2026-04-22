@@ -321,30 +321,32 @@ fun GameScreen(vm: GameViewModel) {
         )
     }
 
-    val balance by vm.balanceUsd.collectAsState()
-    LaunchedEffect(Unit) { vm.refreshBalance() }
-
     when (panel) {
-        Panel.Settings -> SettingsPanel(
-            fontScale = fontScale,
-            onFontScaleChange = { vm.setFontScale(it) },
-            onClose = { panel = Panel.None; tab = GameTab.Chat },
-            onExportSave = {
-                val json = vm.exportCurrentJson()
-                if (json != null) {
-                    val filename = "realms_save_${System.currentTimeMillis()}.json"
-                    exportLauncher.launch(filename)
-                } else {
-                    vm.postSystemMessage("Nothing to export yet.")
-                }
-            },
-            onShortRest = { vm.shortRest() },
-            onLongRest = { vm.longRest() },
-            onDebugDump = { dumpDebugToFile() },
-            onReturnToTitle = { vm.returnToTitle() },
-            balanceUsd = balance,
-            onRefreshBalance = { vm.refreshBalance(force = true) }
-        )
+        Panel.Settings -> {
+            val balance by vm.balanceUsd.collectAsState()
+            // Auto-refresh when Settings opens; the VM's 60s cache prevents hammering.
+            LaunchedEffect(Unit) { vm.refreshBalance() }
+            SettingsPanel(
+                fontScale = fontScale,
+                onFontScaleChange = { vm.setFontScale(it) },
+                onClose = { panel = Panel.None; tab = GameTab.Chat },
+                onExportSave = {
+                    val json = vm.exportCurrentJson()
+                    if (json != null) {
+                        val filename = "realms_save_${System.currentTimeMillis()}.json"
+                        exportLauncher.launch(filename)
+                    } else {
+                        vm.postSystemMessage("Nothing to export yet.")
+                    }
+                },
+                onShortRest = { vm.shortRest() },
+                onLongRest = { vm.longRest() },
+                onDebugDump = { dumpDebugToFile() },
+                onReturnToTitle = { vm.returnToTitle() },
+                balanceUsd = balance,
+                onRefreshBalance = { vm.refreshBalance(force = true) }
+            )
+        }
         else -> {}
     }
 
