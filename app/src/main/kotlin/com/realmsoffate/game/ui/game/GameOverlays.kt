@@ -28,8 +28,6 @@ internal fun SettingsPanel(
     onFontScaleChange: (Float) -> Unit,
     onClose: () -> Unit,
     onExportSave: () -> Unit = {},
-    onShortRest: () -> Unit = {},
-    onLongRest: () -> Unit = {},
     onDebugDump: () -> Unit = {},
     onReturnToTitle: () -> Unit = {},
     balanceUsd: String? = null,
@@ -146,20 +144,6 @@ internal fun SettingsPanel(
                 onClick = { onExportSave(); onClose() },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Export Save") }
-
-            Spacer(Modifier.height(RealmsSpacing.s))
-
-            OutlinedButton(
-                onClick = { onShortRest() },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Short Rest") }
-
-            Spacer(Modifier.height(RealmsSpacing.s))
-
-            OutlinedButton(
-                onClick = { onLongRest() },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Long Rest") }
 
             Spacer(Modifier.height(RealmsSpacing.s))
 

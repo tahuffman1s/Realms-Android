@@ -254,7 +254,6 @@ class GameViewModel(
     private val _pendingLevelUp = MutableStateFlow<Int?>(null)
     private val _pendingStatPoints = MutableStateFlow(0)
     private val _pendingFeat = MutableStateFlow(false)
-    private val _restOverlay = MutableStateFlow<String?>(null)
     private val _activeShop = MutableStateFlow<String?>(null)
     private val _buybackStocks = MutableStateFlow<Map<String, List<com.realmsoffate.game.ui.overlays.BuybackEntry>>>(emptyMap())
 
@@ -494,13 +493,6 @@ class GameViewModel(
         timeline = timeline
     )
 
-    // Rest-overlay shims — kept for compile compat while UI is still wired;
-    // removed in D2 along with the rest UI.
-    val restOverlay: StateFlow<String?> = _restOverlay.asStateFlow()
-    fun shortRest() {}
-    fun longRest() {}
-    fun dismissRest() { _restOverlay.value = null }
-
     /** Current target-prompt spec — null when no picker is showing. */
     private val _targetPrompt = MutableStateFlow<com.realmsoffate.game.ui.overlays.TargetPromptSpec?>(null)
     val targetPrompt: StateFlow<com.realmsoffate.game.ui.overlays.TargetPromptSpec?> = _targetPrompt.asStateFlow()
@@ -531,7 +523,6 @@ class GameViewModel(
         _debugLog, timeline, viewModelScope,
         clearOverlays = {
             _pendingLevelUp.value = null
-            _restOverlay.value = null
             _activeShop.value = null
             _targetPrompt.value = null
             _showInitiative.value = false
@@ -577,7 +568,6 @@ class GameViewModel(
     fun returnToTitle() {
         // Drop any in-flight overlays so they don't bleed into the next load.
         _pendingLevelUp.value = null
-        _restOverlay.value = null
         _activeShop.value = null
         _targetPrompt.value = null
         _showInitiative.value = false
