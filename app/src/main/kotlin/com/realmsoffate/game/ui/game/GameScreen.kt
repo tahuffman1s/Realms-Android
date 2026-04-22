@@ -123,12 +123,14 @@ fun GameScreen(vm: GameViewModel) {
 
     Scaffold(
         topBar = {
+            val infiniteGold by vm.cheatInfiniteGold.collectAsState()
             GameTopBar(
                 state,
                 showSceneContext = tab == GameTab.Chat &&
                     state.currentScene != "default" &&
                     state.combat == null,
-                onSettingsClick = { panel = Panel.Settings }
+                onSettingsClick = { panel = Panel.Settings },
+                infiniteGold = infiniteGold,
             )
         },
         bottomBar = {
