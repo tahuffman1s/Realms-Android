@@ -11,6 +11,13 @@ package com.realmsoffate.game.data
  * (pass those ids in [excludeIds]).
  */
 object DormantCallback {
+    /** Minimum gap between [ArcSummary.turnEnd] and the current turn before an
+     *  arc is considered dormant enough to surface as a callback. */
+    const val DEFAULT_DORMANT_AFTER: Int = 50
+
+    /** How often (in turns) the callback block fires when a candidate exists. */
+    const val DEFAULT_CALLBACK_EVERY: Int = 10
+
     fun pick(
         arcs: List<ArcSummary>,
         currentTurn: Int,

@@ -22,6 +22,7 @@ import com.realmsoffate.game.data.Prompts
 import com.realmsoffate.game.data.Quest
 import com.realmsoffate.game.data.GraveyardEntry
 import com.realmsoffate.game.data.DebugTurn
+import com.realmsoffate.game.data.DormantCallback
 import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
 import com.realmsoffate.game.data.SceneSummary
@@ -1125,15 +1126,13 @@ class GameViewModel(
             append(renderArcSummariesBlock(allArcs, matched = summaryHits.arcs))
             // Every 10th turn, if there's a genuinely-dormant arc that isn't already
             // surfacing via the matched retrieval path, offer it as an optional callback.
-            if ((s.turns + 1) % 10 == 0) {
-                val excludedIds = summaryHits.arcs.map { it.id }.toSet()
-                val dormant = com.realmsoffate.game.data.DormantCallback.pick(
+            if ((s.turns + 1) % DormantCallback.DEFAULT_CALLBACK_EVERY == 0) {
+                append(DormantCallback.renderBlock(DormantCallback.pick(
                     arcs = allArcs,
                     currentTurn = s.turns + 1,
-                    dormantAfter = 50,
-                    excludeIds = excludedIds
-                )
-                append(com.realmsoffate.game.data.DormantCallback.renderBlock(dormant))
+                    dormantAfter = DormantCallback.DEFAULT_DORMANT_AFTER,
+                    excludeIds = summaryHits.arcs.map { it.id }.toSet()
+                )))
             }
             append(renderSceneSummariesBlock(s.sceneSummaries))
             append(renderMatchedPastScenesBlock(summaryHits.scenes, alreadyShown = s.sceneSummaries))
