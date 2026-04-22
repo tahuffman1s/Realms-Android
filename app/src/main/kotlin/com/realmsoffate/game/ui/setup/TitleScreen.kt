@@ -54,11 +54,13 @@ import com.realmsoffate.game.ui.theme.RealmsSpacing
 fun TitleScreen(vm: GameViewModel) {
     val slots by vm.saveSlots.collectAsState()
     val graves by vm.graveyard.collectAsState()
+    val cheatsEnabled by vm.cheatsEnabled.collectAsState()
     val context = LocalContext.current
 
     var loadSheet by remember { mutableStateOf(false) }
     var graveSheet by remember { mutableStateOf(false) }
     var selectedGrave by remember { mutableStateOf<GraveyardEntry?>(null) }
+    var showDisableDialog by remember { mutableStateOf(false) }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -172,6 +174,25 @@ fun TitleScreen(vm: GameViewModel) {
                 )
             }
 
+            if (cheatsEnabled) {
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    SecondaryTile(
+                        icon = Icons.Default.Settings,
+                        label = "Cheats",
+                        enabled = true,
+                        onClick = { showDisableDialog = true },
+                        modifier = Modifier.weight(1f),
+                        iconText = "🃏"
+                    )
+                    // Half-width spacer so the Cheats tile sits on the left side
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+
             Spacer(Modifier.height(32.dp))
             Text(
                 "AI Game Master · Compose Dice · Dynamic World",
@@ -201,6 +222,26 @@ fun TitleScreen(vm: GameViewModel) {
     }
     selectedGrave?.let {
         GraveDetailDialog(entry = it, onDismiss = { selectedGrave = null })
+    }
+    if (showDisableDialog) {
+        AlertDialog(
+            onDismissRequest = { showDisableDialog = false },
+            title = { Text("Disable Cheats?") },
+            text = { Text("All cheat toggles will be cleared. Type the code in chat to re-enable.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vm.disableCheats()
+                        showDisableDialog = false
+                    }
+                ) {
+                    Text("Disable", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDisableDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 
