@@ -13,8 +13,8 @@ package com.realmsoffate.game.data
  * memory", etc.).
  */
 object ContradictionQueue {
-    val FLAGGED_STATUSES = setOf("dead", "cursed", "doomed")
-    private const val MAX_ENTRIES = 200
+    private val FLAGGED_STATUSES = setOf("dead", "cursed", "doomed")
+    internal const val MAX_ENTRIES = 200
     // Past-tense / flashback cues near the NPC name; treat as NON-contradictory.
     private val PAST_CUES = listOf(
         "'s memory", "'s legacy", "'s spirit", "'s ghost",
@@ -29,6 +29,10 @@ object ContradictionQueue {
     /**
      * Returns a list of newly-flagged issue strings (also pushed into the
      * queue). Returns an empty list when there's nothing to flag.
+     *
+     * The returned list is a point-in-time result of this call, not a live
+     * view of the queue. A concurrent [clearForTest] could drain [_log]
+     * after we return — readers wanting the queue should call [snapshot].
      */
     fun checkArc(canonicalNpcs: List<LogNpc>, arc: ArcSummary): List<String> {
         val summary = arc.summary

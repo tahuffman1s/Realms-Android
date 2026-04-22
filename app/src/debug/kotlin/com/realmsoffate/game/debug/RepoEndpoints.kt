@@ -1,5 +1,6 @@
 package com.realmsoffate.game.debug
 
+import com.realmsoffate.game.data.ContradictionQueue
 import com.realmsoffate.game.data.db.RealmsDbHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -74,7 +75,7 @@ object RepoEndpoints {
         }
 
         DebugServer.route("GET", "/repo/contradictions") { _ ->
-            val items = com.realmsoffate.game.data.ContradictionQueue.snapshot()
+            val items = ContradictionQueue.snapshot()
             val arr = buildJsonArray { for (s in items) add(JsonPrimitive(s)) }
             HttpResponse.json(json.encodeToString(JsonArray.serializer(), arr))
         }

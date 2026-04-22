@@ -985,9 +985,13 @@ class GameViewModel(
                         // Persist the newly produced summary and trigger arc rollup
                         // once enough unrolled scenes have accumulated.
                         val newSummary = updatedSummaries.last()
-                        runCatching {
-                            val producedArc = sceneSummarizer.persistAndMaybeRollup(repo, newSummary, arcSummarizer)
-                            if (producedArc != null) {
+                        // DB write (persistAndMaybeRollup) is load-bearing — let its
+                        // exceptions propagate to the coroutine handler. checkArc is a
+                        // best-effort heuristic and is guarded separately so it can never
+                        // break a successful rollup.
+                        val producedArc = sceneSummarizer.persistAndMaybeRollup(repo, newSummary, arcSummarizer)
+                        if (producedArc != null) {
+                            runCatching {
                                 ContradictionQueue.checkArc(
                                     canonicalNpcs = _ui.value.npcLog,
                                     arc = producedArc

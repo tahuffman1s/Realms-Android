@@ -72,7 +72,7 @@ class ContradictionQueueTest {
     fun `snapshot is bounded to max size`() {
         val npcs = listOf(npc("X", status = "dead"))
         repeat(250) { ContradictionQueue.checkArc(npcs, arc("X acts ($it).")) }
-        assertTrue(ContradictionQueue.snapshot().size <= 200)
+        assertTrue(ContradictionQueue.snapshot().size <= ContradictionQueue.MAX_ENTRIES)
     }
 
     @Test
