@@ -1081,6 +1081,8 @@ class GameViewModel(
 
             // Possibly generate a world event
             maybeRollWorldEvent()
+            // Re-clamp gold after all handlers so the 1% cheat stays pinned post-turn.
+            clampInfiniteGold(_ui)
             // Autosave every turn so crashes / background kills don't lose progress.
             saveToSlot("autosave")
             // Also write to a character-name-keyed slot for the Load menu.
@@ -2058,4 +2060,19 @@ internal fun filterRelevantNpcs(
             (currentLocation.isNotBlank() && n.lastLocation.equals(currentLocation, ignoreCase = true))
     }
     return relevant.sortedByDescending { it.lastSeenTurn }.take(cap)
+}
+
+internal const val INF_GOLD = 999_999
+
+/**
+ * Clamp character.gold to [INF_GOLD] if the infinite-gold cheat is active.
+ * Extracted as a top-level helper so unit tests can target it directly.
+ */
+internal fun clampInfiniteGold(ui: MutableStateFlow<GameUiState>) {
+    if (!Cheats.infiniteGold) return
+    val s = ui.value
+    val ch = s.character ?: return
+    if (ch.gold == INF_GOLD) return
+    val updated = ch.deepCopy().apply { gold = INF_GOLD }
+    ui.value = s.copy(character = updated)
 }
