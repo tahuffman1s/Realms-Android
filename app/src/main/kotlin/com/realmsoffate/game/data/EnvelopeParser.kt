@@ -19,6 +19,9 @@ object EnvelopeParser {
     }
 
     fun parse(raw: String, currentTurn: Int): ParsedReply {
+        // Caller placeholders may pass empty string; return INVALID silently
+        // so the log isn't spammed with "EOF at $" false alarms.
+        if (raw.isBlank()) return invalidReply()
         val envelope = runCatching { json.decodeFromString<TurnEnvelope>(raw.trim()) }
             .getOrElse {
                 android.util.Log.w("EnvelopeParser", "invalid envelope: ${it.message}", it)
