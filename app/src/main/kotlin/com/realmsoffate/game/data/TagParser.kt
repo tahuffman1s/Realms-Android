@@ -5,10 +5,10 @@ package com.realmsoffate.game.data
  * Exposed on [ParsedReply] so downstream consumers (e.g. debug logging) can report it.
  */
 enum class ParseSource {
-    /** [METADATA]{...}[/METADATA] JSON block parsed successfully. */
+    /** Envelope decoded successfully. */
     JSON,
-    /** No JSON block, or block was malformed/unreadable; used regex tag extraction. */
-    REGEX_FALLBACK
+    /** Envelope was malformed or missing — zero effects applied this turn. */
+    INVALID
 }
 
 /**
@@ -127,7 +127,7 @@ data class ParsedReply(
     /** Ordered content segments for structured UI rendering. */
     val segments: List<NarrationSegmentData> = emptyList(),
     /** Which parse path produced this reply — JSON block or regex fallback. */
-    val source: ParseSource = ParseSource.REGEX_FALLBACK
+    val source: ParseSource = ParseSource.INVALID
 )
 
 data class CheckResult(
@@ -690,7 +690,7 @@ object TagParser {
 
         } else {
             // ---- Path B: No valid JSON block — regex tag extraction (legacy) ----
-            parseSource = ParseSource.REGEX_FALLBACK
+            parseSource = ParseSource.INVALID
 
             for (m in tagPattern.findAll(raw)) {
                 val type = m.groupValues[1]

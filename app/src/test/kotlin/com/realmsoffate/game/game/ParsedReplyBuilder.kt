@@ -65,7 +65,7 @@ class ParsedReplyBuilder {
     private var playerActions: MutableList<String> = mutableListOf()
     private var npcActions: MutableList<Pair<String, String>> = mutableListOf()
     private var segments: MutableList<NarrationSegmentData> = mutableListOf()
-    private var source: ParseSource = ParseSource.REGEX_FALLBACK
+    private var source: ParseSource = ParseSource.INVALID
 
     fun scene(scene: String, desc: String = "") = apply { this.scene = scene; this.sceneDesc = desc }
     fun narration(text: String) = apply { this.narration = text }
