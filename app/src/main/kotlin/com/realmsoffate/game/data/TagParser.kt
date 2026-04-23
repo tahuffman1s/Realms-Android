@@ -526,27 +526,6 @@ object TagParser {
     private val playerActionPattern = Regex("""\[PLAYER_ACTION]([\s\S]*?)\[/PLAYER_ACTION]""", RegexOption.IGNORE_CASE)
     private val npcActionPattern = Regex("""\[NPC_ACTION:([^\]]+)]([\s\S]*?)\[/NPC_ACTION]""", RegexOption.IGNORE_CASE)
 
-    // Fallback prose patterns — used when the narrator skips the mandatory tag.
-    private val proseDamage = Regex(
-        "(\\d+)\\s*(?:points?\\s*of\\s*)?(?:bludgeoning|slashing|piercing|fire|cold|lightning|acid|poison|psychic|necrotic|radiant|thunder|force)?\\s*damage",
-        RegexOption.IGNORE_CASE
-    )
-    private val proseHeal = Regex(
-        "(?:heal|recover|restore|regenerate)[a-z]*\\s+(\\d+)\\s*(?:hp|health|hit\\s*points)?",
-        RegexOption.IGNORE_CASE
-    )
-    private val proseGoldGain = Regex(
-        "(?:find|gain|receive|pocket|collect|earn|loot|steal)[a-z]*\\s+(\\d+)\\s*(?:gold|coins|crowns|silver|gp)",
-        RegexOption.IGNORE_CASE
-    )
-    private val proseGoldLost = Regex(
-        "(?:spend|pay|give|hand|toss|drop|bribe|lose)[a-z]*\\s+(\\d+)\\s*(?:gold|coins|crowns|silver|gp)",
-        RegexOption.IGNORE_CASE
-    )
-    private val proseXp = Regex(
-        "(?:gain|earn|receive)[a-z]*\\s+(\\d+)\\s*(?:xp|experience)",
-        RegexOption.IGNORE_CASE
-    )
     fun parse(raw: String, currentTurn: Int): ParsedReply {
         // ---- Attempt JSON metadata extraction (Path A) ----
         val metadataMatch = metadataBlockPattern.find(raw)
@@ -904,42 +883,6 @@ object TagParser {
         narration = npcActionPattern.replace(narration, "$2")
         narration = tagPattern.replace(narration, "")
         narration = narration.trim().replace(Regex("\\n{3,}"), "\n\n")
-
-        // ---- Contextual prose fallbacks (regex path only) ----
-        // Only apply when no JSON block was parsed. AI is expected to put numbers
-        // in the metadata JSON; these fallbacks catch legacy responses.
-        if (metadata == null) {
-            if (damage == 0) {
-                damage = proseDamage.findAll(narration)
-                    .mapNotNull { it.groupValues[1].toIntOrNull() }
-                    .sum()
-                    .coerceAtMost(50)
-            }
-            if (heal == 0) {
-                heal = proseHeal.findAll(narration)
-                    .mapNotNull { it.groupValues[1].toIntOrNull() }
-                    .sum()
-                    .coerceAtMost(50)
-            }
-            if (goldGained == 0) {
-                goldGained = proseGoldGain.findAll(narration)
-                    .mapNotNull { it.groupValues[1].toIntOrNull() }
-                    .sum()
-                    .coerceAtMost(500)
-            }
-            if (goldLost == 0) {
-                goldLost = proseGoldLost.findAll(narration)
-                    .mapNotNull { it.groupValues[1].toIntOrNull() }
-                    .sum()
-                    .coerceAtMost(500)
-            }
-            if (xp == 0) {
-                xp = proseXp.findAll(narration)
-                    .mapNotNull { it.groupValues[1].toIntOrNull() }
-                    .sum()
-                    .coerceAtMost(1000)
-            }
-        }
 
         // Derive per-type action lists from segments (segments already built above)
         val playerActionsExtracted = segments.filterIsInstance<NarrationSegmentData.PlayerAction>().map { it.text }

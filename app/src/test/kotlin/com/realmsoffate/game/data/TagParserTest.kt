@@ -261,4 +261,22 @@ class TagParserTest {
         val parsed = TagParser.parse(raw, currentTurn = 1)
         assertTrue("scraper should not populate npcDialogs from prose", parsed.npcDialogs.isEmpty())
     }
+
+    @Test
+    fun `no prose-number fallback captures scene-setting numbers`() {
+        // Legacy path: no METADATA block, so the fallback regexes would otherwise fire.
+        val raw = """
+            [SCENE:tavern|A dim tavern.]
+            She had been waiting 20 years. The door was 3 paces away.
+            [CHOICES]
+            1. Wait. [Insight]
+            2. Knock. [Persuasion]
+            3. Walk away. [Stealth]
+            4. Shout. [Intimidation]
+            [/CHOICES]
+        """.trimIndent()
+        val parsed = TagParser.parse(raw, currentTurn = 1)
+        assertEquals("no damage from scene-setting number", 0, parsed.damage)
+        assertEquals("no gold from scene-setting number", 0, parsed.goldGained)
+    }
 }
