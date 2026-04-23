@@ -182,6 +182,37 @@ class TagParserTest {
             "FOOBAR" in allText || "content" in allText)
     }
 
+    // ---- Test 13: NPC_ACTION open / NARRATOR_PROSE close (Phase-A hotfix regression) ----
+    @Test
+    fun `tokenizer handles mismatched close tag without needing stripTagFragments`() {
+        // Input the Phase-A hotfix was designed to fix: NPC_ACTION opens, NARRATOR_PROSE closes.
+        val raw = """
+            [NPC_ACTION:vesper]leans in.[/NARRATOR_PROSE]
+            [NARRATOR_PROSE]The room holds its breath.[/NARRATOR_PROSE]
+            [METADATA]{}[/METADATA]
+            [CHOICES]
+            1. Stay. [Insight]
+            2. Leave. [Stealth]
+            3. Speak. [Persuasion]
+            4. Fight. [Athletics]
+            [/CHOICES]
+        """.trimIndent()
+        val parsed = TagParser.parse(raw, currentTurn = 1)
+        // No bracketed tag syntax should leak into rendered segment text.
+        parsed.segments.forEach { seg ->
+            val text = when (seg) {
+                is NarrationSegmentData.Prose -> seg.text
+                is NarrationSegmentData.Aside -> seg.text
+                is NarrationSegmentData.NpcAction -> seg.text
+                is NarrationSegmentData.NpcDialog -> seg.text
+                is NarrationSegmentData.PlayerAction -> seg.text
+                is NarrationSegmentData.PlayerDialog -> seg.text
+            }
+            assertFalse("Segment should not contain raw tag syntax: '$text'",
+                text.contains(Regex("""\[/?(NARRATOR_PROSE|NPC_ACTION)""")))
+        }
+    }
+
     // ---- Test 12: Deep mismatch recovery ----
     @Test
     fun `deep mismatch recovery force-closes top of stack on wrong close tag`() {

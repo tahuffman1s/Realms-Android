@@ -160,7 +160,7 @@ object TagParser {
      * [NPC_DIALOG:Name] tags despite being told not to.
      */
     private fun cleanDialogContent(raw: String): String {
-        var t = stripTagFragments(raw).trim()
+        var t = raw.trim()
         // Strip leading *body language* italic prefix (e.g. "*She leans forward.*")
         t = t.replace(Regex("""^\*[^*]+\*\s*"""), "")
         // Strip emoji + **Name:** prefix (e.g. "🍺 **Vesper:**")
@@ -171,28 +171,6 @@ object TagParser {
         t = t.removeSurrounding("\"").removeSurrounding("\u201C", "\u201D")
             .removeSurrounding("'").removeSurrounding("\u2018", "\u2019")
         return t.trim()
-    }
-
-    /**
-     * Removes stray narrative-tag fragments (`[TAG]` or `[/TAG]`) that leak into
-     * captured body text on tag mismatches. When the AI opens one tag and closes
-     * with another — e.g. `[PLAYER_ACTION]...[/NARRATOR_PROSE]` — the outer lazy
-     * regex match scoops up the mismatched close as literal body content, which
-     * then renders as visible tag syntax in the UI. This post-pass nukes those
-     * fragments so text reads cleanly even when the AI crosses its wires.
-     *
-     * This is a Phase-A hotfix. Phase B replaces the lazy-regex narrative parser
-     * with a tokenizer that refuses to capture mismatched content in the first
-     * place; at that point this function becomes a no-op and can be deleted.
-     */
-    private fun stripTagFragments(s: String): String {
-        return s.replace(
-            Regex(
-                """\[/?(?:NARRATOR_PROSE|NARRATOR_ASIDE|PLAYER_ACTION|PLAYER_DIALOG|NPC_ACTION[^\]]*|NPC_DIALOG[^\]]*|SCENE[^\]]*|CHOICES|METADATA)]""",
-                RegexOption.IGNORE_CASE
-            ),
-            ""
-        )
     }
 
     /**
@@ -229,7 +207,7 @@ object TagParser {
      * wrapped the action in asterisks.
      */
     private fun cleanPlayerActionContent(raw: String): String {
-        val t = stripTagFragments(raw).trim()
+        val t = raw.trim()
         val italicMatch = Regex("""^\s*\*+([^*]+)\*+""").find(t)
         return if (italicMatch != null) italicMatch.groupValues[1].trim()
         else stripWrappingEmphasis(t)
@@ -255,7 +233,7 @@ object TagParser {
      *         string if there is nothing meaningful to render.
      */
     private fun formatNpcActionContent(raw: String, speakerName: String): String {
-        val sanitized = stripTagFragments(raw)
+        val sanitized = raw
         if (speakerName.isBlank()) return stripWrappingEmphasis(sanitized)
         var t = sanitized.trim()
 
@@ -301,8 +279,8 @@ object TagParser {
         return "$speakerName $t"
     }
 
-    /** Cleans aside / prose content — strips tag fragments and wrapping markdown emphasis. */
-    private fun cleanAsideContent(raw: String): String = stripWrappingEmphasis(stripTagFragments(raw))
+    /** Cleans aside / prose content — strips wrapping markdown emphasis. */
+    private fun cleanAsideContent(raw: String): String = stripWrappingEmphasis(raw)
 
     // =========================================================================
     // Phase B — Tokenizer + Stack-Based Segment Parser
