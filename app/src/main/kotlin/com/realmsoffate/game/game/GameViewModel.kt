@@ -1404,7 +1404,7 @@ class GameViewModel(
 
         val currentLocNameForParse = worldMap?.locations?.getOrNull(currentLoc)?.name.orEmpty()
         val autoTagged = com.realmsoffate.game.data.AutoTagUnknownNpcs.scan(
-            narration = parsed.narration,
+            parsed = parsed,
             existingNpcs = state.npcLog,
             currentLoc = currentLocNameForParse,
             turn = state.turns + 1

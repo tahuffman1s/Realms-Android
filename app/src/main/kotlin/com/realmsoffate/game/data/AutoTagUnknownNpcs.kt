@@ -1,10 +1,10 @@
 package com.realmsoffate.game.data
 
 /**
- * Scan AI narration for capitalized two-word proper nouns (likely NPC names)
+ * Scan AI narration segments for capitalized two-word proper nouns (likely NPC names)
  * that are not already known and are not common English words. Emit synthetic
  * [LogNpc] stubs so they enter the journal even when the model skips the
- * [NPC_MET:] tag for minor or recurring characters.
+ * npcs_met metadata entry for minor or recurring characters.
  */
 object AutoTagUnknownNpcs {
     private val COMMON = setOf(
@@ -18,16 +18,26 @@ object AutoTagUnknownNpcs {
     private val PROPER_NOUN = Regex("\\b([A-Z][a-z]{2,}(?: [A-Z][a-z]{2,}){1,2})\\b")
 
     fun scan(
-        narration: String,
+        parsed: ParsedReply,
         existingNpcs: List<LogNpc>,
         currentLoc: String,
         turn: Int
     ): List<LogNpc> {
-        if (narration.isBlank()) return emptyList()
+        val narrationText = parsed.segments.joinToString("\n") {
+            when (it) {
+                is NarrationSegmentData.Prose -> it.text
+                is NarrationSegmentData.Aside -> it.text
+                is NarrationSegmentData.PlayerAction -> it.text
+                is NarrationSegmentData.PlayerDialog -> it.text
+                is NarrationSegmentData.NpcAction -> it.text
+                is NarrationSegmentData.NpcDialog -> it.text
+            }
+        }
+        if (narrationText.isBlank()) return emptyList()
         val existingKeys = existingNpcs.map { IdGen.nameKey(it.name) }.toSet()
         val out = mutableListOf<LogNpc>()
         val seenKeys = mutableSetOf<String>()
-        for (m in PROPER_NOUN.findAll(narration)) {
+        for (m in PROPER_NOUN.findAll(narrationText)) {
             val name = m.groupValues[1]
             if (name.substringBefore(' ') in COMMON) continue
             val key = IdGen.nameKey(name)
