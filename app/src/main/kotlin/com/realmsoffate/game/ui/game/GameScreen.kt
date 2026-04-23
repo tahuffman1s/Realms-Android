@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.game.GameViewModel
+import com.realmsoffate.game.ui.overlays.CheatsOverlay
 import com.realmsoffate.game.ui.overlays.FeatSelectionOverlay
 import com.realmsoffate.game.ui.overlays.InitiativeOverlay
 import com.realmsoffate.game.ui.overlays.LevelUpOverlay
@@ -116,6 +117,12 @@ fun GameScreen(vm: GameViewModel) {
         }
     }
 
+    var showCheatsOverlay by remember { mutableStateOf(false) }
+    val cheatsEnabled by vm.cheatsEnabled.collectAsState()
+    val infiniteGold by vm.cheatInfiniteGold.collectAsState()
+    val unnaturalTwenty by vm.cheatUnnaturalTwenty.collectAsState()
+    val loser by vm.cheatLoser.collectAsState()
+
     val systemFontScale = LocalConfiguration.current.fontScale
     CompositionLocalProvider(
         LocalFontScale provides fontScale * systemFontScale
@@ -128,7 +135,10 @@ fun GameScreen(vm: GameViewModel) {
                 showSceneContext = tab == GameTab.Chat &&
                     state.currentScene != "default" &&
                     state.combat == null,
-                onSettingsClick = { panel = Panel.Settings }
+                onSettingsClick = { panel = Panel.Settings },
+                infiniteGold = infiniteGold,
+                cheatsEnabled = cheatsEnabled,
+                onCheatsClick = { showCheatsOverlay = true },
             )
         },
         bottomBar = {
@@ -312,6 +322,23 @@ fun GameScreen(vm: GameViewModel) {
             choices = state.currentChoices,
             onPick = { c -> choicesOpen = false; vm.pickChoice(c) },
             onDismiss = { choicesOpen = false }
+        )
+    }
+
+    if (showCheatsOverlay) {
+        CheatsOverlay(
+            unnaturalTwenty = unnaturalTwenty,
+            loser = loser,
+            infiniteGold = infiniteGold,
+            characterLevel = state.character?.level ?: 1,
+            onToggleUnnaturalTwenty = { vm.setUnnaturalTwenty(it) },
+            onToggleLoser = { vm.setLoser(it) },
+            onToggleInfiniteGold = { vm.setInfiniteGold(it) },
+            onApplyOverprepared = {
+                vm.applyOverprepared()
+                showCheatsOverlay = false
+            },
+            onDismiss = { showCheatsOverlay = false }
         )
     }
 

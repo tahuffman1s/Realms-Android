@@ -51,6 +51,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -81,7 +83,10 @@ internal fun GameTopBar(
     state: GameUiState,
     /** Scene name + description below XP / location when stats are expanded (chat tab, non-default scene, not in combat). */
     showSceneContext: Boolean = false,
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    infiniteGold: Boolean = false,
+    cheatsEnabled: Boolean = false,
+    onCheatsClick: () -> Unit = {},
 ) {
     val ch = state.character ?: return
     val location = state.worldMap?.locations?.getOrNull(state.currentLoc)
@@ -158,6 +163,15 @@ internal fun GameTopBar(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    if (cheatsEnabled) {
+                        IconButton(onClick = onCheatsClick) {
+                            Text(
+                                "🃏",
+                                fontSize = 22.sp,
+                                modifier = Modifier.semantics { contentDescription = "Cheats" }
+                            )
+                        }
+                    }
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
@@ -187,7 +201,7 @@ internal fun GameTopBar(
                         )
                         Column(horizontalAlignment = Alignment.End) {
                             GoldInline(
-                                "${ch.gold}",
+                                if (infiniteGold) "∞" else "${ch.gold}",
                                 MaterialTheme.colorScheme.tertiary
                             )
                             if (location != null) {

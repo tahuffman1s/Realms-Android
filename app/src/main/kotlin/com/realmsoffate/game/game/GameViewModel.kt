@@ -12,6 +12,7 @@ import com.realmsoffate.game.data.AiRepository
 import com.realmsoffate.game.data.ChatMsg
 import com.realmsoffate.game.data.Character
 import com.realmsoffate.game.data.Choice
+import com.realmsoffate.game.data.CheatsStore
 import com.realmsoffate.game.data.EntityRepository
 import com.realmsoffate.game.data.PartyCompanion
 import com.realmsoffate.game.data.Item
@@ -35,10 +36,12 @@ import com.realmsoffate.game.data.WorldLore
 import com.realmsoffate.game.data.WorldMap
 import com.realmsoffate.game.data.deepCopy
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.realmsoffate.game.game.handlers.DeathHandler
 import com.realmsoffate.game.game.handlers.MerchantHandler
@@ -171,6 +174,7 @@ sealed interface DisplayMessage {
 class GameViewModel(
     private val ai: AiRepository,
     private val prefs: PreferencesStore,
+    private val cheatsStore: CheatsStore,
 ) : ViewModel() {
 
     /** Re-resolved per access so post-switchTo writes hit the current character's DB.
@@ -271,10 +275,45 @@ class GameViewModel(
     val pendingLevelUpFlow: StateFlow<Int?> = progressionHandler.pendingLevelUpFlow
     val pendingStatPoints: StateFlow<Int> = progressionHandler.pendingStatPointsFlow
     val pendingFeat: StateFlow<Boolean> = progressionHandler.pendingFeatFlow
+
+    val cheatsEnabled: StateFlow<Boolean> = cheatsStore.enabled.stateIn(
+        viewModelScope, SharingStarted.Eagerly, false
+    )
+    val cheatUnnaturalTwenty: StateFlow<Boolean> = cheatsStore.unnaturalTwenty.stateIn(
+        viewModelScope, SharingStarted.Eagerly, false
+    )
+    val cheatLoser: StateFlow<Boolean> = cheatsStore.loser.stateIn(
+        viewModelScope, SharingStarted.Eagerly, false
+    )
+    val cheatInfiniteGold: StateFlow<Boolean> = cheatsStore.infiniteGold.stateIn(
+        viewModelScope, SharingStarted.Eagerly, false
+    )
+
     fun dismissLevelUp() = progressionHandler.dismissLevelUp()
     fun assignStatPoint(stat: String) = progressionHandler.assignStatPoint(stat)
     fun selectFeat(featName: String) = progressionHandler.selectFeat(featName)
     fun dismissFeat() = progressionHandler.dismissFeat()
+    fun applyOverprepared() = progressionHandler.applyOverprepared()
+
+    fun unlockCheats() {
+        viewModelScope.launch { cheatsStore.unlock() }
+    }
+
+    fun disableCheats() {
+        viewModelScope.launch { cheatsStore.disable() }
+    }
+
+    fun setUnnaturalTwenty(on: Boolean) {
+        viewModelScope.launch { cheatsStore.setUnnaturalTwenty(on) }
+    }
+
+    fun setLoser(on: Boolean) {
+        viewModelScope.launch { cheatsStore.setLoser(on) }
+    }
+
+    fun setInfiniteGold(on: Boolean) {
+        viewModelScope.launch { cheatsStore.setInfiniteGold(on) }
+    }
 
     private val _fontScale = MutableStateFlow(1.0f)
     val fontScale: StateFlow<Float> = _fontScale.asStateFlow()
@@ -562,6 +601,18 @@ class GameViewModel(
             }
         }
         viewModelScope.launch { prefs.fontScale.collect { _fontScale.value = it } }
+        viewModelScope.launch {
+            cheatsStore.enabled.collect { Cheats.enabled = it }
+        }
+        viewModelScope.launch {
+            cheatsStore.unnaturalTwenty.collect { Cheats.forceCrit = it }
+        }
+        viewModelScope.launch {
+            cheatsStore.loser.collect { Cheats.forceFail = it }
+        }
+        viewModelScope.launch {
+            cheatsStore.infiniteGold.collect { Cheats.infiniteGold = it }
+        }
     }
 
     /** Returns to the title screen without wiping state (for pause/menu). */
@@ -743,6 +794,17 @@ class GameViewModel(
     }
 
     fun submitAction(action: String, skill: String? = null, seed: Boolean = false) {
+        // Konami intercept — swallow the message, unlock cheats, show system toast.
+        if (!seed && isKonami(action)) {
+            val wasEnabled = Cheats.enabled
+            viewModelScope.launch { cheatsStore.unlock() }
+            val msg = if (wasEnabled) "Cheats already unlocked" else "🎉 Cheats unlocked — see the 🃏 in the top bar"
+            _ui.value = _ui.value.copy(
+                messages = _ui.value.messages + DisplayMessage.System(msg)
+            )
+            return
+        }
+
         val state = tryClaimSubmit() ?: return
         val char = state.character ?: return  // re-checked for the type checker
 
@@ -1020,6 +1082,8 @@ class GameViewModel(
 
             // Possibly generate a world event
             maybeRollWorldEvent()
+            // Re-clamp gold after all handlers so the 1% cheat stays pinned post-turn.
+            clampInfiniteGold(_ui)
             // Autosave every turn so crashes / background kills don't lose progress.
             saveToSlot("autosave")
             // Also write to a character-name-keyed slot for the Load menu.
@@ -1253,11 +1317,18 @@ class GameViewModel(
     }
 
     internal fun applyParsed(
-        state: GameUiState, ch: Character, parsed: ParsedReply,
+        dispatchedState: GameUiState, ch: Character, parsed: ParsedReply,
         playerAction: String, roll: Int, mod: Int, prof: Int,
         suppressCheck: Boolean = false
     ): GameUiState {
-        val result = com.realmsoffate.game.game.reducers.CharacterReducer.apply(ch, parsed, currentTurn = state.turns + 1)
+        // Rebase onto live _ui.value when the character ref has drifted since the
+        // dispatch-time snapshot — mid-turn mutations like the Overprepared cheat
+        // replace _ui.value.character while the AI is generating, and committing
+        // against the stale snapshot would silently revert them.
+        val live = _ui.value
+        val state = if (live.character != null && live.character !== ch) live else dispatchedState
+        val baseChar = state.character ?: ch
+        val result = com.realmsoffate.game.game.reducers.CharacterReducer.apply(baseChar, parsed, currentTurn = state.turns + 1)
         val char = result.character
         val hpBefore = result.hpBefore
         val goldBefore = result.goldBefore
@@ -1278,8 +1349,11 @@ class GameViewModel(
         // Seed turns are the exception: they have no preRoll path so the player
         // bubble must be added here.
         val newMsgs = state.messages.toMutableList().apply {
-            val alreadyHasPlayer = lastOrNull() is DisplayMessage.Player &&
-                (lastOrNull() as? DisplayMessage.Player)?.text == playerAction
+            // Scan the recent tail (not just the last entry) — a System message from a
+            // mid-turn cheat apply can sit between the optimistic Player bubble and here.
+            val alreadyHasPlayer = takeLast(5).any {
+                it is DisplayMessage.Player && it.text == playerAction
+            }
             if (!alreadyHasPlayer) add(DisplayMessage.Player(playerAction))
             // Parser Phase C: substitute NPC slug IDs with display names
             var resolvedNarration = parsed.narration
@@ -1853,10 +1927,22 @@ class GameViewModel(
                 val ctx = RealmsApp.instance
                 GameViewModel(
                     ai = AiRepository(),
-                    prefs = PreferencesStore(ctx)
+                    prefs = PreferencesStore(ctx),
+                    cheatsStore = CheatsStore(ctx)
                 )
             }
         }
+
+        /** Emoji Konami code that unlocks the cheat menu when typed as the full chat message.
+         *  Written as literal glyphs for readability; [KonamiInterceptTest] pins the exact
+         *  string so an accidental edit (including stripped variation selectors) fails fast. */
+        const val KONAMI_CODE = "⬆️⬆️" +
+                "⬇️⬇️" +
+                "⬅️➡️⬅️➡️" +
+                "🅱️🅰️"
+
+        /** Returns true iff [text] (after trimming) exactly equals the Konami code. */
+        fun isKonami(text: String): Boolean = text.trim() == KONAMI_CODE
 
         /** XP required to reach the given level (D&D 5e thresholds). */
         fun levelThreshold(level: Int): Int = when (level) {
@@ -1985,4 +2071,19 @@ internal fun filterRelevantNpcs(
             (currentLocation.isNotBlank() && n.lastLocation.equals(currentLocation, ignoreCase = true))
     }
     return relevant.sortedByDescending { it.lastSeenTurn }.take(cap)
+}
+
+internal const val INF_GOLD = 999_999
+
+/**
+ * Clamp character.gold to [INF_GOLD] if the infinite-gold cheat is active.
+ * Extracted as a top-level helper so unit tests can target it directly.
+ */
+internal fun clampInfiniteGold(ui: MutableStateFlow<GameUiState>) {
+    if (!Cheats.infiniteGold) return
+    val s = ui.value
+    val ch = s.character ?: return
+    if (ch.gold == INF_GOLD) return
+    val updated = ch.deepCopy().apply { gold = INF_GOLD }
+    ui.value = s.copy(character = updated)
 }
