@@ -250,4 +250,15 @@ class TagParserTest {
         assertEquals(1, parsed.npcDialogs.size)
         assertEquals("vesper", parsed.npcDialogs[0].first)
     }
+
+    @Test
+    fun `markdown blockquote dialogue is not scraped into npcDialogs`() {
+        val raw = """
+            **Vesper:**
+            > "Another drowned rat. Wonderful."
+            [METADATA]{}[/METADATA]
+        """.trimIndent()
+        val parsed = TagParser.parse(raw, currentTurn = 1)
+        assertTrue("scraper should not populate npcDialogs from prose", parsed.npcDialogs.isEmpty())
+    }
 }
