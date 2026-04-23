@@ -633,8 +633,9 @@ const val ROLLUP_BATCH_SIZE: Int = 10
 /** Directive telling the AI to treat the CANONICAL FACTS block as ground truth. */
 val CANONICAL_FACTS_DIRECTIVE: String = """
 The CANONICAL FACTS block is ground truth. When you mention any named NPC, faction, or location from that block,
-use the facts exactly — do not change names, factions, dispositions, or statuses. To change a fact, emit the
-appropriate update tag ([NPC_UPDATE:...], [FACTION_UPDATE:...]) and describe the in-fiction event that caused the change.
+use the facts exactly — do not change names, factions, dispositions, or statuses. To change a fact, add an entry
+to metadata.npc_updates or metadata.faction_updates in the envelope (each entry is {"id":"slug","field":"...","value":"..."})
+and describe the in-fiction event that caused the change in a segment.
 """.trim()
 
 // Character budgets for prompt-assembly sections.
