@@ -1,6 +1,7 @@
 package com.realmsoffate.game.data
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
@@ -76,7 +77,7 @@ class TurnEnvelopeTest {
     }
 
     @Test
-    fun `all six segment kinds round-trip`() {
+    fun `all six segment kinds decode successfully`() {
         val raw = """
             {
               "segments": [
@@ -97,5 +98,41 @@ class TurnEnvelopeTest {
         assertTrue(env.segments[3] is Segment.PlayerDialog)
         assertTrue(env.segments[4] is Segment.NpcAction)
         assertTrue(env.segments[5] is Segment.NpcDialog)
+    }
+
+    @Test
+    fun `segment kinds encode to expected discriminator strings`() {
+        // Round-trip sanity: catches @SerialName typos. Server→client only in production,
+        // but a kind mismatch would silently fail to decode.
+        val s = json.encodeToString(Segment.serializer(), Segment.NpcDialog(name = "v", text = "nd"))
+        assertTrue("Expected 'npc_dialog' discriminator in: $s", s.contains("\"kind\":\"npc_dialog\""))
+    }
+
+    @Test
+    fun `choice with missing skill decodes with empty default`() {
+        val raw = """{"choices":[{"text":"Wait"}]}"""
+        val env = json.decodeFromString<TurnEnvelope>(raw)
+        assertEquals(1, env.choices.size)
+        assertEquals("Wait", env.choices[0].text)
+        assertEquals("", env.choices[0].skill)
+    }
+
+    @Test
+    fun `auto-registration is sufficient for Segment hierarchy`() {
+        // Discovery: kotlinx.serialization auto-registers sealed subclasses; the manual
+        // serializersModule block in this file is optional. EnvelopeParser (Task 6) may
+        // omit it and rely on auto-registration alone.
+        val jsonAutoOnly = Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+            coerceInputValues = true
+            classDiscriminator = "kind"
+            // No serializersModule — verifying auto-registration is sufficient
+        }
+        val raw = """{"segments":[{"kind":"npc_dialog","name":"v","text":"nd"},{"kind":"prose","text":"p"}]}"""
+        val env = jsonAutoOnly.decodeFromString<TurnEnvelope>(raw)
+        assertEquals(2, env.segments.size)
+        assertTrue(env.segments[0] is Segment.NpcDialog)
+        assertTrue(env.segments[1] is Segment.Prose)
     }
 }

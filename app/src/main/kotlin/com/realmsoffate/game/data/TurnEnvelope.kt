@@ -26,8 +26,8 @@ data class SceneInfo(
 
 @Serializable
 data class ChoiceSpec(
-    val text: String,
-    val skill: String
+    val text: String = "",
+    val skill: String = ""
 )
 
 /**
