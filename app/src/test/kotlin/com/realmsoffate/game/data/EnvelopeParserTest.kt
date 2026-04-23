@@ -66,19 +66,39 @@ class EnvelopeParserTest {
     fun `segments preserve order`() {
         val raw = """
             {"segments":[
-              {"kind":"aside","text":"1"},
-              {"kind":"prose","text":"2"},
-              {"kind":"aside","text":"3"}
+              {"kind":"aside","text":"first aside content"},
+              {"kind":"prose","text":"second prose block"},
+              {"kind":"aside","text":"third aside content"}
             ]}
         """.trimIndent()
         val p = EnvelopeParser.parse(raw, 1)
-        assertEquals(listOf("1","2","3"), p.segments.map {
-            when (it) {
-                is NarrationSegmentData.Prose -> it.text
-                is NarrationSegmentData.Aside -> it.text
-                else -> ""
+        assertEquals(
+            listOf("first aside content", "second prose block", "third aside content"),
+            p.segments.map {
+                when (it) {
+                    is NarrationSegmentData.Prose -> it.text
+                    is NarrationSegmentData.Aside -> it.text
+                    else -> ""
+                }
             }
-        })
+        )
+    }
+
+    @Test
+    fun `trivial segments are filtered out`() {
+        val raw = """
+            {"segments":[
+              {"kind":"aside","text":"--"},
+              {"kind":"aside","text":"  "},
+              {"kind":"aside","text":"..."},
+              {"kind":"aside","text":"—"},
+              {"kind":"aside","text":"* * *"},
+              {"kind":"aside","text":"real aside content here"}
+            ]}
+        """.trimIndent()
+        val p = EnvelopeParser.parse(raw, 1)
+        assertEquals("only the real aside survives the filter", 1, p.segments.size)
+        assertEquals("real aside content here", (p.segments[0] as NarrationSegmentData.Aside).text)
     }
 
     @Test

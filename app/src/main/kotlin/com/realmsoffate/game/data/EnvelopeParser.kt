@@ -31,21 +31,7 @@ object EnvelopeParser {
 
         val segments: List<NarrationSegmentData> = envelope.segments
             .map { it.toSegmentData() }
-            .filter { seg ->
-                // Drop segments whose text is effectively empty — whitespace, lone
-                // markdown dividers ("--", "---", "==="), or < 2 word chars.
-                // DeepSeek occasionally emits {"kind":"aside","text":"--"} which
-                // renders as an empty-looking bubble.
-                val t = when (seg) {
-                    is NarrationSegmentData.Prose -> seg.text
-                    is NarrationSegmentData.Aside -> seg.text
-                    is NarrationSegmentData.PlayerAction -> seg.text
-                    is NarrationSegmentData.PlayerDialog -> seg.text
-                    is NarrationSegmentData.NpcAction -> seg.text
-                    is NarrationSegmentData.NpcDialog -> seg.text
-                }.trim()
-                t.isNotEmpty() && !t.matches(Regex("""^[\-=*_#\s]+$"""))
-            }
+            .filter(::isRenderable)
         val meta = envelope.metadata
 
         // Null out a partial CheckSpec where total is at its default (0) —
@@ -161,6 +147,34 @@ object EnvelopeParser {
             segments = segments,
             source = ParseSource.JSON
         )
+    }
+
+    /** Segment text must have at least one "content" character to be rendered. */
+    private val TRIVIAL_CHARS = Regex("""[\-=*_#~.,;:!?•·…–—…\s]""")
+
+    /**
+     * Drop segments whose text is effectively empty — pure whitespace, lone markdown
+     * dividers ("--", "---", "==="), ellipses ("…", "..."), em/en dashes, or other
+     * punctuation-only strings. DeepSeek occasionally emits these as placeholder
+     * content (e.g. `{"kind":"aside","text":"--"}`) which renders as an empty-
+     * looking pill.
+     *
+     * Rule: a segment must have at least one letter, digit, or non-trivial unicode
+     * character AFTER stripping trivial chars. A segment with only 1-2 content chars
+     * is also dropped since it's almost certainly nonsense.
+     */
+    private fun isRenderable(seg: NarrationSegmentData): Boolean {
+        val text = when (seg) {
+            is NarrationSegmentData.Prose -> seg.text
+            is NarrationSegmentData.Aside -> seg.text
+            is NarrationSegmentData.PlayerAction -> seg.text
+            is NarrationSegmentData.PlayerDialog -> seg.text
+            is NarrationSegmentData.NpcAction -> seg.text
+            is NarrationSegmentData.NpcDialog -> seg.text
+        }.trim()
+        if (text.isEmpty()) return false
+        val content = TRIVIAL_CHARS.replace(text, "")
+        return content.length >= 3
     }
 
     private fun Segment.toSegmentData(): NarrationSegmentData = when (this) {
