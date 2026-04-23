@@ -229,7 +229,7 @@ Every response MUST be exactly ONE valid JSON object. No markdown, no prose befo
     "enemies": [{"name":"","hp":10,"max_hp":10}],
     "faction_updates": [{"id":"","field":"status|ruler|disposition|mood|description|type|name","value":""}],
     "rep_deltas": [{"faction":"id","delta":0}], "lore_entries": [],
-    "check": {"skill":"","ability":"STR|DEX|CON|INT|WIS|CHA","dc":10,"passed":true,"total":15},
+    "check": {"skill":"Persuasion","ability":"CHA","dc":13,"passed":true,"total":15},
     "travel_to": null, "time_of_day": null,
     "shops": [{"merchant":"","items":{"bread":2}}],
     "party_joins": [{"name":"","race":"","role":"","level":1,"max_hp":10,"appearance":"","personality":""}],
@@ -309,7 +309,16 @@ TRAVEL:
 "travel_to" — use when the player arrives at a new location. The name MUST match exactly.
 
 SKILL CHECK:
-"check" — REQUIRED for every ability check, attack roll, or save. The total should equal: d20 roll + ability modifier + proficiency (if proficient).
+"check" — REQUIRED EVERY TURN. The DICE: line in the user prompt names the skill and ability rolled (e.g. `SKILL:Persuasion(CHA) modifier:+2 proficiency:+2 total:14`). Echo those EXACTLY into the check object, then choose a DC appropriate to the action.
+
+Every field is mandatory. Never emit a blank or placeholder check:
+- "skill": the exact skill name from the DICE line (e.g. "Persuasion", "Stealth", "Attack"). NEVER an empty string.
+- "ability": one of STR|DEX|CON|INT|WIS|CHA, matching the DICE line.
+- "dc": an integer 5-30 that reflects the task difficulty (Easy=10, Medium=13, Hard=15, Very Hard=18, Nearly Impossible=20). NEVER 0. Pick a real number even for trivial tasks — 5 is the floor.
+- "passed": true if total ≥ dc OR d20 was 20, false if total < dc OR d20 was 1.
+- "total": the exact total from the DICE line — d20 roll + modifier + proficiency. NEVER 0.
+
+If the action is purely narrative (no mechanical outcome — e.g. "I look around"), still emit a check using the classified skill (usually Perception) with a DC of 5-10. The UI shows the pill every turn; a missing or stubbed check surfaces as `✓ () DC 0 — PASSED (N)` which is a bug.
 
 scene field (REQUIRED — every envelope has one):
 {"type":"...","desc":"short evocative description"}
@@ -535,7 +544,7 @@ Return ONLY a JSON object of the form:
 No markdown fences. No prose outside the JSON. No additional keys."""
 
     val PER_TURN_REMINDER: String =
-        "\n\n[TURN REMINDER] Output ONE json object only. Required: scene{type,desc}, segments[≥1 prose, ≥2 aside], choices[exactly 4], metadata{}. First segment addresses what the player just did. No bracket tags. Player quotes = exact speech. total>=DC = clean pass, never 'but/however/yet/still'. Racial quirks. Mutations. 200-400 words of content."
+        "\n\n[TURN REMINDER] Output ONE json object only. Required: scene{type,desc}, segments[≥1 prose, ≥2 aside], choices[exactly 4], metadata{}. metadata.check is REQUIRED every turn with ALL fields populated — skill/ability from the DICE line, dc 5-30, passed true/false, exact total. NEVER blank skill or dc:0. First segment addresses what the player just did. No bracket tags. Player quotes = exact speech. total>=DC = clean pass, never 'but/however/yet/still'. Racial quirks. Mutations. 200-400 words of content."
 
     /** Backwards-compat: kept so older code paths that referenced the time tag don't blow up. */
     @Suppress("UNUSED")

@@ -971,7 +971,12 @@ class GameViewModel(
             }
             logDebugTurn(state.turns + 1, action, skill, roll, userPrompt, raw, parsed)
             // On seed turns we don't surface the dice reveal — the character hasn't acted yet.
-            val updated = applyParsed(state, char, parsed, action, roll, mod, prof, suppressCheck = seed)
+            val updated = applyParsed(
+                state, char, parsed, action, roll, mod, prof,
+                suppressCheck = seed,
+                rolledSkill = skill,
+                rolledAbility = skill?.let { ability }
+            )
             // Decide whether the session system we just computed is still valid for the
             // next turn. If applyParsed advanced the character's level or replaced
             // worldLore, the string is stale — null out to force rebuild. Otherwise
@@ -1339,7 +1344,9 @@ class GameViewModel(
     internal fun applyParsed(
         dispatchedState: GameUiState, ch: Character, parsed: ParsedReply,
         playerAction: String, roll: Int, mod: Int, prof: Int,
-        suppressCheck: Boolean = false
+        suppressCheck: Boolean = false,
+        rolledSkill: String? = null,
+        rolledAbility: String? = null
     ): GameUiState {
         // Rebase onto live _ui.value when the character ref has drifted since the
         // dispatch-time snapshot — mid-turn mutations like the Overprepared cheat
@@ -1489,20 +1496,33 @@ class GameViewModel(
         // AUTHORITATIVE total (our d20 + mod + prof) and pass/fail vs the DC the
         // narrator picked. This catches the case where the AI hallucinates a wrong
         // total: we override and display the right one.
+        // Pill emission — every non-seed turn shows a DC pill. The LLM's job is to
+        // pick a DC for the action; when it stubs the check (blank skill, dc:0) we
+        // still need to show *something* useful, so fall back to the client-side
+        // rolledSkill/rolledAbility and a default DC of 10 (medium). The total is
+        // always authoritative (local d20 + mod + prof) regardless of source.
         val check: CheckDisplay? = null
-        parsed.checks.firstOrNull()?.takeUnless { suppressCheck }?.let { c ->
-            val authTotal = roll + mod + prof
-            val passed = if (roll == 20) true
-                         else if (roll == 1) false
-                         else authTotal >= c.dc
-            val verdict = if (passed) "PASSED" else "FAILED"
-            val critLabel = when (roll) {
-                20 -> " · NAT 20!"
-                1 -> " · NAT 1!"
-                else -> ""
+        if (!suppressCheck) {
+            val aiCheck = parsed.checks.firstOrNull()
+            val skillName = aiCheck?.skill?.takeIf { it.isNotBlank() } ?: rolledSkill
+            val abilityName = aiCheck?.ability?.takeIf { it.isNotBlank() } ?: rolledAbility
+            val dcVal = aiCheck?.dc?.takeIf { it > 0 } ?: 10
+            if (!skillName.isNullOrBlank() && !abilityName.isNullOrBlank()) {
+                val authTotal = roll + mod + prof
+                val passed = when (roll) {
+                    20 -> true
+                    1 -> false
+                    else -> authTotal >= dcVal
+                }
+                val verdict = if (passed) "PASSED" else "FAILED"
+                val critLabel = when (roll) {
+                    20 -> " · NAT 20!"
+                    1 -> " · NAT 1!"
+                    else -> ""
+                }
+                val resultLine = "${if (passed) "✓" else "✗"} $skillName ($abilityName) DC $dcVal — $verdict ($authTotal)$critLabel"
+                newMsgs.add(DisplayMessage.System(resultLine))
             }
-            val resultLine = "${if (passed) "✓" else "✗"} ${c.skill} (${c.ability}) DC ${c.dc} — $verdict ($authTotal)$critLabel"
-            newMsgs.add(DisplayMessage.System(resultLine))
         }
 
         // Advance time contextually — [TIME:phase] tag forces, otherwise accumulator.
