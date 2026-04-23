@@ -10,6 +10,7 @@ import com.realmsoffate.game.data.AiProvider
 import com.realmsoffate.game.data.ContradictionQueue
 import com.realmsoffate.game.data.AiRepository
 import com.realmsoffate.game.data.ChatMsg
+import com.realmsoffate.game.data.ParseSource
 import com.realmsoffate.game.data.Character
 import com.realmsoffate.game.data.Choice
 import com.realmsoffate.game.data.CheatsStore
@@ -943,20 +944,31 @@ class GameViewModel(
             val userMsg = ChatMsg(role = "user", content = userPrompt)
             val nh = state.history + userMsg
 
-            val raw = try {
-                ai.generate(
-                    provider = _provider.value,
-                    apiKey = _apiKey.value,
-                    systemPrompt = sys,
-                    history = nh,
-                    styleSample = state.sceneSummaries.firstOrNull()?.summary
-                )
-            } catch (t: Throwable) {
-                _ui.value = _ui.value.copy(isGenerating = false, error = "Network error: ${t.message}")
-                return@launch
+            // Up to 2 attempts: if DeepSeek produces invalid JSON on attempt 1, append a
+            // correction hint to the system prompt and retry once. Two attempts cap the
+            // token cost; empirically the retry succeeds most of the time because the
+            // model sees the same context plus a reminder to emit valid JSON.
+            var raw = ""
+            var parsed: ParsedReply = TagParser.parse("", state.turns + 1)  // placeholder INVALID
+            val invalidHint = "\n\nPREVIOUS RESPONSE WAS INVALID JSON. Emit ONE valid JSON object with keys scene, segments, choices (exactly 4), metadata. Escape all internal double quotes as \\\". No nested objects inside array elements unless the schema specifies one. ASCII straight quotes only."
+            for (attempt in 1..2) {
+                val attemptSys = if (attempt == 1) sys else sys + invalidHint
+                raw = try {
+                    ai.generate(
+                        provider = _provider.value,
+                        apiKey = _apiKey.value,
+                        systemPrompt = attemptSys,
+                        history = nh,
+                        styleSample = state.sceneSummaries.firstOrNull()?.summary
+                    )
+                } catch (t: Throwable) {
+                    _ui.value = _ui.value.copy(isGenerating = false, error = "Network error: ${t.message}")
+                    return@launch
+                }
+                parsed = TagParser.parse(raw, state.turns + 1)
+                if (parsed.source == ParseSource.JSON) break
+                android.util.Log.w("GameViewModel", "envelope parse failed on attempt $attempt/2; retrying with correction hint")
             }
-
-            val parsed = TagParser.parse(raw, state.turns + 1)
             logDebugTurn(state.turns + 1, action, skill, roll, userPrompt, raw, parsed)
             // On seed turns we don't surface the dice reveal — the character hasn't acted yet.
             val updated = applyParsed(state, char, parsed, action, roll, mod, prof, suppressCheck = seed)
