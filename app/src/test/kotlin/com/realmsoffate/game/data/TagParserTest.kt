@@ -239,4 +239,15 @@ class TagParserTest {
             assertFalse("Segment should not contain raw tag syntax: '$text'", text.contains('['))
         }
     }
+
+    @Test
+    fun `no dialogue regex scraping on NPC_DIALOG tag input`() {
+        val raw = """
+            [NPC_DIALOG:vesper]Another drowned rat. Wonderful.[/NPC_DIALOG]
+            [METADATA]{}[/METADATA]
+        """.trimIndent()
+        val parsed = TagParser.parse(raw, currentTurn = 1)
+        assertEquals(1, parsed.npcDialogs.size)
+        assertEquals("vesper", parsed.npcDialogs[0].first)
+    }
 }

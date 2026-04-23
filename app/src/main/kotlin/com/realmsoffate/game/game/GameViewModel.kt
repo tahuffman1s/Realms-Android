@@ -376,7 +376,6 @@ class GameViewModel(
             parsed.loreEntries.forEach { appendLine("LORE:$it") }
             if (parsed.moralDelta != 0) appendLine("MORAL:${parsed.moralDelta}")
             parsed.repDeltas.forEach { (f, d) -> appendLine("REP:$f|$d") }
-            parsed.dialogues.forEach { (name, lines) -> lines.forEach { (t, q) -> appendLine("DIALOGUE:$name(T$t):$q") } }
             parsed.narratorProse.forEach { appendLine("NARRATOR_PROSE:${it.take(80)}...") }
             parsed.narratorAsides.forEach { appendLine("NARRATOR_ASIDE:$it") }
             parsed.playerActions.forEach { appendLine("PLAYER_ACTION:${it.take(80)}") }

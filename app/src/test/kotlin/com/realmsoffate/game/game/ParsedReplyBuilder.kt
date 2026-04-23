@@ -48,7 +48,6 @@ class ParsedReplyBuilder {
     private var moralDelta: Int = 0
     private var repDeltas: MutableList<Pair<String, Int>> = mutableListOf()
     private var worldEventHook: String? = null
-    private var dialogues: Map<String, List<Pair<Int, String>>> = emptyMap()
     private var conditionsAdded: MutableList<String> = mutableListOf()
     private var conditionsRemoved: MutableList<String> = mutableListOf()
     private var itemsRemoved: MutableList<String> = mutableListOf()
@@ -148,7 +147,6 @@ class ParsedReplyBuilder {
         moralDelta = moralDelta,
         repDeltas = repDeltas.toList(),
         worldEventHook = worldEventHook,
-        dialogues = dialogues,
         conditionsAdded = conditionsAdded.toList(),
         conditionsRemoved = conditionsRemoved.toList(),
         itemsRemoved = itemsRemoved.toList(),

@@ -156,24 +156,7 @@ object NpcLogReducer {
             }
         }
 
-        // 5) Attach extracted dialogue to any NPC currently in the log so the journal
-        // can show quotes with turn numbers. "T12: \"dialogue…\"" is the stored format.
-        // Legacy regex path — keyed by display name; fall back to name match.
-        parsed.dialogues.forEach { (name, quotes) ->
-            val idx = resolveNpcIdx(name, workingLog)
-            if (idx >= 0) {
-                val old = workingLog[idx]
-                val merged = (old.dialogueHistory + quotes.map { (turn, q) -> "T$turn: \"$q\"" })
-                    .takeLast(20) // cap per NPC to keep save size small
-                    .toMutableList()
-                workingLog[idx] = old.copy(
-                    dialogueHistory = merged,
-                    lastSeenTurn = currentTurn
-                )
-            }
-        }
-
-        // 6) Also attach dialogue captured via the structured [NPC_DIALOG:ref] tag.
+        // 5) Attach dialogue captured via the structured [NPC_DIALOG:ref] tag.
         // ref may be a stable ID or a legacy display name — resolved via resolveNpcIdx.
         parsed.npcDialogs.forEach { (ref, quote) ->
             val idx = resolveNpcIdx(ref, workingLog)

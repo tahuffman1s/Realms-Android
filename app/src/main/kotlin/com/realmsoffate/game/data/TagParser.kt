@@ -74,11 +74,6 @@ data class ParsedReply(
     val moralDelta: Int,
     val repDeltas: List<Pair<String, Int>>,
     val worldEventHook: String?,
-    /**
-     * Per-NPC dialogue lines captured from blockquote-formatted narration.
-     * Keyed by NPC name, each entry is a `Pair(turn, quote)`.
-     */
-    val dialogues: Map<String, List<Pair<Int, String>>> = emptyMap(),
     /** [CONDITION:name] tags — apply to character's conditions list. */
     val conditionsAdded: List<String> = emptyList(),
     /** [REMOVE_CONDITION:name] tags — remove from character's conditions list. */
@@ -552,24 +547,6 @@ object TagParser {
         "(?:gain|earn|receive)[a-z]*\\s+(\\d+)\\s*(?:xp|experience)",
         RegexOption.IGNORE_CASE
     )
-    // NPC dialogue — **Name:** on one line followed by > "quote" on the next.
-    // Works across the emoji-prefixed format: `🧔 **Greta Ironjaw:**\n> "..."`.
-    // Broad name capture: anything between ** ** that ends in `:` — covers titles
-    // ("Lord Aerion the Just"), accents ("Marie-Thérèse"), digits ("Ragnar III"),
-    // periods (“Mr. Vex”), or unicode names. We just exclude `*` so we don't
-    // collapse adjacent bold runs.
-    // All quote characters we accept: left curly, right curly, straight.
-    private val dialoguePattern = Regex(
-        "\\*\\*([^*\\n]{1,80}?):\\*\\*\\s*\\n\\s*>\\s*" +
-        "[\u201C\u201D\"]([^\u201C\u201D\"]+)[\u201C\u201D\"]",
-        setOf(RegexOption.MULTILINE)
-    )
-    // Fallback: **Name:** "quote" on the same line (no blockquote >)
-    private val dialogueFallback = Regex(
-        "\\*\\*([^*\\n]{1,80}?):\\*\\*\\s*" +
-        "[\u201C\u201D\"]([^\u201C\u201D\"]{3,}?)[\u201C\u201D\"]",
-        setOf(RegexOption.MULTILINE)
-    )
     fun parse(raw: String, currentTurn: Int): ParsedReply {
         // ---- Attempt JSON metadata extraction (Path A) ----
         val metadataMatch = metadataBlockPattern.find(raw)
@@ -964,27 +941,6 @@ object TagParser {
             }
         }
 
-        // ---- Dialogue extraction for the NPC journal ----
-        val dialogues = mutableMapOf<String, MutableList<Pair<Int, String>>>()
-        dialoguePattern.findAll(narration).forEach { m ->
-            val name = m.groupValues[1].trim()
-            val quote = m.groupValues[2].trim()
-            if (name.isNotBlank() && quote.isNotBlank()) {
-                dialogues.getOrPut(name) { mutableListOf() }.add(currentTurn to quote)
-            }
-        }
-        // Fallback pass for same-line dialogue
-        dialogueFallback.findAll(narration).forEach { m ->
-            val name = m.groupValues[1].trim()
-            val quote = m.groupValues[2].trim()
-            if (name.isNotBlank() && quote.isNotBlank()) {
-                // Only add if we didn't already capture this NPC from the primary pattern
-                if (!dialogues.containsKey(name)) {
-                    dialogues.getOrPut(name) { mutableListOf() }.add(currentTurn to quote)
-                }
-            }
-        }
-
         // Derive per-type action lists from segments (segments already built above)
         val playerActionsExtracted = segments.filterIsInstance<NarrationSegmentData.PlayerAction>().map { it.text }
         val npcActionsExtracted = segments.filterIsInstance<NarrationSegmentData.NpcAction>().map { it.name to it.text }
@@ -995,7 +951,6 @@ object TagParser {
             qStarts, qUpdates, qComplete, qFails, shops,
             travelTo, parties, tod, moral, reps,
             worldEventHook = null,
-            dialogues = dialogues,
             conditionsAdded = conditionsAdded,
             conditionsRemoved = conditionsRemoved,
             itemsRemoved = itemsRemoved,
