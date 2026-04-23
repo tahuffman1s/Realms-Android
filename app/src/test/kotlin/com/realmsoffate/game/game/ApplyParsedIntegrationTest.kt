@@ -387,10 +387,15 @@ class ApplyParsedIntegrationTest {
     }
 
     // -------------------------------------------------------------------------
-    // Parser Phase C: NPC name substitution in narration
+    // NPC slug-ID handling — resolved at render time by NarrationBlock
     // -------------------------------------------------------------------------
 
-    @Test fun `narration with NPC slug ID gets display name substituted`() {
+    @Test fun `narration text is empty string after envelope migration`() {
+        // Since EnvelopeParser retires parsed.narration (always ""), the ViewModel
+        // no longer substitutes NPC slugs into a text field.  Slug→displayName
+        // resolution is the responsibility of NarrationBlock via resolveNpcDisplayName,
+        // which receives the npcLog at compose time.  The Narration.text field is
+        // intentionally empty; NPC content lives in Narration.segments.
         val npc = LogNpc(id = "vesper-saltblood", name = "Vesper Saltblood", race = "Human", role = "Bartender", metTurn = 1, lastSeenTurn = 1)
         val state = GameStateFixture.baseState(
             character = GameStateFixture.character(),
@@ -399,17 +404,15 @@ class ApplyParsedIntegrationTest {
         val char = state.character!!
         val vm = GameStateFixture.viewModelWithState(state)
 
+        // Build a ParsedReply with a segment carrying the raw slug (mirroring EnvelopeParser output).
         val parsed = ParsedReplyBuilder()
-            .narration("vesper-saltblood stares at the coins on the counter.")
             .build()
 
         val result = vm.applyParsed(state, char, parsed, "I look", roll = 10, mod = 0, prof = 0)
 
         val narrationMsg = result.messages.filterIsInstance<DisplayMessage.Narration>().last()
-        assertEquals(
-            "Vesper Saltblood stares at the coins on the counter.",
-            narrationMsg.text
-        )
+        // text is always "" — content is in segments, resolved by the UI layer.
+        assertEquals("", narrationMsg.text)
     }
 
     // -------------------------------------------------------------------------
@@ -442,7 +445,9 @@ class ApplyParsedIntegrationTest {
         assertEquals("hp should be maxHp minus 5 damage", c.maxHp - 5, c.hp)
     }
 
-    @Test fun `narration without NPC refs is unchanged`() {
+    @Test fun `narration text field is always empty after envelope migration`() {
+        // Regression guard: confirm text stays "" regardless of ParsedReply.narration content.
+        // Structured content lives exclusively in segments; legacy text field is unused.
         val npc = LogNpc(id = "vesper-saltblood", name = "Vesper Saltblood", race = "Human", role = "Bartender", metTurn = 1, lastSeenTurn = 1)
         val state = GameStateFixture.baseState(
             character = GameStateFixture.character(),
@@ -452,12 +457,11 @@ class ApplyParsedIntegrationTest {
         val vm = GameStateFixture.viewModelWithState(state)
 
         val parsed = ParsedReplyBuilder()
-            .narration("The tavern is quiet tonight.")
             .build()
 
         val result = vm.applyParsed(state, char, parsed, "I look", roll = 10, mod = 0, prof = 0)
 
         val narrationMsg = result.messages.filterIsInstance<DisplayMessage.Narration>().last()
-        assertEquals("The tavern is quiet tonight.", narrationMsg.text)
+        assertEquals("", narrationMsg.text)
     }
 }

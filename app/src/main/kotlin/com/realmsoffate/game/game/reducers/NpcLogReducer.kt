@@ -156,24 +156,7 @@ object NpcLogReducer {
             }
         }
 
-        // 5) Attach extracted dialogue to any NPC currently in the log so the journal
-        // can show quotes with turn numbers. "T12: \"dialogue…\"" is the stored format.
-        // Legacy regex path — keyed by display name; fall back to name match.
-        parsed.dialogues.forEach { (name, quotes) ->
-            val idx = resolveNpcIdx(name, workingLog)
-            if (idx >= 0) {
-                val old = workingLog[idx]
-                val merged = (old.dialogueHistory + quotes.map { (turn, q) -> "T$turn: \"$q\"" })
-                    .takeLast(20) // cap per NPC to keep save size small
-                    .toMutableList()
-                workingLog[idx] = old.copy(
-                    dialogueHistory = merged,
-                    lastSeenTurn = currentTurn
-                )
-            }
-        }
-
-        // 6) Also attach dialogue captured via the structured [NPC_DIALOG:ref] tag.
+        // 5) Attach dialogue captured via the structured [NPC_DIALOG:ref] tag.
         // ref may be a stable ID or a legacy display name — resolved via resolveNpcIdx.
         parsed.npcDialogs.forEach { (ref, quote) ->
             val idx = resolveNpcIdx(ref, workingLog)
@@ -187,7 +170,7 @@ object NpcLogReducer {
             }
         }
 
-        // 7) Narrator-curated memorable quotes via [NPC_QUOTE:ref|quote] — store in
+        // 6) Narrator-curated memorable quotes via [NPC_QUOTE:ref|quote] — store in
         // a separate list (capped at 12) so they persist beyond the rolling
         // dialogueHistory buffer. Deduplicated by exact entry text.
         parsed.npcQuotes.forEach { (ref, quote) ->
@@ -202,7 +185,7 @@ object NpcLogReducer {
             }
         }
 
-        // 8) NPC deaths — ref may be a stable ID or a legacy display name.
+        // 7) NPC deaths — ref may be a stable ID or a legacy display name.
         val systemMessages = mutableListOf<DisplayMessage.System>()
         val timelineEntries = mutableListOf<TimelineEntry>()
         parsed.npcDeaths.forEach { deadRef ->
@@ -219,7 +202,7 @@ object NpcLogReducer {
             timelineEntries.add(TimelineEntry(currentTurn, "event", "$displayName died"))
         }
 
-        // 9) Remove dead NPCs from combat order — resolve refs to display names first.
+        // 8) Remove dead NPCs from combat order — resolve refs to display names first.
         val deadDisplayNames = parsed.npcDeaths.map { ref ->
             val i = resolveNpcIdx(ref, workingLog)
             if (i >= 0) workingLog[i].name.lowercase() else ref.lowercase()
@@ -233,7 +216,7 @@ object NpcLogReducer {
             )
         }
 
-        // 10) NPC updates — ref may be a stable ID or a legacy display name.
+        // 9) NPC updates — ref may be a stable ID or a legacy display name.
         // With stable IDs, the "name" field simply updates the display label in place;
         // no complex merge is needed because the id is the stable key.
         parsed.npcUpdates.forEach { (ref, field, value) ->

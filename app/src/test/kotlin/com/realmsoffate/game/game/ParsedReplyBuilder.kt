@@ -48,7 +48,6 @@ class ParsedReplyBuilder {
     private var moralDelta: Int = 0
     private var repDeltas: MutableList<Pair<String, Int>> = mutableListOf()
     private var worldEventHook: String? = null
-    private var dialogues: Map<String, List<Pair<Int, String>>> = emptyMap()
     private var conditionsAdded: MutableList<String> = mutableListOf()
     private var conditionsRemoved: MutableList<String> = mutableListOf()
     private var itemsRemoved: MutableList<String> = mutableListOf()
@@ -66,7 +65,7 @@ class ParsedReplyBuilder {
     private var playerActions: MutableList<String> = mutableListOf()
     private var npcActions: MutableList<Pair<String, String>> = mutableListOf()
     private var segments: MutableList<NarrationSegmentData> = mutableListOf()
-    private var source: ParseSource = ParseSource.REGEX_FALLBACK
+    private var source: ParseSource = ParseSource.INVALID
 
     fun scene(scene: String, desc: String = "") = apply { this.scene = scene; this.sceneDesc = desc }
     fun narration(text: String) = apply { this.narration = text }
@@ -148,7 +147,6 @@ class ParsedReplyBuilder {
         moralDelta = moralDelta,
         repDeltas = repDeltas.toList(),
         worldEventHook = worldEventHook,
-        dialogues = dialogues,
         conditionsAdded = conditionsAdded.toList(),
         conditionsRemoved = conditionsRemoved.toList(),
         itemsRemoved = itemsRemoved.toList(),

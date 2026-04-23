@@ -10,6 +10,7 @@ import com.realmsoffate.game.data.AiProvider
 import com.realmsoffate.game.data.ContradictionQueue
 import com.realmsoffate.game.data.AiRepository
 import com.realmsoffate.game.data.ChatMsg
+import com.realmsoffate.game.data.ParseSource
 import com.realmsoffate.game.data.Character
 import com.realmsoffate.game.data.Choice
 import com.realmsoffate.game.data.CheatsStore
@@ -376,7 +377,6 @@ class GameViewModel(
             parsed.loreEntries.forEach { appendLine("LORE:$it") }
             if (parsed.moralDelta != 0) appendLine("MORAL:${parsed.moralDelta}")
             parsed.repDeltas.forEach { (f, d) -> appendLine("REP:$f|$d") }
-            parsed.dialogues.forEach { (name, lines) -> lines.forEach { (t, q) -> appendLine("DIALOGUE:$name(T$t):$q") } }
             parsed.narratorProse.forEach { appendLine("NARRATOR_PROSE:${it.take(80)}...") }
             parsed.narratorAsides.forEach { appendLine("NARRATOR_ASIDE:$it") }
             parsed.playerActions.forEach { appendLine("PLAYER_ACTION:${it.take(80)}") }
@@ -392,7 +392,16 @@ class GameViewModel(
             turn = turn, playerAction = action, classifiedSkill = skill,
             diceRoll = roll, userPromptSent = prompt, rawAiResponse = raw,
             parsedScene = "${parsed.scene}|${parsed.sceneDesc}",
-            parsedNarration = parsed.narration.take(500),
+            parsedNarration = parsed.segments.joinToString(" | ") { seg ->
+                when (seg) {
+                    is NarrationSegmentData.Prose -> "PROSE: ${seg.text}"
+                    is NarrationSegmentData.Aside -> "ASIDE: ${seg.text}"
+                    is NarrationSegmentData.PlayerAction -> "P_ACT: ${seg.text}"
+                    is NarrationSegmentData.PlayerDialog -> "P_DLG: ${seg.text}"
+                    is NarrationSegmentData.NpcAction -> "NPC_ACT(${seg.name}): ${seg.text}"
+                    is NarrationSegmentData.NpcDialog -> "NPC_DLG(${seg.name}): ${seg.text}"
+                }
+            }.take(500),
             parsedTags = tags
         ))
         // Cap at 50 turns to avoid memory bloat
@@ -935,23 +944,39 @@ class GameViewModel(
             val userMsg = ChatMsg(role = "user", content = userPrompt)
             val nh = state.history + userMsg
 
-            val raw = try {
-                ai.generate(
-                    provider = _provider.value,
-                    apiKey = _apiKey.value,
-                    systemPrompt = sys,
-                    history = nh,
-                    styleSample = state.sceneSummaries.firstOrNull()?.summary
-                )
-            } catch (t: Throwable) {
-                _ui.value = _ui.value.copy(isGenerating = false, error = "Network error: ${t.message}")
-                return@launch
+            // Up to 2 attempts: if DeepSeek produces invalid JSON on attempt 1, append a
+            // correction hint to the system prompt and retry once. Two attempts cap the
+            // token cost; empirically the retry succeeds most of the time because the
+            // model sees the same context plus a reminder to emit valid JSON.
+            var raw = ""
+            var parsed: ParsedReply = TagParser.parse("", state.turns + 1)  // placeholder INVALID
+            val invalidHint = "\n\nPREVIOUS RESPONSE WAS INVALID JSON. Emit ONE valid JSON object with keys scene, segments, choices (exactly 4), metadata. Escape all internal double quotes as \\\". No nested objects inside array elements unless the schema specifies one. ASCII straight quotes only."
+            for (attempt in 1..2) {
+                val attemptSys = if (attempt == 1) sys else sys + invalidHint
+                raw = try {
+                    ai.generate(
+                        provider = _provider.value,
+                        apiKey = _apiKey.value,
+                        systemPrompt = attemptSys,
+                        history = nh,
+                        styleSample = state.sceneSummaries.firstOrNull()?.summary
+                    )
+                } catch (t: Throwable) {
+                    _ui.value = _ui.value.copy(isGenerating = false, error = "Network error: ${t.message}")
+                    return@launch
+                }
+                parsed = TagParser.parse(raw, state.turns + 1)
+                if (parsed.source == ParseSource.JSON) break
+                android.util.Log.w("GameViewModel", "envelope parse failed on attempt $attempt/2; retrying with correction hint")
             }
-
-            val parsed = TagParser.parse(raw, state.turns + 1)
             logDebugTurn(state.turns + 1, action, skill, roll, userPrompt, raw, parsed)
             // On seed turns we don't surface the dice reveal — the character hasn't acted yet.
-            val updated = applyParsed(state, char, parsed, action, roll, mod, prof, suppressCheck = seed)
+            val updated = applyParsed(
+                state, char, parsed, action, roll, mod, prof,
+                suppressCheck = seed,
+                rolledSkill = skill,
+                rolledAbility = skill?.let { ability }
+            )
             // Decide whether the session system we just computed is still valid for the
             // next turn. If applyParsed advanced the character's level or replaced
             // worldLore, the string is stale — null out to force rebuild. Otherwise
@@ -1319,7 +1344,9 @@ class GameViewModel(
     internal fun applyParsed(
         dispatchedState: GameUiState, ch: Character, parsed: ParsedReply,
         playerAction: String, roll: Int, mod: Int, prof: Int,
-        suppressCheck: Boolean = false
+        suppressCheck: Boolean = false,
+        rolledSkill: String? = null,
+        rolledAbility: String? = null
     ): GameUiState {
         // Rebase onto live _ui.value when the character ref has drifted since the
         // dispatch-time snapshot — mid-turn mutations like the Overprepared cheat
@@ -1355,15 +1382,10 @@ class GameViewModel(
                 it is DisplayMessage.Player && it.text == playerAction
             }
             if (!alreadyHasPlayer) add(DisplayMessage.Player(playerAction))
-            // Parser Phase C: substitute NPC slug IDs with display names
-            var resolvedNarration = parsed.narration
-            for (npc in state.npcLog) {
-                if (npc.id.isNotEmpty() && resolvedNarration.contains(npc.id, ignoreCase = true)) {
-                    resolvedNarration = resolvedNarration.replace(npc.id, npc.name, ignoreCase = true)
-                }
-            }
+            // NPC slug→display-name resolution happens at render time in NarrationBlock
+            // via resolveNpcDisplayName(seg.name, npcLog) — no substitution needed here.
             add(DisplayMessage.Narration(
-                resolvedNarration, parsed.scene, parsed.sceneDesc,
+                "", parsed.scene, parsed.sceneDesc,
                 hpBefore = hpBefore, hpAfter = char.hp, maxHp = char.maxHp,
                 goldBefore = goldBefore, goldAfter = char.gold,
                 xpGained = parsed.xp,
@@ -1405,7 +1427,7 @@ class GameViewModel(
 
         val currentLocNameForParse = worldMap?.locations?.getOrNull(currentLoc)?.name.orEmpty()
         val autoTagged = com.realmsoffate.game.data.AutoTagUnknownNpcs.scan(
-            narration = parsed.narration,
+            parsed = parsed,
             existingNpcs = state.npcLog,
             currentLoc = currentLocNameForParse,
             turn = state.turns + 1
@@ -1474,20 +1496,33 @@ class GameViewModel(
         // AUTHORITATIVE total (our d20 + mod + prof) and pass/fail vs the DC the
         // narrator picked. This catches the case where the AI hallucinates a wrong
         // total: we override and display the right one.
+        // Pill emission — every non-seed turn shows a DC pill. The LLM's job is to
+        // pick a DC for the action; when it stubs the check (blank skill, dc:0) we
+        // still need to show *something* useful, so fall back to the client-side
+        // rolledSkill/rolledAbility and a default DC of 10 (medium). The total is
+        // always authoritative (local d20 + mod + prof) regardless of source.
         val check: CheckDisplay? = null
-        parsed.checks.firstOrNull()?.takeUnless { suppressCheck }?.let { c ->
-            val authTotal = roll + mod + prof
-            val passed = if (roll == 20) true
-                         else if (roll == 1) false
-                         else authTotal >= c.dc
-            val verdict = if (passed) "PASSED" else "FAILED"
-            val critLabel = when (roll) {
-                20 -> " · NAT 20!"
-                1 -> " · NAT 1!"
-                else -> ""
+        if (!suppressCheck) {
+            val aiCheck = parsed.checks.firstOrNull()
+            val skillName = aiCheck?.skill?.takeIf { it.isNotBlank() } ?: rolledSkill
+            val abilityName = aiCheck?.ability?.takeIf { it.isNotBlank() } ?: rolledAbility
+            val dcVal = aiCheck?.dc?.takeIf { it > 0 } ?: 10
+            if (!skillName.isNullOrBlank() && !abilityName.isNullOrBlank()) {
+                val authTotal = roll + mod + prof
+                val passed = when (roll) {
+                    20 -> true
+                    1 -> false
+                    else -> authTotal >= dcVal
+                }
+                val verdict = if (passed) "PASSED" else "FAILED"
+                val critLabel = when (roll) {
+                    20 -> " · NAT 20!"
+                    1 -> " · NAT 1!"
+                    else -> ""
+                }
+                val resultLine = "${if (passed) "✓" else "✗"} $skillName ($abilityName) DC $dcVal — $verdict ($authTotal)$critLabel"
+                newMsgs.add(DisplayMessage.System(resultLine))
             }
-            val resultLine = "${if (passed) "✓" else "✗"} ${c.skill} (${c.ability}) DC ${c.dc} — $verdict ($authTotal)$critLabel"
-            newMsgs.add(DisplayMessage.System(resultLine))
         }
 
         // Advance time contextually — [TIME:phase] tag forces, otherwise accumulator.
