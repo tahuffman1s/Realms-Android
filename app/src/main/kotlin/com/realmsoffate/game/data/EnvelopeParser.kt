@@ -34,10 +34,13 @@ object EnvelopeParser {
             .filter(::isRenderable)
         val meta = envelope.metadata
 
-        // Null out a partial CheckSpec where total is at its default (0) —
-        // a real roll always produces a non-zero total, so total==0 means the model
-        // emitted an incomplete object (e.g. missing passed/total fields).
-        val check = meta.check?.takeUnless { it.total == 0 }
+        // Null out a partial CheckSpec. A real check always has: a named skill,
+        // a positive DC, and a non-zero total. If any of those are absent the model
+        // emitted stub/filler fields (we've seen `{skill:"",ability:"",dc:0,passed:true,total:16}`
+        // render as `✓ () DC 0 — PASSED (16)`), so drop the pill entirely.
+        val check = meta.check?.takeIf {
+            it.skill.isNotBlank() && it.dc > 0 && it.total != 0
+        }
 
         return ParsedReply(
             scene = envelope.scene.type,
@@ -199,6 +202,17 @@ object EnvelopeParser {
      *   "(a (b) c)"     → "(a (b) c)"   (inner parens preserved — ambiguous, leave alone)
      */
     internal fun cleanSegmentText(raw: String): String {
+        // Multi-line segments (e.g. `"(stage direction)\n'speech'"`) never match the
+        // outer-wrap rules below because the first and last chars differ. Clean each
+        // line independently first, then re-join. Single-line input is unaffected.
+        val lines = raw.split('\n')
+        if (lines.size > 1) {
+            return lines.joinToString("\n") { stripWrappers(it) }.trim()
+        }
+        return stripWrappers(raw)
+    }
+
+    private fun stripWrappers(raw: String): String {
         var t = raw.trim()
         var changed = true
         while (changed && t.length >= 2) {

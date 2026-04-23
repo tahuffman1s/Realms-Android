@@ -103,6 +103,32 @@ class EnvelopeParserTest {
     }
 
     @Test
+    fun `multi-line segments strip per-line wrappers`() {
+        // Regression: DeepSeek sometimes packs a parenthetical stage direction and
+        // a quoted line into a single segment, e.g. `(She leans in)\n'Go on.'`.
+        // Because the first char is `(` and the last is `'`, the whole-string
+        // wrapper loop leaves the parens intact. Per-line cleanup handles this.
+        val raw = """
+            {"segments":[
+              {"kind":"aside","text":"(She looks at you like she's already measuring you for a grave.)\n'The Bone Gryphon knows the way.'"},
+              {"kind":"npc_dialog","name":"vesper","text":"(She draws a rough map on the bar.)\n'The vault lies northeast.'"}
+            ]}
+        """.trimIndent()
+        val p = EnvelopeParser.parse(raw, 1)
+        assertEquals(2, p.segments.size)
+        val aside = (p.segments[0] as NarrationSegmentData.Aside).text
+        assertEquals(
+            "She looks at you like she's already measuring you for a grave.\nThe Bone Gryphon knows the way.",
+            aside
+        )
+        val dialog = (p.segments[1] as NarrationSegmentData.NpcDialog).text
+        assertEquals(
+            "She draws a rough map on the bar.\nThe vault lies northeast.",
+            dialog
+        )
+    }
+
+    @Test
     fun `segment with inner parens is not stripped (ambiguous)`() {
         val raw = """
             {"segments":[
@@ -169,6 +195,16 @@ class EnvelopeParserTest {
         assertEquals(ParseSource.JSON, p.source)
         // Check was partial; parser nulls it out so no dice UI fires.
         assertTrue("partial check should be dropped", p.checks.isEmpty())
+    }
+
+    @Test
+    fun `check with blank skill or zero dc is dropped even when total is non-zero`() {
+        // Regression: DeepSeek sometimes emits a filler check object where only `total`
+        // is populated (skill="", dc=0, passed=true). That rendered in the UI as
+        // `✓ () DC 0 — PASSED (16)`. The pill is meaningless without a real skill/DC.
+        val raw = """{"metadata":{"check":{"skill":"","ability":"","dc":0,"passed":true,"total":16}}}"""
+        val p = EnvelopeParser.parse(raw, 1)
+        assertTrue("stub check should be dropped", p.checks.isEmpty())
     }
 
     @Test
