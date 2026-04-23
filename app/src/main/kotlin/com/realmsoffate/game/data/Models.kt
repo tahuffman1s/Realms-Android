@@ -477,7 +477,7 @@ data class TurnMetadata(
 
 @Serializable
 data class ItemSpec(
-    val name: String,
+    val name: String = "",
     val desc: String = "",
     val type: String = "item",
     val rarity: String = "common"
@@ -485,8 +485,8 @@ data class ItemSpec(
 
 @Serializable
 data class NpcMetSpec(
-    val id: String,
-    val name: String,
+    val id: String = "",
+    val name: String = "",
     val race: String = "",
     val role: String = "",
     val age: String = "",
@@ -498,51 +498,51 @@ data class NpcMetSpec(
 
 /** Generic field update for [NPC_UPDATE] / [FACTION_UPDATE] style operations. */
 @Serializable
-data class FieldUpdateSpec(val id: String, val field: String, val value: String)
+data class FieldUpdateSpec(val id: String = "", val field: String = "", val value: String = "")
 
 @Serializable
-data class NpcQuoteSpec(val id: String, val quote: String)
+data class NpcQuoteSpec(val id: String = "", val quote: String = "")
 
 @Serializable
 data class QuestSpec(
-    val title: String,
+    val title: String = "",
     val type: String = "side",
-    val desc: String,
+    val desc: String = "",
     val giver: String = "",
     val objectives: List<String> = emptyList(),
     val reward: String = ""
 )
 
 @Serializable
-data class QuestUpdateSpec(val title: String, val objective: String)
+data class QuestUpdateSpec(val title: String = "", val objective: String = "")
 
 @Serializable
 data class EnemySpec(
-    val name: String,
-    val hp: Int,
-    @SerialName("max_hp") val maxHp: Int
+    val name: String = "",
+    val hp: Int = 0,
+    @SerialName("max_hp") val maxHp: Int = 0
 )
 
 @Serializable
-data class RepDeltaSpec(val faction: String, val delta: Int)
+data class RepDeltaSpec(val faction: String = "", val delta: Int = 0)
 
 @Serializable
 data class CheckSpec(
-    val skill: String,
-    val ability: String,
-    val dc: Int,
-    val passed: Boolean,
-    val total: Int
+    val skill: String = "",
+    val ability: String = "",
+    val dc: Int = 10,
+    val passed: Boolean = false,
+    val total: Int = 0
 )
 
 @Serializable
-data class ShopSpec(val merchant: String, val items: Map<String, Int>)
+data class ShopSpec(val merchant: String = "", val items: Map<String, Int> = emptyMap())
 
 @Serializable
 data class PartyJoinSpec(
-    val name: String,
-    val race: String,
-    val role: String,
+    val name: String = "",
+    val race: String = "",
+    val role: String = "",
     val level: Int = 1,
     @SerialName("max_hp") val maxHp: Int = 10,
     val appearance: String = "",

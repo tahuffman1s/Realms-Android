@@ -22,10 +22,17 @@ object EnvelopeParser {
         val envelope = runCatching { json.decodeFromString<TurnEnvelope>(raw.trim()) }
             .getOrElse {
                 android.util.Log.w("EnvelopeParser", "invalid envelope: ${it.message}", it)
+                android.util.Log.w("EnvelopeParser", "raw payload[0..500]: ${raw.take(500)}")
                 return invalidReply()
             }
 
         val segments: List<NarrationSegmentData> = envelope.segments.map { it.toSegmentData() }
+        val meta = envelope.metadata
+
+        // Null out a partial CheckSpec where total is at its default (0) —
+        // a real roll always produces a non-zero total, so total==0 means the model
+        // emitted an incomplete object (e.g. missing passed/total fields).
+        val check = meta.check?.takeUnless { it.total == 0 }
 
         return ParsedReply(
             scene = envelope.scene.type,
@@ -34,78 +41,98 @@ object EnvelopeParser {
             choices = envelope.choices
                 .filter { it.text.isNotBlank() }
                 .mapIndexed { i, c -> Choice(n = i + 1, text = c.text, skill = c.skill) },
-            damage = envelope.metadata.damage,
-            heal = envelope.metadata.heal,
-            xp = envelope.metadata.xp,
-            goldGained = envelope.metadata.goldGained,
-            goldLost = envelope.metadata.goldLost,
-            itemsGained = envelope.metadata.itemsGained.map {
-                Item(name = it.name, desc = it.desc, type = it.type, rarity = it.rarity)
-            },
-            checks = envelope.metadata.check?.let {
+            damage = meta.damage,
+            heal = meta.heal,
+            xp = meta.xp,
+            goldGained = meta.goldGained,
+            goldLost = meta.goldLost,
+            itemsGained = meta.itemsGained
+                .filter { it.name.isNotBlank() }
+                .map { Item(name = it.name, desc = it.desc, type = it.type, rarity = it.rarity) },
+            checks = check?.let {
                 listOf(CheckResult(it.skill, it.ability, it.dc, it.passed, it.total))
             } ?: emptyList(),
-            npcsMet = envelope.metadata.npcsMet.map { spec ->
-                LogNpc(
-                    id = spec.id,
-                    name = spec.name,
-                    race = spec.race,
-                    role = spec.role,
-                    age = spec.age,
-                    relationship = spec.relationship,
-                    appearance = spec.appearance,
-                    personality = spec.personality,
-                    thoughts = spec.thoughts,
-                    metTurn = currentTurn,
-                    lastSeenTurn = currentTurn
-                )
-            },
-            questStarts = envelope.metadata.questStarts.mapIndexed { i, q ->
-                Quest(
-                    // TODO(Task 9+): if a retry path is added, use a content-addressed id (hash of title+currentTurn) for idempotency.
-                    id = "q_${System.currentTimeMillis()}_$i",
-                    title = q.title,
-                    type = q.type,
-                    desc = q.desc,
-                    giver = q.giver,
-                    location = "",
-                    objectives = q.objectives.toMutableList(),
-                    reward = q.reward,
-                    turnStarted = currentTurn
-                )
-            },
-            questUpdates = envelope.metadata.questUpdates.map { it.title to it.objective },
-            questComplete = envelope.metadata.questCompletes,
-            questFails = envelope.metadata.questFails,
-            shops = envelope.metadata.shops.map { it.merchant to it.items },
-            travelTo = envelope.metadata.travelTo,
-            partyJoins = envelope.metadata.partyJoins.map { spec ->
-                PartyCompanion(
-                    name = spec.name,
-                    race = spec.race,
-                    role = spec.role,
-                    level = spec.level,
-                    maxHp = spec.maxHp,
-                    hp = spec.maxHp,
-                    appearance = spec.appearance,
-                    personality = spec.personality,
-                    joinedTurn = currentTurn
-                )
-            },
-            timeOfDay = envelope.metadata.timeOfDay,
-            moralDelta = envelope.metadata.moralDelta,
-            repDeltas = envelope.metadata.repDeltas.map { it.faction to it.delta },
+            npcsMet = meta.npcsMet
+                .filter { it.id.isNotBlank() || it.name.isNotBlank() }
+                .map { spec ->
+                    LogNpc(
+                        id = spec.id,
+                        name = spec.name,
+                        race = spec.race,
+                        role = spec.role,
+                        age = spec.age,
+                        relationship = spec.relationship,
+                        appearance = spec.appearance,
+                        personality = spec.personality,
+                        thoughts = spec.thoughts,
+                        metTurn = currentTurn,
+                        lastSeenTurn = currentTurn
+                    )
+                },
+            questStarts = meta.questStarts
+                .filter { it.title.isNotBlank() }
+                .mapIndexed { i, q ->
+                    Quest(
+                        // TODO(Task 9+): if a retry path is added, use a content-addressed id (hash of title+currentTurn) for idempotency.
+                        id = "q_${System.currentTimeMillis()}_$i",
+                        title = q.title,
+                        type = q.type,
+                        desc = q.desc,
+                        giver = q.giver,
+                        location = "",
+                        objectives = q.objectives.toMutableList(),
+                        reward = q.reward,
+                        turnStarted = currentTurn
+                    )
+                },
+            questUpdates = meta.questUpdates
+                .filter { it.title.isNotBlank() }
+                .map { it.title to it.objective },
+            questComplete = meta.questCompletes.filter { it.isNotBlank() },
+            questFails = meta.questFails.filter { it.isNotBlank() },
+            shops = meta.shops
+                .filter { it.merchant.isNotBlank() }
+                .map { it.merchant to it.items },
+            travelTo = meta.travelTo,
+            partyJoins = meta.partyJoins
+                .filter { it.name.isNotBlank() }
+                .map { spec ->
+                    PartyCompanion(
+                        name = spec.name,
+                        race = spec.race,
+                        role = spec.role,
+                        level = spec.level,
+                        maxHp = spec.maxHp,
+                        hp = spec.maxHp,
+                        appearance = spec.appearance,
+                        personality = spec.personality,
+                        joinedTurn = currentTurn
+                    )
+                },
+            timeOfDay = meta.timeOfDay,
+            moralDelta = meta.moralDelta,
+            repDeltas = meta.repDeltas
+                .filter { it.faction.isNotBlank() }
+                .map { it.faction to it.delta },
             worldEventHook = null,
-            conditionsAdded = envelope.metadata.conditionsAdded,
-            conditionsRemoved = envelope.metadata.conditionsRemoved,
-            itemsRemoved = envelope.metadata.itemsRemoved,
-            partyLeaves = envelope.metadata.partyLeaves,
-            enemies = envelope.metadata.enemies.map { Triple(it.name, it.hp, it.maxHp) },
-            factionUpdates = envelope.metadata.factionUpdates.map { Triple(it.id, it.field, it.value) },
-            npcDeaths = envelope.metadata.npcDeaths,
-            npcUpdates = envelope.metadata.npcUpdates.map { Triple(it.id, it.field, it.value) },
-            loreEntries = envelope.metadata.loreEntries,
-            npcQuotes = envelope.metadata.npcQuotes.map { it.id to it.quote },
+            conditionsAdded = meta.conditionsAdded.filter { it.isNotBlank() },
+            conditionsRemoved = meta.conditionsRemoved.filter { it.isNotBlank() },
+            itemsRemoved = meta.itemsRemoved.filter { it.isNotBlank() },
+            partyLeaves = meta.partyLeaves.filter { it.isNotBlank() },
+            enemies = meta.enemies
+                .filter { it.name.isNotBlank() }
+                .map { Triple(it.name, it.hp, it.maxHp) },
+            factionUpdates = meta.factionUpdates
+                .filter { it.id.isNotBlank() }
+                .map { Triple(it.id, it.field, it.value) },
+            npcDeaths = meta.npcDeaths.filter { it.isNotBlank() },
+            npcUpdates = meta.npcUpdates
+                .filter { it.id.isNotBlank() }
+                .map { Triple(it.id, it.field, it.value) },
+            loreEntries = meta.loreEntries.filter { it.isNotBlank() },
+            npcQuotes = meta.npcQuotes
+                .filter { it.id.isNotBlank() && it.quote.isNotBlank() }
+                .map { it.id to it.quote },
             narratorProse = segments.filterIsInstance<NarrationSegmentData.Prose>().map { it.text },
             narratorAsides = segments.filterIsInstance<NarrationSegmentData.Aside>().map { it.text },
             playerDialogs = segments.filterIsInstance<NarrationSegmentData.PlayerDialog>().map { it.text },
