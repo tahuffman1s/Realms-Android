@@ -1317,11 +1317,18 @@ class GameViewModel(
     }
 
     internal fun applyParsed(
-        state: GameUiState, ch: Character, parsed: ParsedReply,
+        dispatchedState: GameUiState, ch: Character, parsed: ParsedReply,
         playerAction: String, roll: Int, mod: Int, prof: Int,
         suppressCheck: Boolean = false
     ): GameUiState {
-        val result = com.realmsoffate.game.game.reducers.CharacterReducer.apply(ch, parsed, currentTurn = state.turns + 1)
+        // Rebase onto live _ui.value when the character ref has drifted since the
+        // dispatch-time snapshot — mid-turn mutations like the Overprepared cheat
+        // replace _ui.value.character while the AI is generating, and committing
+        // against the stale snapshot would silently revert them.
+        val live = _ui.value
+        val state = if (live.character != null && live.character !== ch) live else dispatchedState
+        val baseChar = state.character ?: ch
+        val result = com.realmsoffate.game.game.reducers.CharacterReducer.apply(baseChar, parsed, currentTurn = state.turns + 1)
         val char = result.character
         val hpBefore = result.hpBefore
         val goldBefore = result.goldBefore
@@ -1342,8 +1349,11 @@ class GameViewModel(
         // Seed turns are the exception: they have no preRoll path so the player
         // bubble must be added here.
         val newMsgs = state.messages.toMutableList().apply {
-            val alreadyHasPlayer = lastOrNull() is DisplayMessage.Player &&
-                (lastOrNull() as? DisplayMessage.Player)?.text == playerAction
+            // Scan the recent tail (not just the last entry) — a System message from a
+            // mid-turn cheat apply can sit between the optimistic Player bubble and here.
+            val alreadyHasPlayer = takeLast(5).any {
+                it is DisplayMessage.Player && it.text == playerAction
+            }
             if (!alreadyHasPlayer) add(DisplayMessage.Player(playerAction))
             // Parser Phase C: substitute NPC slug IDs with display names
             var resolvedNarration = parsed.narration
