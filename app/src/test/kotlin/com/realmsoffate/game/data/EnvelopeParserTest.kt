@@ -85,6 +85,35 @@ class EnvelopeParserTest {
     }
 
     @Test
+    fun `wrapping parens quotes and asterisks are stripped from segment text`() {
+        val raw = """
+            {"segments":[
+              {"kind":"prose","text":"(The tavern smells of smoke and beer.)"},
+              {"kind":"aside","text":"*leans in conspiratorially*"},
+              {"kind":"prose","text":"\"A quoted scene line.\""},
+              {"kind":"prose","text":"**bold section**"}
+            ]}
+        """.trimIndent()
+        val p = EnvelopeParser.parse(raw, 1)
+        assertEquals(4, p.segments.size)
+        assertEquals("The tavern smells of smoke and beer.", (p.segments[0] as NarrationSegmentData.Prose).text)
+        assertEquals("leans in conspiratorially", (p.segments[1] as NarrationSegmentData.Aside).text)
+        assertEquals("A quoted scene line.", (p.segments[2] as NarrationSegmentData.Prose).text)
+        assertEquals("bold section", (p.segments[3] as NarrationSegmentData.Prose).text)
+    }
+
+    @Test
+    fun `segment with inner parens is not stripped (ambiguous)`() {
+        val raw = """
+            {"segments":[
+              {"kind":"prose","text":"He said (ominously) it was done."}
+            ]}
+        """.trimIndent()
+        val p = EnvelopeParser.parse(raw, 1)
+        assertEquals("He said (ominously) it was done.", (p.segments[0] as NarrationSegmentData.Prose).text)
+    }
+
+    @Test
     fun `trivial segments are filtered out`() {
         val raw = """
             {"segments":[

@@ -178,12 +178,53 @@ object EnvelopeParser {
     }
 
     private fun Segment.toSegmentData(): NarrationSegmentData = when (this) {
-        is Segment.Prose -> NarrationSegmentData.Prose(text)
-        is Segment.Aside -> NarrationSegmentData.Aside(text)
-        is Segment.PlayerAction -> NarrationSegmentData.PlayerAction(text)
-        is Segment.PlayerDialog -> NarrationSegmentData.PlayerDialog(text)
-        is Segment.NpcAction -> NarrationSegmentData.NpcAction(name, text)
-        is Segment.NpcDialog -> NarrationSegmentData.NpcDialog(name, text)
+        is Segment.Prose -> NarrationSegmentData.Prose(cleanSegmentText(text))
+        is Segment.Aside -> NarrationSegmentData.Aside(cleanSegmentText(text))
+        is Segment.PlayerAction -> NarrationSegmentData.PlayerAction(cleanSegmentText(text))
+        is Segment.PlayerDialog -> NarrationSegmentData.PlayerDialog(cleanSegmentText(text))
+        is Segment.NpcAction -> NarrationSegmentData.NpcAction(name, cleanSegmentText(text))
+        is Segment.NpcDialog -> NarrationSegmentData.NpcDialog(name, cleanSegmentText(text))
+    }
+
+    /**
+     * DeepSeek occasionally wraps segment text in parens (stage-direction style),
+     * asterisks (markdown italic), quotes, or brackets — even when the prompt says
+     * not to. Strip wrapping delimiters iteratively as long as they enclose the
+     * ENTIRE string with no inner occurrence of the same pair.
+     *
+     *   "(text)"        → "text"
+     *   "*text*"        → "text"
+     *   "**text**"      → "text"  (one pass strips 2 chars; two passes strip 4)
+     *   "\"text\""     → "text"
+     *   "(a (b) c)"     → "(a (b) c)"   (inner parens preserved — ambiguous, leave alone)
+     */
+    internal fun cleanSegmentText(raw: String): String {
+        var t = raw.trim()
+        var changed = true
+        while (changed && t.length >= 2) {
+            changed = false
+            val first = t.first()
+            val last = t.last()
+            val inner = t.substring(1, t.length - 1)
+            val strip = when {
+                // Structural delimiters: only strip if no inner occurrence (ambiguity guard).
+                first == '(' && last == ')' && !inner.contains('(') && !inner.contains(')') -> true
+                first == '[' && last == ']' && !inner.contains('[') && !inner.contains(']') -> true
+                first == '"' && last == '"' && !inner.contains('"') -> true
+                first == '“' && last == '”' -> true
+                first == '\'' && last == '\'' && !inner.contains('\'') -> true
+                first == '‘' && last == '’' -> true
+                // Markdown emphasis: strip one pair at a time so "**bold**" → "*bold*" → "bold".
+                first == '*' && last == '*' -> true
+                first == '_' && last == '_' -> true
+                else -> false
+            }
+            if (strip) {
+                t = inner.trim()
+                changed = true
+            }
+        }
+        return t
     }
 
     private fun invalidReply(): ParsedReply = ParsedReply(
