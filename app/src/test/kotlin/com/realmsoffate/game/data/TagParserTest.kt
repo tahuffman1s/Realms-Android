@@ -279,4 +279,23 @@ class TagParserTest {
         assertEquals("no damage from scene-setting number", 0, parsed.damage)
         assertEquals("no gold from scene-setting number", 0, parsed.goldGained)
     }
+
+    @Test
+    fun `pay-verb prose does not capture gold lost post-fallback-removal`() {
+        // Pre-fix: proseGoldLost regex would match "pay 15 gold" and set goldLost=15.
+        // Post-fix: the fallback is gone, so no gold mutation should happen.
+        val raw = """
+            [SCENE:inn|A quiet inn.]
+            She waited years. I had to pay 15 gold to rent the room.
+            [CHOICES]
+            1. Sleep. [Endurance]
+            2. Haggle. [Persuasion]
+            3. Leave. [Stealth]
+            4. Complain. [Intimidation]
+            [/CHOICES]
+        """.trimIndent()
+        val parsed = TagParser.parse(raw, currentTurn = 1)
+        assertEquals("pay-15-gold scene sentence must not set goldLost", 0, parsed.goldLost)
+        assertEquals("no unintended damage either", 0, parsed.damage)
+    }
 }
