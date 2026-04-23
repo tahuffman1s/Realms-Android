@@ -273,6 +273,8 @@ removes the worst footgun preemptively."
 
 # Phase 2 — Envelope Spike (Go/No-Go Gate)
 
+> **SKIPPED 2026-04-23 by user decision.** Voice-quality risk accepted; Task 11 (device verification) is now the sole gate. If prose quality degrades there, the plan rolls back and forks to the Hybrid appendix.
+
 ### Task 4: Prototype envelope prompt and run one real DeepSeek turn
 
 **Files:**
