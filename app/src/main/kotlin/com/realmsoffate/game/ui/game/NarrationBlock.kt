@@ -84,11 +84,15 @@ internal fun NarrationBlock(
                     }
                     is NarrationSegmentData.NpcAction -> {
                         val displayName = resolveNpcDisplayName(seg.name, npcLog)
-                        val actionText = if (seg.name.isNotBlank() && displayName != seg.name &&
-                            seg.text.startsWith(seg.name, ignoreCase = true)) {
-                            displayName + seg.text.substring(seg.name.length)
-                        } else {
-                            seg.text
+                        val actionText = when {
+                            seg.name.isBlank() -> seg.text
+                            // Slug already prepended inside text: swap for display name.
+                            seg.text.startsWith(seg.name, ignoreCase = true) ->
+                                displayName + seg.text.substring(seg.name.length)
+                            // Display name already prepended: keep as-is.
+                            seg.text.startsWith(displayName, ignoreCase = true) -> seg.text
+                            // Bare verb phrase (envelope prompt instructs this): prepend display name.
+                            else -> "$displayName ${seg.text}"
                         }
                         val (accent, _) = npcColor(seg.name, RealmsTheme.colors.npcPalette)
                         NpcActionLine(text = actionText, accentColor = accent)

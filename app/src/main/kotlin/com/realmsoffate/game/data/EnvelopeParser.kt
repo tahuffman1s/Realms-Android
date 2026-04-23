@@ -29,7 +29,23 @@ object EnvelopeParser {
                 return invalidReply()
             }
 
-        val segments: List<NarrationSegmentData> = envelope.segments.map { it.toSegmentData() }
+        val segments: List<NarrationSegmentData> = envelope.segments
+            .map { it.toSegmentData() }
+            .filter { seg ->
+                // Drop segments whose text is effectively empty — whitespace, lone
+                // markdown dividers ("--", "---", "==="), or < 2 word chars.
+                // DeepSeek occasionally emits {"kind":"aside","text":"--"} which
+                // renders as an empty-looking bubble.
+                val t = when (seg) {
+                    is NarrationSegmentData.Prose -> seg.text
+                    is NarrationSegmentData.Aside -> seg.text
+                    is NarrationSegmentData.PlayerAction -> seg.text
+                    is NarrationSegmentData.PlayerDialog -> seg.text
+                    is NarrationSegmentData.NpcAction -> seg.text
+                    is NarrationSegmentData.NpcDialog -> seg.text
+                }.trim()
+                t.isNotEmpty() && !t.matches(Regex("""^[\-=*_#\s]+$"""))
+            }
         val meta = envelope.metadata
 
         // Null out a partial CheckSpec where total is at its default (0) —
