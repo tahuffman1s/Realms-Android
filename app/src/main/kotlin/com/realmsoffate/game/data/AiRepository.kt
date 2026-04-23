@@ -155,6 +155,7 @@ class AiRepository(
             put("frequency_penalty", 0.3)
             put("presence_penalty", 0.1)
             put("messages", messages)
+            put("response_format", buildJsonObject { put("type", "json_object") })
         }
         val req = Request.Builder()
             .url("https://api.deepseek.com/v1/chat/completions")
