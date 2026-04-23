@@ -391,7 +391,16 @@ class GameViewModel(
             turn = turn, playerAction = action, classifiedSkill = skill,
             diceRoll = roll, userPromptSent = prompt, rawAiResponse = raw,
             parsedScene = "${parsed.scene}|${parsed.sceneDesc}",
-            parsedNarration = parsed.narration.take(500),
+            parsedNarration = parsed.segments.joinToString(" | ") { seg ->
+                when (seg) {
+                    is NarrationSegmentData.Prose -> "PROSE: ${seg.text}"
+                    is NarrationSegmentData.Aside -> "ASIDE: ${seg.text}"
+                    is NarrationSegmentData.PlayerAction -> "P_ACT: ${seg.text}"
+                    is NarrationSegmentData.PlayerDialog -> "P_DLG: ${seg.text}"
+                    is NarrationSegmentData.NpcAction -> "NPC_ACT(${seg.name}): ${seg.text}"
+                    is NarrationSegmentData.NpcDialog -> "NPC_DLG(${seg.name}): ${seg.text}"
+                }
+            }.take(500),
             parsedTags = tags
         ))
         // Cap at 50 turns to avoid memory bloat
@@ -1354,15 +1363,10 @@ class GameViewModel(
                 it is DisplayMessage.Player && it.text == playerAction
             }
             if (!alreadyHasPlayer) add(DisplayMessage.Player(playerAction))
-            // Parser Phase C: substitute NPC slug IDs with display names
-            var resolvedNarration = parsed.narration
-            for (npc in state.npcLog) {
-                if (npc.id.isNotEmpty() && resolvedNarration.contains(npc.id, ignoreCase = true)) {
-                    resolvedNarration = resolvedNarration.replace(npc.id, npc.name, ignoreCase = true)
-                }
-            }
+            // NPC slug→display-name resolution happens at render time in NarrationBlock
+            // via resolveNpcDisplayName(seg.name, npcLog) — no substitution needed here.
             add(DisplayMessage.Narration(
-                resolvedNarration, parsed.scene, parsed.sceneDesc,
+                "", parsed.scene, parsed.sceneDesc,
                 hpBefore = hpBefore, hpAfter = char.hp, maxHp = char.maxHp,
                 goldBefore = goldBefore, goldAfter = char.gold,
                 xpGained = parsed.xp,
