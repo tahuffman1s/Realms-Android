@@ -946,6 +946,12 @@ The prompt already includes the word 'json' and a worked example."
 
 ### Task 9: Swap the parser entry point
 
+**Pre-work for this task:** `AutoTagUnknownNpcs.scan()` in `app/src/main/kotlin/com/realmsoffate/game/data/AutoTagUnknownNpcs.kt` consumes `parsed.narration`. The envelope parser sets this to `""`. Before deleting the bracket-tag path, either:
+(a) rewrite `AutoTagUnknownNpcs.scan()` to read segment text (e.g., concatenate all `parsed.segments.filterIsInstance<NarrationSegmentData.Prose>().map { it.text }` plus dialog/action text), OR
+(b) have `EnvelopeParser.parse()` synthesize `narration` from segments (concatenated prose + dialog) so downstream consumers stay unchanged.
+
+Option (b) is the smaller change; (a) is cleaner long-term. Pick whichever the Task 9 implementer prefers; add a regression test covering NPC auto-tagging on envelope-parsed turns.
+
 **Files:**
 - Modify: `app/src/main/kotlin/com/realmsoffate/game/data/TagParser.kt` — strip to a thin shim.
 

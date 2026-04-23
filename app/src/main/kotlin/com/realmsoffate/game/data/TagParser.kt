@@ -5,8 +5,10 @@ package com.realmsoffate.game.data
  * Exposed on [ParsedReply] so downstream consumers (e.g. debug logging) can report it.
  */
 enum class ParseSource {
-    /** Envelope decoded successfully. */
+    /** Envelope or legacy METADATA JSON block decoded successfully. */
     JSON,
+    /** Bracket-tag regex extraction was used (no valid JSON). Legacy path; removed in Task 9. */
+    LEGACY_TAGS,
     /** Envelope was malformed or missing — zero effects applied this turn. */
     INVALID
 }
@@ -690,7 +692,7 @@ object TagParser {
 
         } else {
             // ---- Path B: No valid JSON block — regex tag extraction (legacy) ----
-            parseSource = ParseSource.INVALID
+            parseSource = ParseSource.LEGACY_TAGS
 
             for (m in tagPattern.findAll(raw)) {
                 val type = m.groupValues[1]

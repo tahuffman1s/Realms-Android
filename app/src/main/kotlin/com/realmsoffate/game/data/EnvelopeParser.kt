@@ -21,7 +21,7 @@ object EnvelopeParser {
     fun parse(raw: String, currentTurn: Int): ParsedReply {
         val envelope = runCatching { json.decodeFromString<TurnEnvelope>(raw.trim()) }
             .getOrElse {
-                android.util.Log.w("EnvelopeParser", "invalid envelope: ${it.message}")
+                android.util.Log.w("EnvelopeParser", "invalid envelope: ${it.message}", it)
                 return invalidReply()
             }
 
@@ -62,6 +62,7 @@ object EnvelopeParser {
             },
             questStarts = envelope.metadata.questStarts.mapIndexed { i, q ->
                 Quest(
+                    // TODO(Task 9+): if a retry path is added, use a content-addressed id (hash of title+currentTurn) for idempotency.
                     id = "q_${System.currentTimeMillis()}_$i",
                     title = q.title,
                     type = q.type,
