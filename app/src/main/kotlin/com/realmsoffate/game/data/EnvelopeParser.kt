@@ -21,6 +21,7 @@ object EnvelopeParser {
     fun parse(raw: String, currentTurn: Int): ParsedReply {
         val envelope = runCatching { json.decodeFromString<TurnEnvelope>(raw.trim()) }
             .getOrElse {
+                android.util.Log.w("EnvelopeParser", "invalid envelope: ${it.message}")
                 return invalidReply()
             }
 

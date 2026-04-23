@@ -2,7 +2,10 @@ package com.realmsoffate.game.data
 
 import org.junit.Test
 import org.junit.Assert.*
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class EnvelopeParserTest {
     @Test
     fun `full envelope produces populated ParsedReply`() {
