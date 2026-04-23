@@ -8,6 +8,8 @@ import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
 import com.realmsoffate.game.data.SerializedBuyback
 import com.realmsoffate.game.data.TimelineEntry
+import com.realmsoffate.game.data.db.RealmsDbHolder
+import com.realmsoffate.game.data.db.dbKeyForSave
 import com.realmsoffate.game.game.*
 import com.realmsoffate.game.ui.overlays.BuybackEntry
 import kotlinx.coroutines.CoroutineScope
@@ -39,7 +41,12 @@ class SaveService(
 
     fun saveToSlot(slot: String = "autosave") {
         scope.launch {
-            SaveStore.write(slot, snapshotSaveData() ?: return@launch)
+            val data = snapshotSaveData() ?: return@launch
+            // Route the narrative DB to the character-keyed file (shared with autosave).
+            RealmsDbHolder.switchTo(
+                dbKeyForSave(slot, data.character.name)
+            )
+            SaveStore.write(slot, data)
         }
     }
 
@@ -134,6 +141,10 @@ class SaveService(
                 // exactly where they fell.
                 deathSave = d.deathSave,
                 sceneSummaries = d.sceneSummaries
+            )
+            // Route narrative DB to the loaded character's file BEFORE the UI goes live.
+            RealmsDbHolder.switchTo(
+                SaveStore.slotKeyFor(d.character.name)
             )
             // Clear any stale ephemeral overlays so they don't leak into the loaded run.
             clearOverlays()

@@ -38,7 +38,13 @@ abstract class RealmsDb : RoomDatabase() {
     abstract fun arcSummaryDao(): ArcSummaryDao
 
     companion object {
-        const val FILE_NAME = "realms.db"
+        private const val DEFAULT_PREFIX = "realms"
+        const val DEFAULT_FILE_NAME = "realms.db"
+
+        fun fileNameForSlot(slot: String): String {
+            val safe = slot.lowercase().replace(Regex("[^a-z0-9_-]"), "_").ifBlank { "default" }
+            return "${DEFAULT_PREFIX}_$safe.db"
+        }
 
         fun open(context: Context, dbFile: java.io.File): RealmsDb =
             Room.databaseBuilder(context, RealmsDb::class.java, dbFile.absolutePath)

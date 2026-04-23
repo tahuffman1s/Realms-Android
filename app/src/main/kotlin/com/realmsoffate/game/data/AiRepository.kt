@@ -5,9 +5,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
@@ -43,6 +45,10 @@ class AiRepository(
         /** Default history budget in tokens — leaves headroom for system + scene summaries + per-turn context. */
         const val HISTORY_TOKEN_BUDGET: Int = 8000
 
+        /** Shared lenient parser — reused by [parseBalance] and [parseSummaryResponse] so we
+         *  don't allocate a configuration object on every parse. */
+        private val lenientJson = Json { ignoreUnknownKeys = true; isLenient = true }
+
         /**
          * Keep the largest suffix of [history] whose summed token estimate ≤ [budget].
          * Always preserves the final message even if it alone exceeds the budget
@@ -67,6 +73,21 @@ class AiRepository(
             return kept.toList()
         }
 
+        /** Extract the USD total_balance from a DeepSeek /user/balance payload.
+         *  Falls back to the first balance entry when USD is not present. Returns
+         *  null on any parse failure, when the account is marked unavailable, or
+         *  when balance_infos is empty. */
+        fun parseBalance(raw: String): String? = runCatching {
+            val root = lenientJson.parseToJsonElement(raw).jsonObject
+            val available = root["is_available"]?.jsonPrimitive?.booleanOrNull ?: true
+            if (!available) return@runCatching null
+            val infos = root["balance_infos"]?.jsonArray ?: return@runCatching null
+            if (infos.isEmpty()) return@runCatching null
+            val usd = infos.firstOrNull { it.jsonObject["currency"]?.jsonPrimitive?.contentOrNull == "USD" }
+            val pick = usd ?: infos.first()
+            pick.jsonObject["total_balance"]?.jsonPrimitive?.contentOrNull
+        }.getOrNull()
+
         /**
          * Extract (summary, keyFacts) from a DeepSeek response. Tolerates code
          * fences and surrounding prose because models don't always behave.
@@ -82,10 +103,7 @@ class AiRepository(
             if (start < 0 || end < 0 || end <= start) return null
             val jsonSlice = stripped.substring(start, end + 1)
             return try {
-                val j = kotlinx.serialization.json.Json {
-                    ignoreUnknownKeys = true; isLenient = true
-                }
-                val obj = j.parseToJsonElement(jsonSlice).jsonObject
+                val obj = lenientJson.parseToJsonElement(jsonSlice).jsonObject
                 val summary = obj["summary"]?.jsonPrimitive?.content ?: return null
                 val facts = obj["keyFacts"]?.jsonArray
                     ?.mapNotNull { it.jsonPrimitive.content.takeIf { s -> s.isNotBlank() } }
@@ -103,22 +121,24 @@ class AiRepository(
         provider: AiProvider,
         apiKey: String,
         systemPrompt: String,
-        history: List<ChatMsg>
+        history: List<ChatMsg>,
+        styleSample: String? = null
     ): String = withContext(Dispatchers.IO) {
-        callDeepSeek(apiKey, systemPrompt, history)
+        callDeepSeek(apiKey, systemPrompt, history, styleSample)
     }
 
-    private fun callDeepSeek(apiKey: String, sys: String, history: List<ChatMsg>): String {
+    private fun callDeepSeek(apiKey: String, sys: String, history: List<ChatMsg>, styleSample: String? = null): String {
         val trimmed = windowByTokenBudget(history, HISTORY_TOKEN_BUDGET).toMutableList()
         if (trimmed.isNotEmpty() && trimmed.last().role == "user") {
             val last = trimmed.last()
             trimmed[trimmed.size - 1] = last.copy(content = last.content + Prompts.PER_TURN_REMINDER)
         }
         val messages = buildJsonArray {
-            // Stable system message — cache target.
+            // Stable system message — cache target. Style block (if any) is part
+            // of the stable prefix because the earliest scene summary never changes.
             add(buildJsonObject {
                 put("role", "system")
-                put("content", Prompts.DS_PREFIX + sys)
+                put("content", Prompts.DS_PREFIX + sys + StyleExemplar.block(styleSample))
             })
             trimmed.forEach { m ->
                 add(buildJsonObject {
@@ -339,6 +359,23 @@ If the action is combat/attacking, respond "Attack". If purely dialogue with no 
         } catch (_: Exception) {
             ""
         }
+    }
+
+    /** Fetches the current DeepSeek account USD balance as a string (e.g. "4.12").
+     *  Null on network failure, auth failure, or parse failure. Blocking I/O. */
+    suspend fun fetchBalance(apiKey: String): String? = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank()) return@withContext null
+        val req = Request.Builder()
+            .url("https://api.deepseek.com/user/balance")
+            .get()
+            .addHeader("Authorization", "Bearer $apiKey")
+            .build()
+        runCatching {
+            client.newCall(req).execute().use { r ->
+                if (!r.isSuccessful) return@use null
+                parseBalance(r.body?.string().orEmpty())
+            }
+        }.getOrNull()
     }
 
     private fun fallback(err: String): String {

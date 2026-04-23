@@ -20,7 +20,6 @@ import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.ui.overlays.FeatSelectionOverlay
 import com.realmsoffate.game.ui.overlays.InitiativeOverlay
 import com.realmsoffate.game.ui.overlays.LevelUpOverlay
-import com.realmsoffate.game.ui.overlays.RestOverlay
 import com.realmsoffate.game.ui.overlays.ShopOverlay
 import com.realmsoffate.game.ui.overlays.TargetPromptDialog
 import com.realmsoffate.game.ui.overlays.TargetPromptSpec
@@ -267,11 +266,6 @@ fun GameScreen(vm: GameViewModel) {
         )
     }
 
-    val restKind by vm.restOverlay.collectAsState()
-    restKind?.let { kind ->
-        RestOverlay(kind = kind, onDismiss = { vm.dismissRest() })
-    }
-
     val showInitiative by vm.showInitiative.collectAsState()
     if (showInitiative) {
         InitiativeOverlay(onDismiss = { vm.dismissInitiative() })
@@ -322,24 +316,29 @@ fun GameScreen(vm: GameViewModel) {
     }
 
     when (panel) {
-        Panel.Settings -> SettingsPanel(
-            fontScale = fontScale,
-            onFontScaleChange = { vm.setFontScale(it) },
-            onClose = { panel = Panel.None; tab = GameTab.Chat },
-            onExportSave = {
-                val json = vm.exportCurrentJson()
-                if (json != null) {
-                    val filename = "realms_save_${System.currentTimeMillis()}.json"
-                    exportLauncher.launch(filename)
-                } else {
-                    vm.postSystemMessage("Nothing to export yet.")
-                }
-            },
-            onShortRest = { vm.shortRest() },
-            onLongRest = { vm.longRest() },
-            onDebugDump = { dumpDebugToFile() },
-            onReturnToTitle = { vm.returnToTitle() }
-        )
+        Panel.Settings -> {
+            val balance by vm.balanceUsd.collectAsState()
+            // Auto-refresh when Settings opens; the VM's 60s cache prevents hammering.
+            LaunchedEffect(Unit) { vm.refreshBalance() }
+            SettingsPanel(
+                fontScale = fontScale,
+                onFontScaleChange = { vm.setFontScale(it) },
+                onClose = { panel = Panel.None; tab = GameTab.Chat },
+                onExportSave = {
+                    val json = vm.exportCurrentJson()
+                    if (json != null) {
+                        val filename = "realms_save_${System.currentTimeMillis()}.json"
+                        exportLauncher.launch(filename)
+                    } else {
+                        vm.postSystemMessage("Nothing to export yet.")
+                    }
+                },
+                onDebugDump = { dumpDebugToFile() },
+                onReturnToTitle = { vm.returnToTitle() },
+                balanceUsd = balance,
+                onRefreshBalance = { vm.refreshBalance(force = true) }
+            )
+        }
         else -> {}
     }
 

@@ -7,15 +7,18 @@ package com.realmsoffate.game.data
 data class CanonicalFacts(
     val npcs: List<LogNpc>,
     val factions: List<Faction>,
-    val locations: List<MapLocation>
+    val locations: List<MapLocation>,
+    val currentLocationId: Int? = null,
+    val adjacencies: Map<Int, List<Int>> = emptyMap()
 ) {
     val isEmpty: Boolean
-        get() = npcs.isEmpty() && factions.isEmpty() && locations.isEmpty()
+        get() = npcs.isEmpty() && factions.isEmpty() && locations.isEmpty() && currentLocationId == null
 
     fun render(): String {
         if (isEmpty) return ""
         val sb = StringBuilder()
         sb.appendLine("# CANONICAL FACTS (ground truth — do not contradict)")
+        renderCurrentLocation(sb)
         if (npcs.isNotEmpty()) {
             sb.appendLine()
             sb.appendLine("## NPCs")
@@ -26,12 +29,24 @@ data class CanonicalFacts(
             sb.appendLine("## Factions")
             for (f in factions) sb.appendLine("- ${renderFaction(f)}")
         }
-        if (locations.isNotEmpty()) {
+        val otherLocations = locations.filter { it.id != currentLocationId }
+        if (otherLocations.isNotEmpty()) {
             sb.appendLine()
             sb.appendLine("## Locations")
-            for (l in locations) sb.appendLine("- ${renderLocation(l)}")
+            for (l in otherLocations) sb.appendLine("- ${renderLocation(l)}")
         }
         return sb.toString().trimEnd()
+    }
+
+    private fun renderCurrentLocation(sb: StringBuilder) {
+        val cid = currentLocationId ?: return
+        val current = locations.firstOrNull { it.id == cid } ?: return
+        val adjIds = adjacencies[cid].orEmpty()
+        val adjNames = adjIds.mapNotNull { id -> locations.firstOrNull { it.id == id }?.name }
+        sb.appendLine()
+        sb.appendLine("## Current location")
+        sb.append("- ").appendLine(renderLocation(current))
+        if (adjNames.isNotEmpty()) sb.appendLine("  Adjacent: ${adjNames.joinToString(", ")}")
     }
 
     private fun renderNpc(n: LogNpc): String {

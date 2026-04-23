@@ -2,28 +2,120 @@ package com.realmsoffate.game.data.db
 
 import android.content.Context
 import com.realmsoffate.game.data.RoomEntityRepository
+import com.realmsoffate.game.data.SaveStore
 import java.io.File
 
 /**
- * App-scoped singleton for the narrative [RealmsDb]. Initialized from
- * [com.realmsoffate.game.RealmsApp.onCreate] so the ViewModel factory can
- * reach the repository without threading it through constructors.
+ * Resolves the DB-file key for a given save slot. "autosave" collapses to the
+ * character-keyed slot so both slots for one character share a DB.
+ */
+fun dbKeyForSave(slot: String, characterName: String?): String {
+    val safeName = characterName?.takeIf { it.isNotBlank() } ?: return slot
+    return if (slot == SaveStore.AUTOSAVE_KEY)
+        SaveStore.slotKeyFor(safeName)
+    else slot
+}
+
+/**
+ * App-scoped singleton for the narrative [RealmsDb]. Initialized once from
+ * [com.realmsoffate.game.RealmsApp.onCreate]. [switchTo] must be called before
+ * each save load / new-game commit / save-slot delete so the per-slot file is
+ * active. [deleteSlotDb] is safe on any slot (including the current one).
+ *
+ * Thread contract: [switchTo] and [deleteSlotDb] are serialized via an internal
+ * monitor. [db] / [repo] getters are not safe to read concurrently with
+ * [switchTo] on the same call site — treat a swap as a barrier and re-read
+ * after it completes.
  */
 object RealmsDbHolder {
+    @Volatile private var appCtx: Context? = null
     @Volatile private var _db: RealmsDb? = null
     @Volatile private var _repo: RoomEntityRepository? = null
+    @Volatile private var _currentSlot: String = "default"
+    @Volatile private var _currentFile: File? = null
 
     fun init(context: Context) {
-        if (_db != null) return
+        if (appCtx != null) return
         synchronized(this) {
-            if (_db != null) return
-            val dbFile = File(context.filesDir, RealmsDb.FILE_NAME)
-            val opened = RealmsDb.open(context.applicationContext, dbFile)
-            _db = opened
-            _repo = RoomEntityRepository(opened)
+            if (appCtx != null) return
+            appCtx = context.applicationContext
+            switchToLocked("default")
         }
     }
 
+    fun switchTo(slot: String) {
+        synchronized(this) { switchToLocked(slot) }
+    }
+
+    private fun switchToLocked(slot: String) {
+        val ctx = appCtx ?: error("RealmsDbHolder.init must be called first")
+        if (slot == _currentSlot && _db != null) return
+        _db?.close()
+        val file = File(ctx.filesDir, RealmsDb.fileNameForSlot(slot))
+        val opened = RealmsDb.open(ctx, file)
+        _db = opened
+        _repo = RoomEntityRepository(opened)
+        _currentSlot = slot
+        _currentFile = file
+    }
+
+    fun currentSlot(): String = _currentSlot
+    fun currentDbFile(): File = _currentFile ?: error("RealmsDbHolder not initialized")
+
+    fun deleteSlotDb(slot: String) {
+        val ctx = appCtx ?: return
+        val file = File(ctx.filesDir, RealmsDb.fileNameForSlot(slot))
+        synchronized(this) {
+            if (file.absolutePath == _currentFile?.absolutePath) {
+                _db?.close(); _db = null; _repo = null
+            }
+        }
+        file.delete()
+        File(file.absolutePath + "-shm").delete()
+        File(file.absolutePath + "-wal").delete()
+    }
+
+    /** Returns the current live [RealmsDb]. Not safe to read concurrently with [switchTo]. */
     val db: RealmsDb get() = _db ?: error("RealmsDb not initialized — call RealmsDbHolder.init(context) first")
+
+    /** Returns the current live [RoomEntityRepository]. Not safe to read concurrently with [switchTo]. */
     val repo: RoomEntityRepository get() = _repo ?: error("RealmsDbHolder not initialized")
+
+    /**
+     * Release the Room handle for [slot] without opening a new DB, so its files
+     * can be overwritten (e.g. during a .rofsave import). The subsequent
+     * [switchTo] will reopen Room against whatever files now exist on disk.
+     *
+     * Thread contract: between this call and the next [switchTo], [_db] / [_repo]
+     * are null. Callers must ensure no other thread or coroutine reads [db] or
+     * [repo] during that window, or the getters will throw
+     * [IllegalStateException]. In practice this is safe when called sequentially
+     * inside a single load/import coroutine that immediately follows with
+     * [switchTo].
+     *
+     * If [slot] is not the currently active slot, this is a no-op.
+     */
+    fun closeSlotIfOpen(slot: String) {
+        synchronized(this) {
+            if (_currentSlot == slot) {
+                _db?.close()
+                _db = null
+                _repo = null
+                // Keep _currentSlot/_currentFile so the subsequent switchTo(slot)
+                // detects _db == null and fully reopens against the restored files.
+            }
+        }
+    }
+
+    @androidx.annotation.VisibleForTesting
+    internal fun resetForTest() {
+        synchronized(this) {
+            _db?.close()
+            _db = null
+            _repo = null
+            _currentFile = null
+            _currentSlot = "default"
+            appCtx = null
+        }
+    }
 }

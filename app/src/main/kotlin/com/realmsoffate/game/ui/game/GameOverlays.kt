@@ -28,10 +28,10 @@ internal fun SettingsPanel(
     onFontScaleChange: (Float) -> Unit,
     onClose: () -> Unit,
     onExportSave: () -> Unit = {},
-    onShortRest: () -> Unit = {},
-    onLongRest: () -> Unit = {},
     onDebugDump: () -> Unit = {},
-    onReturnToTitle: () -> Unit = {}
+    onReturnToTitle: () -> Unit = {},
+    balanceUsd: String? = null,
+    onRefreshBalance: () -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
@@ -118,6 +118,23 @@ internal fun SettingsPanel(
                 textAlign = TextAlign.Center
             )
 
+            Spacer(Modifier.height(RealmsSpacing.m))
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("DeepSeek balance", style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.weight(1f))
+                Text(
+                    balanceUsd?.let { "$$it" } ?: "—",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                IconButton(onClick = onRefreshBalance) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Refresh balance")
+                }
+            }
+            Spacer(Modifier.height(RealmsSpacing.s))
             HorizontalDivider(Modifier.padding(vertical = RealmsSpacing.m))
 
             // Utility actions
@@ -127,20 +144,6 @@ internal fun SettingsPanel(
                 onClick = { onExportSave(); onClose() },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Export Save") }
-
-            Spacer(Modifier.height(RealmsSpacing.s))
-
-            OutlinedButton(
-                onClick = { onShortRest() },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Short Rest") }
-
-            Spacer(Modifier.height(RealmsSpacing.s))
-
-            OutlinedButton(
-                onClick = { onLongRest() },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Long Rest") }
 
             Spacer(Modifier.height(RealmsSpacing.s))
 

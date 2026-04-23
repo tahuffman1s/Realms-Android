@@ -7,10 +7,12 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.realmsoffate.game.RealmsApp
 import com.realmsoffate.game.data.AiProvider
+import com.realmsoffate.game.data.ContradictionQueue
 import com.realmsoffate.game.data.AiRepository
 import com.realmsoffate.game.data.ChatMsg
 import com.realmsoffate.game.data.Character
 import com.realmsoffate.game.data.Choice
+import com.realmsoffate.game.data.EntityRepository
 import com.realmsoffate.game.data.PartyCompanion
 import com.realmsoffate.game.data.Item
 import com.realmsoffate.game.data.LogNpc
@@ -21,6 +23,7 @@ import com.realmsoffate.game.data.Prompts
 import com.realmsoffate.game.data.Quest
 import com.realmsoffate.game.data.GraveyardEntry
 import com.realmsoffate.game.data.DebugTurn
+import com.realmsoffate.game.data.DormantCallback
 import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
 import com.realmsoffate.game.data.SceneSummary
@@ -37,9 +40,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.realmsoffate.game.game.handlers.DeathHandler
 import com.realmsoffate.game.game.handlers.MerchantHandler
 import com.realmsoffate.game.game.handlers.ProgressionHandler
-import com.realmsoffate.game.game.handlers.RestHandler
 import com.realmsoffate.game.game.handlers.SaveService
 import com.realmsoffate.game.game.reducers.CombatReducer
 import com.realmsoffate.game.game.reducers.NpcLogReducer
@@ -47,6 +50,7 @@ import com.realmsoffate.game.game.reducers.QuestReducer
 import com.realmsoffate.game.game.reducers.PartyReducer
 import com.realmsoffate.game.game.reducers.WorldReducer
 import com.realmsoffate.game.game.reducers.SceneBoundaryDetector
+import com.realmsoffate.game.data.db.RealmsDbHolder
 import kotlinx.coroutines.flow.update
 
 enum class Screen { ApiSetup, Title, CharacterCreation, Game, Death }
@@ -167,8 +171,13 @@ sealed interface DisplayMessage {
 class GameViewModel(
     private val ai: AiRepository,
     private val prefs: PreferencesStore,
-    private val repo: com.realmsoffate.game.data.EntityRepository = com.realmsoffate.game.data.db.RealmsDbHolder.repo
 ) : ViewModel() {
+
+    /** Re-resolved per access so post-switchTo writes hit the current character's DB.
+     *  Note: Flows already subscribed via collectAsState remain bound to the previous
+     *  repo — UI recomposition will need a key change to re-subscribe (future work). */
+    private val repo: EntityRepository
+        get() = RealmsDbHolder.repo
 
     /** Expose repo flows so UI panels can observe entity lists live. */
     val loggedNpcsFlow: kotlinx.coroutines.flow.Flow<List<LogNpc>> get() = repo.observeLoggedNpcs()
@@ -245,7 +254,6 @@ class GameViewModel(
     private val _pendingLevelUp = MutableStateFlow<Int?>(null)
     private val _pendingStatPoints = MutableStateFlow(0)
     private val _pendingFeat = MutableStateFlow(false)
-    private val _restOverlay = MutableStateFlow<String?>(null)
     private val _activeShop = MutableStateFlow<String?>(null)
     private val _buybackStocks = MutableStateFlow<Map<String, List<com.realmsoffate.game.ui.overlays.BuybackEntry>>>(emptyMap())
 
@@ -270,6 +278,24 @@ class GameViewModel(
 
     private val _fontScale = MutableStateFlow(1.0f)
     val fontScale: StateFlow<Float> = _fontScale.asStateFlow()
+
+    private val _balanceUsd = MutableStateFlow<String?>(null)
+    val balanceUsd: StateFlow<String?> = _balanceUsd.asStateFlow()
+    @Volatile private var balanceFetchedAt: Long = 0L
+
+    /** Fetches the DeepSeek USD balance on demand. Results are cached for 60s so
+     *  opening Settings repeatedly doesn't hammer the endpoint. Passing force=true
+     *  skips the cache (used by the explicit refresh button). */
+    fun refreshBalance(force: Boolean = false) {
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            if (!force && now - balanceFetchedAt < 60_000 && _balanceUsd.value != null) return@launch
+            val key = _apiKey.value
+            if (key.isBlank()) { _balanceUsd.value = null; return@launch }
+            _balanceUsd.value = ai.fetchBalance(key)
+            balanceFetchedAt = now
+        }
+    }
 
     fun setFontScale(scale: Float) {
         _fontScale.value = scale.coerceIn(0.7f, 1.6f)
@@ -457,14 +483,15 @@ class GameViewModel(
         }
     }
 
-    private val restHandler = RestHandler(
-        _ui, _restOverlay, _screen, _lastDeath,
-        ::logTimeline, viewModelScope, { saveService.refreshSlots() }, timeline
+    private val deathHandler = DeathHandler(
+        ui = _ui,
+        screen = _screen,
+        lastDeath = _lastDeath,
+        logTimeline = ::logTimeline,
+        scope = viewModelScope,
+        refreshSlots = { saveService.refreshSlots() },
+        timeline = timeline
     )
-    val restOverlay: StateFlow<String?> = restHandler.restOverlayState
-    fun shortRest() = restHandler.shortRest()
-    fun longRest() = restHandler.longRest()
-    fun dismissRest() = restHandler.dismissRest()
 
     /** Current target-prompt spec — null when no picker is showing. */
     private val _targetPrompt = MutableStateFlow<com.realmsoffate.game.ui.overlays.TargetPromptSpec?>(null)
@@ -488,7 +515,7 @@ class GameViewModel(
     fun buyItem(merchant: String, itemName: String, price: Int) = merchantHandler.buyItem(merchant, itemName, price)
     fun sellItem(merchant: String, item: Item, price: Int) = merchantHandler.sellItem(merchant, item, price)
     fun buybackItem(merchant: String, item: Item, price: Int) = merchantHandler.buybackItem(merchant, item, price)
-    fun rollDeathSave() = restHandler.rollDeathSave()
+    fun rollDeathSave() = deathHandler.rollDeathSave()
     fun haggle(chaMod: Int): Float = merchantHandler.haggle(chaMod)
 
     private val saveService = SaveService(
@@ -496,7 +523,6 @@ class GameViewModel(
         _debugLog, timeline, viewModelScope,
         clearOverlays = {
             _pendingLevelUp.value = null
-            _restOverlay.value = null
             _activeShop.value = null
             _targetPrompt.value = null
             _showInitiative.value = false
@@ -542,7 +568,6 @@ class GameViewModel(
     fun returnToTitle() {
         // Drop any in-flight overlays so they don't bleed into the next load.
         _pendingLevelUp.value = null
-        _restOverlay.value = null
         _activeShop.value = null
         _targetPrompt.value = null
         _showInitiative.value = false
@@ -613,6 +638,11 @@ class GameViewModel(
                     DisplayMessage.System("${scenario.name} — ${char.name} the ${char.race} ${char.cls} arrives in ${startLoc.name}.")
                 )
             )
+            // Route the narrative DB to this character's file and clear any prior data.
+            RealmsDbHolder.switchTo(
+                SaveStore.slotKeyFor(char.name)
+            )
+            runCatching { repo.clear() }
             _screen.value = Screen.Game
 
             // Seed opening narration with the scenario prompt template.
@@ -844,7 +874,13 @@ class GameViewModel(
             val nh = state.history + userMsg
 
             val raw = try {
-                ai.generate(_provider.value, _apiKey.value, sys, nh)
+                ai.generate(
+                    provider = _provider.value,
+                    apiKey = _apiKey.value,
+                    systemPrompt = sys,
+                    history = nh,
+                    styleSample = state.sceneSummaries.firstOrNull()?.summary
+                )
             } catch (t: Throwable) {
                 _ui.value = _ui.value.copy(isGenerating = false, error = "Network error: ${t.message}")
                 return@launch
@@ -965,8 +1001,18 @@ class GameViewModel(
                         // Persist the newly produced summary and trigger arc rollup
                         // once enough unrolled scenes have accumulated.
                         val newSummary = updatedSummaries.last()
-                        runCatching {
-                            sceneSummarizer.persistAndMaybeRollup(repo, newSummary, arcSummarizer)
+                        // DB write (persistAndMaybeRollup) is load-bearing — let its
+                        // exceptions propagate to the coroutine handler. checkArc is a
+                        // best-effort heuristic and is guarded separately so it can never
+                        // break a successful rollup.
+                        val producedArc = sceneSummarizer.persistAndMaybeRollup(repo, newSummary, arcSummarizer)
+                        if (producedArc != null) {
+                            runCatching {
+                                ContradictionQueue.checkArc(
+                                    canonicalNpcs = _ui.value.npcLog,
+                                    arc = producedArc
+                                )
+                            }
                         }
                     }
                 }
@@ -1105,6 +1151,16 @@ class GameViewModel(
             // that sit outside the working set. All live in the user message — they
             // change per turn, so they don't belong in the cached system prompt.
             append(renderArcSummariesBlock(allArcs, matched = summaryHits.arcs))
+            // Every 10th turn, if there's a genuinely-dormant arc that isn't already
+            // surfacing via the matched retrieval path, offer it as an optional callback.
+            if ((s.turns + 1) % DormantCallback.DEFAULT_CALLBACK_EVERY == 0) {
+                append(DormantCallback.renderBlock(DormantCallback.pick(
+                    arcs = allArcs,
+                    currentTurn = s.turns + 1,
+                    dormantAfter = DormantCallback.DEFAULT_DORMANT_AFTER,
+                    excludeIds = summaryHits.arcs.map { it.id }.toSet()
+                )))
+            }
             append(renderSceneSummariesBlock(s.sceneSummaries))
             append(renderMatchedPastScenesBlock(summaryHits.scenes, alreadyShown = s.sceneSummaries))
             if (recentNarration.isNotBlank()) {
@@ -1171,9 +1227,29 @@ class GameViewModel(
             val key = l.name.lowercase()
             tokens.any { tok -> key.contains(tok) }
         }
-        val locations = (memLocs + repoHits.locations).distinctBy { it.id }.take(4)
 
-        return com.realmsoffate.game.data.CanonicalFacts(npcs, factions, locations)
+        val worldMap = s.worldMap
+        val currentLoc = worldMap?.locations?.getOrNull(s.currentLoc)
+        // cap=6 in the locations list below must exceed 1 (current) + expected
+        // neighbor count (~2-3) so renderCurrentLocation never drops adjacent names.
+        val adjacents: List<com.realmsoffate.game.data.MapLocation> =
+            if (currentLoc != null && worldMap != null)
+                com.realmsoffate.game.game.WorldGen.connected(worldMap, currentLoc.id).map { it.first }
+            else emptyList()
+
+        val baseLocations = (memLocs + repoHits.locations).distinctBy { it.id }.take(4)
+        val locations = (listOfNotNull(currentLoc) + adjacents + baseLocations)
+            .distinctBy { it.id }
+            .take(6)
+
+        val adjacencyMap: Map<Int, List<Int>> =
+            if (currentLoc != null) mapOf(currentLoc.id to adjacents.map { it.id }) else emptyMap()
+
+        return com.realmsoffate.game.data.CanonicalFacts(
+            npcs, factions, locations,
+            currentLocationId = currentLoc?.id,
+            adjacencies = adjacencyMap
+        )
     }
 
     internal fun applyParsed(

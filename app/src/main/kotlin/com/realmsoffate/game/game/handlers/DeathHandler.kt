@@ -7,13 +7,15 @@ import com.realmsoffate.game.data.deepCopy
 import com.realmsoffate.game.game.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class RestHandler(
+/**
+ * Death-save dice + graveyard bookkeeping, extracted from the removed
+ * RestHandler so the rest feature could be retired without losing the
+ * death flow.
+ */
+class DeathHandler(
     private val ui: MutableStateFlow<GameUiState>,
-    private val restOverlay: MutableStateFlow<String?>,
     private val screen: MutableStateFlow<Screen>,
     private val lastDeath: MutableStateFlow<GraveyardEntry?>,
     private val logTimeline: (String, String) -> Unit,
@@ -21,39 +23,6 @@ class RestHandler(
     private val refreshSlots: () -> Unit,
     private val timeline: MutableList<TimelineEntry>
 ) {
-    val restOverlayState: StateFlow<String?> = restOverlay.asStateFlow()
-
-    fun shortRest() {
-        val s = ui.value
-        val ch = s.character?.deepCopy() ?: return
-        val hitDie = Classes.find(ch.cls)?.hitDie ?: 8
-        val heal = Dice.d(hitDie) + ch.abilities.conMod.coerceAtLeast(0)
-        ch.hp = (ch.hp + heal).coerceAtMost(ch.maxHp)
-        SpellSlots.applyShortRest(ch)
-        ui.value = s.copy(character = ch, messages = s.messages + DisplayMessage.System("Short rest — recovered $heal HP."))
-        logTimeline("event", "Short rest — +$heal HP")
-        restOverlay.value = "short:$heal"
-    }
-
-    fun longRest() {
-        val s = ui.value
-        val ch = s.character?.deepCopy() ?: return
-        ch.hp = ch.maxHp
-        SpellSlots.applyLongRest(ch)
-        // Long rest clears most conditions (per D&D 5e). Keep narrative-permanent
-        // markers like "Cursed" in place — the narrator can remove them explicitly.
-        val permanent = setOf("cursed", "doomed", "marked", "branded")
-        ch.conditions.removeAll { it.lowercase() !in permanent }
-        ui.value = s.copy(
-            character = ch,
-            messages = s.messages + DisplayMessage.System("Long rest — fully restored.")
-        )
-        logTimeline("event", "Long rest — full heal + slots restored")
-        restOverlay.value = "long"
-    }
-
-    fun dismissRest() { restOverlay.value = null }
-
     /**
      * Rolls a single death save. 3 successes = stabilise at 1 HP; 3 failures = die.
      * Nat 20 jumps straight to stable + 1 HP; nat 1 counts as two failures.

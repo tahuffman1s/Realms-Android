@@ -1,6 +1,8 @@
 package com.realmsoffate.game.data
 
 import android.content.Context
+import com.realmsoffate.game.data.db.RealmsDb
+import com.realmsoffate.game.data.db.RealmsDbHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -96,7 +98,7 @@ object SaveStore {
 
     private const val MAX_SLOTS = 10
     private const val MAX_GRAVES = 20
-    private const val AUTOSAVE_KEY = "autosave"
+    internal const val AUTOSAVE_KEY = "autosave"
 
     fun init(ctx: Context) { appContext = ctx.applicationContext }
 
@@ -133,6 +135,16 @@ object SaveStore {
         val manifestJson = json.encodeToString(manifest)
         val saveJson = json.encodeToString(data)
 
+        // Collect DB sibling files. RealmsDbHolder.switchTo was called (A2) before
+        // write runs, so currentDbFile() already points at the correct per-character file.
+        val dbFile = RealmsDbHolder.currentDbFile()
+        val walFile = File(dbFile.absolutePath + "-wal")
+        val shmFile = File(dbFile.absolutePath + "-shm")
+        val dbEntries = mutableMapOf<String, File>()
+        if (dbFile.exists()) dbEntries[SaveRofZip.REALMS_DB] = dbFile
+        if (walFile.exists()) dbEntries[SaveRofZip.REALMS_DB_WAL] = walFile
+        if (shmFile.exists()) dbEntries[SaveRofZip.REALMS_DB_SHM] = shmFile
+
         // Write to a .tmp sibling first so an interrupted write can't corrupt the slot.
         val tmp = File(rof.parentFile, rof.name + ".tmp")
         SaveRofZip.writeMixed(
@@ -140,7 +152,8 @@ object SaveStore {
             textEntries = mapOf(
                 SaveRofZip.MANIFEST to manifestJson,
                 SaveRofZip.SAVE_JSON to saveJson
-            )
+            ),
+            fileEntries = dbEntries
         )
         if (rof.exists()) rof.delete()
         if (!tmp.renameTo(rof)) {
@@ -156,9 +169,38 @@ object SaveStore {
         if (rof.exists()) {
             val body = SaveRofZip.readTextEntry(rof, SaveRofZip.SAVE_JSON)
                 ?: return@withContext null
-            return@withContext runCatching {
+            val parsed = runCatching {
                 json.decodeFromString<SaveData>(body)
-            }.getOrNull()?.let { migrateIds(it) }
+            }.getOrNull()?.let { migrateIds(it) } ?: return@withContext null
+
+            // Extract DB payload if present (legacy saves have no db entry — skip silently).
+            runCatching {
+                SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB)?.let { dbBytes ->
+                    val targetSlot = slotKeyFor(parsed.character.name)
+                    // Release Room's hold on the target file before overwriting it.
+                    RealmsDbHolder.closeSlotIfOpen(targetSlot)
+                    val target = File(ctx().filesDir, RealmsDb.fileNameForSlot(targetSlot))
+                    target.outputStream().use { it.write(dbBytes) }
+                    // Read each sidecar once; extract if present, delete stale if absent so
+                    // SQLite doesn't attempt to reconcile against stale WAL content.
+                    val walBytes = SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB_WAL)
+                    val shmBytes = SaveRofZip.readBinaryEntry(rof, SaveRofZip.REALMS_DB_SHM)
+                    if (walBytes != null) {
+                        File(target.absolutePath + "-wal").outputStream().use { it.write(walBytes) }
+                    } else {
+                        File(target.absolutePath + "-wal").delete()
+                    }
+                    if (shmBytes != null) {
+                        File(target.absolutePath + "-shm").outputStream().use { it.write(shmBytes) }
+                    } else {
+                        File(target.absolutePath + "-shm").delete()
+                    }
+                }
+            }.onFailure { e ->
+                android.util.Log.e("SaveStore", "DB extract failed during load", e)
+            }
+
+            return@withContext parsed
         }
         // Legacy v2 fallback. The next write will upgrade this slot to .rofsave.
         val legacy = legacyJsonFile(slot)
@@ -183,8 +225,12 @@ object SaveStore {
         if (characterName.isNullOrBlank()) return@withContext
         // Sweep the sibling slot that shares this character.
         val sibling = if (slot == AUTOSAVE_KEY) slotKeyFor(characterName) else AUTOSAVE_KEY
-        if (sibling == slot) return@withContext
-        if (peekCharacterName(sibling) == characterName) deleteAllFor(sibling)
+        if (sibling != slot && peekCharacterName(sibling) == characterName) {
+            deleteAllFor(sibling)
+        }
+        // Both JSON slots for this character have been swept (delete() always pairs them).
+        // Drop the per-character narrative DB.
+        RealmsDbHolder.deleteSlotDb(slotKeyFor(characterName))
     }
 
     private fun deleteAllFor(slot: String) {

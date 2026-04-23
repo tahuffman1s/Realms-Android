@@ -184,16 +184,4 @@ object SpellSlots {
         }
     }
 
-    /** Short rest — Fighter/Monk/Warlock abilities recharge. Long rest — full restore. */
-    fun applyShortRest(ch: Character) {
-        // Only Warlock slots refresh on short rest (pact magic). Others stay consumed.
-        if (ch.cls == "Warlock") {
-            ch.maxSpellSlots.forEach { (k, max) -> ch.spellSlots[k] = max }
-        }
-    }
-
-    fun applyLongRest(ch: Character) {
-        ch.hp = ch.maxHp
-        ch.maxSpellSlots.forEach { (k, max) -> ch.spellSlots[k] = max }
-    }
 }
