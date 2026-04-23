@@ -1,6 +1,9 @@
 package com.realmsoffate.game.ui.overlays
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -120,10 +123,19 @@ fun CheatsOverlay(
                         modifier = Modifier.weight(1f)
                     )
                 }
-                AnimatedVisibility(visible = expanded != null) {
-                    Column(Modifier.padding(top = RealmsSpacing.m)) {
-                        val tile = TILES.firstOrNull { it.id == expanded }
-                        if (tile != null) {
+                // AnimatedContent cross-fades between tile descriptions on tile-switch,
+                // and fade-in/out on open/close. Without this, (a) closing a tile pops
+                // its description away instantly because the content tree resolves with
+                // expanded=null before the exit animation runs, and (b) switching between
+                // tiles swaps text synchronously with no transition — both read as "flashing".
+                AnimatedContent(
+                    targetState = expanded,
+                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    label = "cheat-description"
+                ) { targetId ->
+                    val tile = TILES.firstOrNull { it.id == targetId }
+                    if (tile != null) {
+                        Column(Modifier.padding(top = RealmsSpacing.m)) {
                             Text(tile.description, style = MaterialTheme.typography.bodyMedium)
                             Spacer(Modifier.height(RealmsSpacing.s))
                             when (tile.id) {
@@ -146,6 +158,9 @@ fun CheatsOverlay(
                                 )
                             }
                         }
+                    } else {
+                        // Empty when collapsed — AnimatedContent still runs the fade.
+                        Spacer(Modifier.height(0.dp))
                     }
                 }
             }
