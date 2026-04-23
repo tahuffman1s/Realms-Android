@@ -445,12 +445,12 @@ fun LogNpc.sanitizeDisplayName(): LogNpc {
 
 @Serializable
 data class TurnMetadata(
-    val damage: Int = 0,
-    val heal: Int = 0,
-    val xp: Int = 0,
-    @SerialName("gold_gained") val goldGained: Int = 0,
-    @SerialName("gold_lost") val goldLost: Int = 0,
-    @SerialName("moral_delta") val moralDelta: Int = 0,
+    @Serializable(with = LenientInt::class) val damage: Int = 0,
+    @Serializable(with = LenientInt::class) val heal: Int = 0,
+    @Serializable(with = LenientInt::class) val xp: Int = 0,
+    @SerialName("gold_gained") @Serializable(with = LenientInt::class) val goldGained: Int = 0,
+    @SerialName("gold_lost") @Serializable(with = LenientInt::class) val goldLost: Int = 0,
+    @SerialName("moral_delta") @Serializable(with = LenientInt::class) val moralDelta: Int = 0,
     @SerialName("items_gained") val itemsGained: List<ItemSpec> = emptyList(),
     @SerialName("items_removed") val itemsRemoved: List<String> = emptyList(),
     @SerialName("conditions_added") val conditionsAdded: List<String> = emptyList(),
@@ -519,20 +519,23 @@ data class QuestUpdateSpec(val title: String = "", val objective: String = "")
 @Serializable
 data class EnemySpec(
     val name: String = "",
-    val hp: Int = 0,
-    @SerialName("max_hp") val maxHp: Int = 0
+    @Serializable(with = LenientInt::class) val hp: Int = 0,
+    @SerialName("max_hp") @Serializable(with = LenientInt::class) val maxHp: Int = 0
 )
 
 @Serializable
-data class RepDeltaSpec(val faction: String = "", val delta: Int = 0)
+data class RepDeltaSpec(
+    val faction: String = "",
+    @Serializable(with = LenientInt::class) val delta: Int = 0
+)
 
 @Serializable
 data class CheckSpec(
     val skill: String = "",
     val ability: String = "",
-    val dc: Int = 10,
-    val passed: Boolean = false,
-    val total: Int = 0
+    @Serializable(with = LenientInt::class) val dc: Int = 10,
+    @Serializable(with = LenientBool::class) val passed: Boolean = false,
+    @Serializable(with = LenientInt::class) val total: Int = 0
 )
 
 @Serializable
@@ -543,8 +546,8 @@ data class PartyJoinSpec(
     val name: String = "",
     val race: String = "",
     val role: String = "",
-    val level: Int = 1,
-    @SerialName("max_hp") val maxHp: Int = 10,
+    @Serializable(with = LenientInt::class) val level: Int = 1,
+    @SerialName("max_hp") @Serializable(with = LenientInt::class) val maxHp: Int = 10,
     val appearance: String = "",
     val personality: String = ""
 )
