@@ -2,18 +2,15 @@
 
 package com.realmsoffate.game.ui.game
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -46,7 +43,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -448,82 +444,52 @@ private fun XpWithLevelColumn(
 
 /**
  * Compact scene line: no background, no dividers; sits under the XP bar.
+ * Not independently collapsible — collapses with the enclosing stats panel.
  */
 @Composable
 private fun TopBarSceneContext(scene: String, desc: String) {
-    var expanded by remember(scene, desc) { mutableStateOf(false) }
-    val isLong = desc.length > 80
-    val rotation by animateFloatAsState(
-        targetValue = if (expanded) 180f else 0f,
-        animationSpec = tween(220),
-        label = "scene-context-chevron"
-    )
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .animateContentSize(animationSpec = tween(220))
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .then(
-                    if (isLong) Modifier.clickable { expanded = !expanded }
-                    else Modifier
-                ),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val sceneTitleStyle = MaterialTheme.typography.labelSmall.copy(
-                letterSpacing = 0.45.sp,
-                fontWeight = FontWeight.SemiBold,
-                platformStyle = PlatformTextStyle(includeFontPadding = false),
-                lineHeightStyle = LineHeightStyle(
-                    alignment = LineHeightStyle.Alignment.Center,
-                    trim = LineHeightStyle.Trim.Both
-                )
+        val sceneTitleStyle = MaterialTheme.typography.labelSmall.copy(
+            letterSpacing = 0.45.sp,
+            fontWeight = FontWeight.SemiBold,
+            platformStyle = PlatformTextStyle(includeFontPadding = false),
+            lineHeightStyle = LineHeightStyle(
+                alignment = LineHeightStyle.Alignment.Center,
+                trim = LineHeightStyle.Trim.Both
             )
-            val sceneDescStyle = MaterialTheme.typography.labelSmall.copy(
-                lineHeight = 14.sp,
-                fontWeight = FontWeight.Normal,
-                platformStyle = PlatformTextStyle(includeFontPadding = false),
-                lineHeightStyle = LineHeightStyle(
-                    alignment = LineHeightStyle.Alignment.Center,
-                    trim = LineHeightStyle.Trim.Both
-                )
+        )
+        val sceneDescStyle = MaterialTheme.typography.labelSmall.copy(
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.Normal,
+            platformStyle = PlatformTextStyle(includeFontPadding = false),
+            lineHeightStyle = LineHeightStyle(
+                alignment = LineHeightStyle.Alignment.Center,
+                trim = LineHeightStyle.Trim.Both
             )
+        )
+        Text(
+            sceneEmoji(scene),
+            style = sceneTitleStyle,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.width(RealmsSpacing.s))
+        Column(Modifier.weight(1f)) {
             Text(
-                sceneEmoji(scene),
+                scene.uppercase(),
                 style = sceneTitleStyle,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            Spacer(Modifier.width(RealmsSpacing.s))
-            Column(Modifier.weight(1f)) {
+            if (desc.isNotBlank()) {
+                Spacer(Modifier.height(2.dp))
                 Text(
-                    scene.uppercase(),
-                    style = sceneTitleStyle,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (desc.isNotBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        desc,
-                        style = sceneDescStyle,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = if (expanded) Int.MAX_VALUE else 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            if (isLong) {
-                Icon(
-                    Icons.Filled.ExpandMore,
-                    contentDescription = if (expanded) "Collapse" else "Expand",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .padding(start = RealmsSpacing.xs)
-                        .size(16.dp)
-                        .rotate(rotation)
+                    desc,
+                    style = sceneDescStyle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
