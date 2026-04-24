@@ -31,6 +31,7 @@ object EnvelopeParser {
 
         val segments: List<NarrationSegmentData> = envelope.segments
             .map { it.toSegmentData() }
+            .let(::promoteContinuationQuotes)
             .filter(::isRenderable)
         val meta = envelope.metadata
 
@@ -150,6 +151,79 @@ object EnvelopeParser {
             segments = segments,
             source = ParseSource.JSON
         )
+    }
+
+    /**
+     * The model sometimes emits a speaker's continuation as a plain Prose
+     * segment wrapped in single/smart quotes (e.g. the NPC was attributed in
+     * a prior NpcDialog segment and a later paragraph is just a bare quote).
+     * Reclassify such paragraphs as NpcDialog/PlayerDialog using the most
+     * recent speaker so the UI can render them as bubbles rather than prose.
+     *
+     * Rules:
+     *  - Only Prose segments are inspected.
+     *  - Prose is split on blank-line paragraph boundaries.
+     *  - A paragraph whose first and last non-trailing-punctuation chars are
+     *    both quote marks (straight or curly) is treated as a bare quote.
+     *  - Bare quote → NpcDialog (if last speaker was an NPC) or PlayerDialog
+     *    (if last speaker was the player). If no prior speaker is known, leave
+     *    as Prose.
+     *  - Actions/asides/non-dialog segments don't change the current speaker.
+     */
+    internal fun promoteContinuationQuotes(
+        segs: List<NarrationSegmentData>
+    ): List<NarrationSegmentData> {
+        var lastNpcName: String? = null
+        var lastWasPlayer = false
+        val out = mutableListOf<NarrationSegmentData>()
+        for (seg in segs) {
+            when (seg) {
+                is NarrationSegmentData.NpcDialog -> {
+                    lastNpcName = seg.name
+                    lastWasPlayer = false
+                    out.add(seg)
+                }
+                is NarrationSegmentData.PlayerDialog -> {
+                    lastNpcName = null
+                    lastWasPlayer = true
+                    out.add(seg)
+                }
+                is NarrationSegmentData.Prose -> {
+                    val paragraphs = seg.text
+                        .split(Regex("\\n\\s*\\n"))
+                        .map { it.trim() }
+                        .filter { it.isNotBlank() }
+                    if (paragraphs.isEmpty()) {
+                        out.add(seg); continue
+                    }
+                    for (p in paragraphs) {
+                        val promoted = when {
+                            !isBareQuote(p) -> null
+                            lastNpcName != null -> NarrationSegmentData.NpcDialog(lastNpcName!!, p)
+                            lastWasPlayer -> NarrationSegmentData.PlayerDialog(p)
+                            else -> null
+                        }
+                        out.add(promoted ?: NarrationSegmentData.Prose(p))
+                    }
+                }
+                else -> out.add(seg)
+            }
+        }
+        return out
+    }
+
+    /**
+     * A paragraph is a "bare quote" if its first and last characters (after
+     * stripping trailing sentence punctuation) are matching quote marks. We
+     * tolerate inner quote characters (contractions like "don't") since the
+     * paragraph-level wrap is what signals continuation.
+     */
+    private fun isBareQuote(text: String): Boolean {
+        val t = text.trim().trimEnd('.', ',', '!', '?', '…')
+        if (t.length < 4) return false
+        val opens = setOf('\'', '"', '‘', '“')
+        val closes = setOf('\'', '"', '’', '”')
+        return t.first() in opens && t.last() in closes
     }
 
     /** Segment text must have at least one "content" character to be rendered. */

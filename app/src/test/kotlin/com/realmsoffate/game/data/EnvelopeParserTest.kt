@@ -240,4 +240,62 @@ class EnvelopeParserTest {
         assertEquals(1, p.questStarts.size)
         assertEquals("Real Quest", p.questStarts[0].title)
     }
+
+    @Test
+    fun `bare-quote prose paragraph after NpcDialog promotes to NpcDialog`() {
+        // The model occasionally emits a speaker's continuation as a plain
+        // Prose segment wrapped in quotes. It should render as another bubble
+        // from the last attributed speaker, not as narrator prose.
+        val morwenQuote = "A loose coin. Right. Here too long."
+        val continuation = "'Let me give you some advice, songbird: don't play dumb.'"
+        val raw = """
+            {
+              "segments": [
+                {"kind":"npc_dialog","name":"Morwen","text":"$morwenQuote"},
+                {"kind":"aside","text":"That was not your finest performance."},
+                {"kind":"prose","text":"She steps closer, palming a knife.\n\n$continuation"}
+              ]
+            }
+        """.trimIndent()
+        val p = EnvelopeParser.parse(raw, 1)
+        val segs = p.segments
+        // Expect: NpcDialog(Morwen), Aside, Prose(stepping), NpcDialog(Morwen, continuation)
+        assertEquals(4, segs.size)
+        assertTrue(segs[0] is NarrationSegmentData.NpcDialog)
+        assertTrue(segs[1] is NarrationSegmentData.Aside)
+        assertTrue(segs[2] is NarrationSegmentData.Prose)
+        val last = segs[3]
+        assertTrue("continuation should promote to NpcDialog", last is NarrationSegmentData.NpcDialog)
+        assertEquals("Morwen", (last as NarrationSegmentData.NpcDialog).name)
+    }
+
+    @Test
+    fun `bare-quote prose with no prior speaker stays as Prose`() {
+        // No attribution exists yet, so the fallback keeps the paragraph as prose.
+        val raw = """
+            {
+              "segments": [
+                {"kind":"prose","text":"'A mystery voice in the dark.'"}
+              ]
+            }
+        """.trimIndent()
+        val p = EnvelopeParser.parse(raw, 1)
+        assertEquals(1, p.segments.size)
+        assertTrue(p.segments[0] is NarrationSegmentData.Prose)
+    }
+
+    @Test
+    fun `bare-quote prose after PlayerDialog promotes to PlayerDialog`() {
+        val raw = """
+            {
+              "segments": [
+                {"kind":"player_dialog","text":"I know what you did."},
+                {"kind":"prose","text":"'And I'll tell everyone.'"}
+              ]
+            }
+        """.trimIndent()
+        val p = EnvelopeParser.parse(raw, 1)
+        assertEquals(2, p.segments.size)
+        assertTrue(p.segments[1] is NarrationSegmentData.PlayerDialog)
+    }
 }
