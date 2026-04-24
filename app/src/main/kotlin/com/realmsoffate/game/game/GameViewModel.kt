@@ -1005,7 +1005,6 @@ class GameViewModel(
                 }
                 // Persist the death-save state so a force-quit during this fragile
                 // window restores the player at the brink rather than walking around at 0 HP.
-                saveToSlot("autosave")
                 withHistory.character?.let { c -> saveToSlot(SaveStore.slotKeyFor(c.name)) }
                 return@launch
             } else if (liveHp > 0 && _ui.value.deathSave != null) {
@@ -1110,8 +1109,6 @@ class GameViewModel(
             // Re-clamp gold after all handlers so the 1% cheat stays pinned post-turn.
             clampInfiniteGold(_ui)
             // Autosave every turn so crashes / background kills don't lose progress.
-            saveToSlot("autosave")
-            // Also write to a character-name-keyed slot for the Load menu.
             withHistory.character?.let { ch ->
                 saveToSlot(SaveStore.slotKeyFor(ch.name))
             }

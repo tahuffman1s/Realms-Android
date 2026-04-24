@@ -162,6 +162,16 @@ object SaveStore {
         }
         // Kill any stale v2 JSON so we never double-list this slot.
         legacyJsonFile(slot).delete()
+        // One-save-per-character: sweep the legacy "autosave" sibling (written by
+        // older builds that paired every save with an autosave twin). Only touch
+        // it if it belongs to this same character, so we never clobber another
+        // run's save.
+        if (slot != AUTOSAVE_KEY) {
+            val autoName = peekCharacterName(AUTOSAVE_KEY)
+            if (autoName != null && autoName == data.character.name) {
+                deleteAllFor(AUTOSAVE_KEY)
+            }
+        }
     }
 
     suspend fun read(slot: String): SaveData? = withContext(Dispatchers.IO) {
