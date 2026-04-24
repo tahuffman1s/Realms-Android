@@ -140,25 +140,48 @@ internal fun SettingsPanel(
             // Utility actions
             Text("Actions", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(bottom = RealmsSpacing.s))
 
-            OutlinedButton(
-                onClick = { onExportSave(); onClose() },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Export Save") }
-
-            Spacer(Modifier.height(RealmsSpacing.s))
-
-            OutlinedButton(
-                onClick = { onDebugDump(); onClose() },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Debug Dump") }
-
-            Spacer(Modifier.height(RealmsSpacing.l))
-
-            OutlinedButton(
-                onClick = { onReturnToTitle() },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-            ) { Text("Return to Title") }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
+            ) {
+                OutlinedButton(
+                    onClick = { onExportSave(); onClose() },
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.s)
+                ) {
+                    Text(
+                        "Export Save",
+                        maxLines = 2,
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+                OutlinedButton(
+                    onClick = { onDebugDump(); onClose() },
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.s)
+                ) {
+                    Text(
+                        "Debug Dump",
+                        maxLines = 2,
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+                OutlinedButton(
+                    onClick = { onReturnToTitle() },
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.s),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(
+                        "Return to Title",
+                        maxLines = 2,
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
 
             Spacer(Modifier.navigationBarsPadding().height(RealmsSpacing.m))
         }
