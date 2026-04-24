@@ -21,6 +21,7 @@ import com.realmsoffate.game.ui.overlays.CheatsOverlay
 import com.realmsoffate.game.ui.overlays.FeatSelectionOverlay
 import com.realmsoffate.game.ui.overlays.InitiativeOverlay
 import com.realmsoffate.game.ui.overlays.LevelUpOverlay
+import com.realmsoffate.game.ui.overlays.SpellPickerSheet
 import com.realmsoffate.game.ui.overlays.TargetPromptDialog
 import com.realmsoffate.game.ui.overlays.TargetPromptSpec
 import com.realmsoffate.game.ui.panels.*
@@ -40,6 +41,7 @@ fun GameScreen(vm: GameViewModel) {
     var journalFocusNpc by remember { mutableStateOf<String?>(null) }
     var tab by remember { mutableStateOf(GameTab.Chat) }
     var choicesOpen by remember { mutableStateOf(false) }
+    var spellPickerOpen by remember { mutableStateOf(false) }
     var input by remember { mutableStateOf("") }
     val focus = LocalFocusManager.current
     val listState = rememberLazyListState()
@@ -156,7 +158,7 @@ fun GameScreen(vm: GameViewModel) {
                             }
                         },
                         onTargetPrompt = { vm.requestTargetPrompt(it) },
-                        onSpellsOpen = { panel = Panel.Spells },
+                        onSpellsOpen = { spellPickerOpen = true },
                         hasChoices = state.currentChoices.isNotEmpty(),
                         onChoicesOpen = { choicesOpen = true }
                     )
@@ -284,6 +286,38 @@ fun GameScreen(vm: GameViewModel) {
     val showInitiative by vm.showInitiative.collectAsState()
     if (showInitiative) {
         InitiativeOverlay(onDismiss = { vm.dismissInitiative() })
+    }
+
+    if (spellPickerOpen) {
+        state.character?.let { ch ->
+            SpellPickerSheet(
+                character = ch,
+                onCast = { spell ->
+                    spellPickerOpen = false
+                    val activeCombat = state.combat
+                    val recentTargets = if (activeCombat != null) {
+                        activeCombat.order
+                            .filter { !it.isPlayer }
+                            .map { it.name }
+                            .distinct()
+                            .take(8)
+                    } else emptyList()
+                    if (isSelfCastable(spell)) {
+                        vm.submitAction("I cast ${spell.name} on myself")
+                    } else {
+                        vm.requestTargetPrompt(
+                            TargetPromptSpec(
+                                title = "Cast ${spell.name}",
+                                verb = "I cast ${spell.name} at",
+                                selfCastable = isSelfCastable(spell),
+                                recentTargets = recentTargets
+                            )
+                        )
+                    }
+                },
+                onDismiss = { spellPickerOpen = false }
+            )
+        } ?: run { spellPickerOpen = false }
     }
 
     val targetPrompt by vm.targetPrompt.collectAsState()
