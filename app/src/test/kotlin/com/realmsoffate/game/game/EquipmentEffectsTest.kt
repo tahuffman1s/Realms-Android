@@ -98,4 +98,70 @@ class EquipmentEffectsTest {
         val ch = char(cloak, abilities = Abilities(dex = 14))
         assertEquals(13, EquipmentEffects.effectiveAc(ch))
     }
+
+    @Test fun effectiveMaxHp_addsMaxHpBonuses() {
+        val amulet = Item("Amulet of Health", equipped = true,
+            effects = listOf(ItemEffect.MaxHpBonus(5)))
+        val ch = char(amulet).copy(maxHp = 20)
+        assertEquals(25, EquipmentEffects.effectiveMaxHp(ch))
+    }
+
+    @Test fun effectiveMaxHp_ignoresUnequipped() {
+        val amulet = Item("Amulet of Health", equipped = false,
+            effects = listOf(ItemEffect.MaxHpBonus(5)))
+        val ch = char(amulet).copy(maxHp = 20)
+        assertEquals(20, EquipmentEffects.effectiveMaxHp(ch))
+    }
+
+    @Test fun skillBonuses_sumsByCanonicalKey() {
+        val boots = Item("Boots of Stealth", equipped = true,
+            effects = listOf(ItemEffect.SkillBonus("Stealth", 2)))
+        val cloak = Item("Shadow Cloak", equipped = true,
+            effects = listOf(ItemEffect.SkillBonus("stealth", 1), ItemEffect.SkillBonus("Perception", 1)))
+        val ch = char(boots, cloak)
+        val b = EquipmentEffects.skillBonuses(ch)
+        assertEquals(3, b["Stealth"])
+        assertEquals(1, b["Perception"])
+    }
+
+    @Test fun resistances_setOfLowercaseDamageTypes() {
+        val ring1 = Item("R1", equipped = true, effects = listOf(ItemEffect.Resistance("Fire")))
+        val ring2 = Item("R2", equipped = true,
+            effects = listOf(ItemEffect.Resistance("fire"), ItemEffect.Resistance("cold")))
+        val ch = char(ring1, ring2)
+        assertEquals(setOf("fire", "cold"), EquipmentEffects.resistances(ch))
+    }
+
+    @Test fun immunities_onlyFromImmunityEffects() {
+        val ring = Item("R", equipped = true,
+            effects = listOf(ItemEffect.Immunity("poison"), ItemEffect.Resistance("fire")))
+        val ch = char(ring)
+        assertEquals(setOf("poison"), EquipmentEffects.immunities(ch))
+        assertEquals(setOf("fire"), EquipmentEffects.resistances(ch))
+    }
+
+    @Test fun onHitRiders_orderPreserved() {
+        val sword = Item("Flametongue", equipped = true,
+            effects = listOf(ItemEffect.OnHit("1d6", "fire"), ItemEffect.OnHit("1d4", "radiant")))
+        val ring = Item("Thunder Ring", equipped = true,
+            effects = listOf(ItemEffect.OnHit("1d4", "thunder")))
+        val ch = char(sword, ring)
+        val riders = EquipmentEffects.onHitRiders(ch)
+        assertEquals(3, riders.size)
+        assertEquals("fire", riders[0].damageType)
+        assertEquals("radiant", riders[1].damageType)
+        assertEquals("thunder", riders[2].damageType)
+    }
+
+    @Test fun passiveTriggers_returnsText() {
+        val cursed = Item("Cursed Ring", equipped = true,
+            effects = listOf(ItemEffect.PassiveTrigger("cursed: -1 to all rolls")))
+        val vorpal = Item("Vorpal Sword", equipped = true,
+            effects = listOf(ItemEffect.PassiveTrigger("vorpal: on nat 20, narrate decapitation")))
+        val ch = char(cursed, vorpal)
+        val texts = EquipmentEffects.passiveTriggers(ch)
+        assertEquals(2, texts.size)
+        assertTrue(texts.any { it.startsWith("cursed") })
+        assertTrue(texts.any { it.startsWith("vorpal") })
+    }
 }

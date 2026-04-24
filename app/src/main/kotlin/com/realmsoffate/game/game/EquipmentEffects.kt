@@ -45,4 +45,32 @@ object EquipmentEffects {
         }
         return base + if (hasShield) 2 else 0
     }
+
+    fun effectiveMaxHp(ch: Character): Int =
+        ch.maxHp + activeEffects(ch).filterIsInstance<ItemEffect.MaxHpBonus>().sumOf { it.amount }
+
+    fun skillBonuses(ch: Character): Map<String, Int> {
+        val out = LinkedHashMap<String, Int>()
+        activeEffects(ch).filterIsInstance<ItemEffect.SkillBonus>().forEach { e ->
+            val trimmed = e.skill.trim()
+            val key = if (trimmed.isEmpty()) ""
+                else trimmed[0].uppercaseChar() + trimmed.substring(1).lowercase()
+            out[key] = (out[key] ?: 0) + e.amount
+        }
+        return out
+    }
+
+    fun resistances(ch: Character): Set<String> =
+        activeEffects(ch).filterIsInstance<ItemEffect.Resistance>()
+            .map { it.damageType.lowercase() }.toSet()
+
+    fun immunities(ch: Character): Set<String> =
+        activeEffects(ch).filterIsInstance<ItemEffect.Immunity>()
+            .map { it.damageType.lowercase() }.toSet()
+
+    fun onHitRiders(ch: Character): List<ItemEffect.OnHit> =
+        activeEffects(ch).filterIsInstance<ItemEffect.OnHit>()
+
+    fun passiveTriggers(ch: Character): List<String> =
+        activeEffects(ch).filterIsInstance<ItemEffect.PassiveTrigger>().map { it.text }
 }
