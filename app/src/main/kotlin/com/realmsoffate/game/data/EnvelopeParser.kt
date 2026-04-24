@@ -78,7 +78,7 @@ object EnvelopeParser {
             goldLost = meta.goldLost,
             itemsGained = meta.itemsGained
                 .filter { it.name.isNotBlank() }
-                .map { Item(name = it.name, desc = it.desc, type = it.type, rarity = it.rarity) },
+                .map { Item(name = it.name, desc = it.desc, type = it.type, rarity = it.rarity, effects = it.effects) },
             checks = check?.let {
                 listOf(CheckResult(it.skill, it.ability, it.dc, it.passed, it.total))
             } ?: emptyList(),

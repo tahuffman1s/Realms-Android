@@ -90,6 +90,40 @@ class AutoTagUnknownNpcsTest {
     }
 
     @Test
+    fun `skips equipment-like names ending in item category word`() {
+        val parsed = parsedWithSegments(
+            NarrationSegmentData.Prose("The Bone Shield deflects the blow. Iron Sword glints. Mira Cole watches.")
+        )
+        val specs = AutoTagUnknownNpcs.scan(
+            parsed = parsed,
+            existingNpcs = emptyList(),
+            currentLoc = "Hightower",
+            turn = 5
+        )
+        val names = specs.map { it.name }
+        assertTrue("Bone Shield should be filtered: $names", "Bone Shield" !in names)
+        assertTrue("Iron Sword should be filtered: $names", "Iron Sword" !in names)
+        assertTrue("Mira Cole should still be detected: $names", "Mira Cole" in names)
+    }
+
+    @Test
+    fun `skips names matching inventory items`() {
+        val parsed = parsedWithSegments(
+            NarrationSegmentData.Prose("Stormlight Brand hums in your hand. You see Elric Vance.")
+        )
+        val specs = AutoTagUnknownNpcs.scan(
+            parsed = parsed,
+            existingNpcs = emptyList(),
+            currentLoc = "Hightower",
+            turn = 5,
+            itemNames = setOf("Stormlight Brand")
+        )
+        val names = specs.map { it.name }
+        assertTrue("Stormlight Brand should be filtered as inventory: $names", "Stormlight Brand" !in names)
+        assertTrue("Elric Vance should be detected: $names", "Elric Vance" in names)
+    }
+
+    @Test
     fun `returns empty when all segments are blank`() {
         val parsed = parsedWithSegments(
             NarrationSegmentData.Prose("   "),

@@ -196,8 +196,6 @@ fun applyClassStart(ch: Character, cls: ClassDef) {
     ch.hp = ch.maxHp
     ch.inventory.clear()
     ch.inventory.addAll(cls.startingItems.map { it.copy() })
-    val acItem = ch.inventory.firstOrNull { it.equipped && it.ac != null }
-    ch.ac = (acItem?.ac ?: 10) + if (acItem?.name?.contains("Chain Mail") == true) 0 else ch.abilities.dexMod
-    if (ch.inventory.any { it.equipped && it.name.contains("Shield") }) ch.ac += 2
+    ch.ac = EquipmentEffects.effectiveAc(ch)
     if (cls.isCaster) Spells.grantStartingSpells(ch, cls)
 }

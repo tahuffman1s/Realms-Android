@@ -218,7 +218,7 @@ Every response MUST be exactly ONE valid JSON object. No markdown, no prose befo
   "metadata": {
     "damage": 0, "heal": 0, "xp": 0,
     "gold_gained": 0, "gold_lost": 0, "moral_delta": 0,
-    "items_gained": [{"name":"","desc":"","type":"weapon|armor|consumable|item","rarity":"common|uncommon|rare|epic|legendary"}],
+    "items_gained": [{"name":"","desc":"","type":"weapon|armor|shield|amulet|ring|clothes|consumable|item","rarity":"common|uncommon|rare|epic|legendary","effects":[/* 0+ of: {"type":"ability","stat":"STR|DEX|CON|INT|WIS|CHA","amount":1} | {"type":"skill","skill":"Stealth","amount":2} | {"type":"resist","damageType":"fire"} | {"type":"immune","damageType":"poison"} | {"type":"onhit","dice":"1d4","damageType":"fire"} | {"type":"maxhp","amount":5} | {"type":"trigger","text":"cursed: -1 to all rolls"} */]}],
     "items_removed": [], "conditions_added": [], "conditions_removed": [],
     "npcs_met": [{"id":"slug","name":"Display","race":"","role":"","age":"","relationship":"neutral","appearance":"","personality":"","thoughts":""}],
     "npc_updates": [{"id":"slug","field":"relationship|role|faction|location|status|name","value":""}],
@@ -275,6 +275,13 @@ WORKED EXAMPLE (copy this shape exactly — notice everything is ONE JSON object
 }
 
 Mechanical side effects go in the "metadata" object — see the schema above for all available fields.
+
+EQUIPPED GEAR — honor the "Equipped gear:" block in the context:
+- Ability bonuses from equipped items are ALREADY folded into the STR/DEX/CON/INT/WIS/CHA scores shown. Do NOT re-apply them to checks or saves.
+- Skill-bonus effects (e.g. "+2 Stealth checks") are NOT folded in — add them to the relevant skill-check roll.
+- Resistances halve incoming damage of that type; immunities negate it entirely. Reflect that in "damage" values.
+- On-hit riders (e.g. "on hit: +1d6 fire") add their damage to successful weapon attacks — include the rider damage in the total.
+- Passive-trigger text is narrative law: honor it exactly as written while the item remains equipped.
 
 ZERO NUMBERS IN PROSE:
 BAD: {"kind":"prose","text":"The goblin's axe bites for 6 damage. You drop to 4/10 HP."}

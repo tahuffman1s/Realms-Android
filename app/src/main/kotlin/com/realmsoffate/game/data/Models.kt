@@ -32,8 +32,20 @@ data class Item(
     var qty: Int = 1,
     var equipped: Boolean = false,
     val damage: String? = null,
-    val ac: Int? = null
+    val ac: Int? = null,
+    val effects: List<ItemEffect> = emptyList()
 )
+
+@Serializable
+sealed interface ItemEffect {
+    @Serializable @SerialName("ability") data class AbilityBonus(val stat: String, val amount: Int) : ItemEffect
+    @Serializable @SerialName("skill")   data class SkillBonus(val skill: String, val amount: Int) : ItemEffect
+    @Serializable @SerialName("resist")  data class Resistance(val damageType: String) : ItemEffect
+    @Serializable @SerialName("immune")  data class Immunity(val damageType: String) : ItemEffect
+    @Serializable @SerialName("onhit")   data class OnHit(val dice: String, val damageType: String) : ItemEffect
+    @Serializable @SerialName("maxhp")   data class MaxHpBonus(val amount: Int) : ItemEffect
+    @Serializable @SerialName("trigger") data class PassiveTrigger(val text: String) : ItemEffect
+}
 
 @Serializable
 data class Backstory(
@@ -472,7 +484,8 @@ data class ItemSpec(
     val name: String = "",
     val desc: String = "",
     val type: String = "item",
-    val rarity: String = "common"
+    val rarity: String = "common",
+    val effects: List<ItemEffect> = emptyList()
 )
 
 @Serializable

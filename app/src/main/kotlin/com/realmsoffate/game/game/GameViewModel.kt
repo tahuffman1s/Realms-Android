@@ -420,11 +420,14 @@ class GameViewModel(
             if (ch != null) {
                 appendLine("Name: ${ch.name}  Race: ${ch.race}  Class: ${ch.cls}  Level: ${ch.level}")
                 appendLine("HP: ${ch.hp}/${ch.maxHp}  AC: ${ch.ac}  Gold: ${ch.gold}  XP: ${ch.xp}")
-                appendLine("STR:${ch.abilities.str} DEX:${ch.abilities.dex} CON:${ch.abilities.con} INT:${ch.abilities.int} WIS:${ch.abilities.wis} CHA:${ch.abilities.cha}")
+                val effAb = EquipmentEffects.effectiveAbilities(ch)
+                appendLine("STR:${effAb.str} DEX:${effAb.dex} CON:${effAb.con} INT:${effAb.int} WIS:${effAb.wis} CHA:${effAb.cha}")
                 appendLine("Proficiency: +${ch.proficiency}")
                 appendLine("Conditions: ${ch.conditions.joinToString(", ").ifBlank { "none" }}")
                 appendLine("Feats: ${ch.feats.joinToString(", ").ifBlank { "none" }}")
-                appendLine("Equipped: ${ch.inventory.filter { it.equipped }.joinToString(", ") { it.name }.ifBlank { "nothing" }}")
+                val gearSummary = EquipmentEffects.promptSummary(ch)
+                if (gearSummary.isBlank()) appendLine("Equipped: nothing")
+                else { appendLine(); appendLine(gearSummary) }
                 appendLine("Inventory: ${ch.inventory.joinToString(", ") { "${it.name}(x${it.qty})" }.ifBlank { "empty" }}")
                 ch.backstory?.let {
                     appendLine("Backstory: origin=${it.origin}, flaw=${it.flaw}, bond=${it.bond}")
@@ -830,7 +833,7 @@ class GameViewModel(
                 val effectiveSkill = classified ?: "Perception"
                 val roll = Dice.d20()
                 val ability = if (effectiveSkill == "Attack") "STR" else skillToAbility(effectiveSkill)
-                val mod = char.abilities.modByName(ability)
+                val mod = EquipmentEffects.effectiveAbilities(char).modByName(ability)
                 val prof = if (classProficient(char.cls, effectiveSkill)) char.proficiency else 0
                 val total = roll + mod + prof
                 _ui.value = _ui.value.copy(
@@ -854,7 +857,7 @@ class GameViewModel(
         // is deferred until the player taps Send It on the dice breakdown.
         val roll = Dice.d20()
         val ability = skillToAbility(skill)
-        val mod = char.abilities.modByName(ability)
+        val mod = EquipmentEffects.effectiveAbilities(char).modByName(ability)
         val prof = if (classProficient(char.cls, skill)) char.proficiency else 0
         val total = roll + mod + prof
         _ui.value = _ui.value.copy(
@@ -910,7 +913,7 @@ class GameViewModel(
 
             val roll = preRolled
             val ability = skill?.let { skillToAbility(it) } ?: "STR"
-            val mod = char.abilities.modByName(ability)
+            val mod = EquipmentEffects.effectiveAbilities(char).modByName(ability)
             val prof = if (skill != null && classProficient(char.cls, skill)) char.proficiency else 0
             val total = roll + mod + prof
 
@@ -1177,7 +1180,7 @@ class GameViewModel(
             .joinToString("\n") { "${it.name} (${it.race} ${it.role})" }
             .let { if (it.isNotBlank()) "\nNPCs HERE:\n$it" else "" }
 
-        val inv = ch.inventory.filter { it.equipped }.joinToString(", ") { it.name }.ifBlank { "nothing" }
+        val inv = EquipmentEffects.promptSummary(ch).ifBlank { "Equipped: nothing" }
         val invAll = ch.inventory.joinToString(", ") { "${it.name} (x${it.qty})" }
 
         val currentLocName = s.worldMap?.locations?.getOrNull(s.currentLoc)?.name ?: ""
@@ -1235,7 +1238,7 @@ class GameViewModel(
             append("\nNEARBY: ${nearby.joinToString(", ") { "${it.first.name} (${it.second}lg)" }}")
             append("\nTURN: ${s.turns + 1}")
             append(partyCtx); append(questCtx); append(npcCtx); append(knownNpcsCtx); append(eventCtx)
-            append("\nEquipped: $inv")
+            append("\n").append(inv)
             append("\nInventory: ${invAll.ifBlank { "empty" }}")
             // Long-term memory: arcs (matched first, then newest to fill), then
             // scene summaries (recent working set), then keyword-matched past scenes
@@ -1432,7 +1435,9 @@ class GameViewModel(
             parsed = parsed,
             existingNpcs = state.npcLog,
             currentLoc = currentLocNameForParse,
-            turn = state.turns + 1
+            turn = state.turns + 1,
+            itemNames = state.character?.inventory?.map { it.name }?.toSet().orEmpty(),
+            spellNames = state.character?.knownSpells?.toSet().orEmpty()
         )
         val parsedAugmented = if (autoTagged.isEmpty()) parsed
         else parsed.copy(npcsMet = parsed.npcsMet + autoTagged)
@@ -1625,14 +1630,54 @@ class GameViewModel(
         _ui.value = s.copy(hotbar = hb)
     }
 
+    fun useConsumable(item: Item) {
+        val s = _ui.value
+        val ch = s.character
+        if (ch != null) {
+            val inv = ch.inventory.toMutableList()
+            val idx = inv.indexOfFirst { it.name.equals(item.name, true) }
+            if (idx >= 0) {
+                val e = inv[idx]
+                if (e.qty > 1) inv[idx] = e.copy(qty = e.qty - 1) else inv.removeAt(idx)
+                _ui.value = s.copy(character = ch.copy(inventory = inv))
+            }
+        }
+        submitAction("I use my ${item.name}")
+    }
+
     fun equipToggle(item: Item) {
         val s = _ui.value
         val ch = s.character ?: return
         val inv = ch.inventory.toMutableList()
         val idx = inv.indexOfFirst { it.name == item.name }
         if (idx < 0) return
-        inv[idx] = inv[idx].copy(equipped = !inv[idx].equipped)
-        _ui.value = s.copy(character = ch.copy(inventory = inv))
+        val nowEquipped = !inv[idx].equipped
+        val displaced = mutableListOf<String>()
+        if (nowEquipped) {
+            val itemType = inv[idx].type
+            val slotLimit = if (itemType == "ring") 2 else 1
+            val groupTypes: Set<String> = setOf(itemType)
+            val equippedInGroup = inv.withIndex()
+                .filter { (i, e) -> i != idx && e.equipped && e.type in groupTypes }
+            val overflow = (equippedInGroup.size + 1) - slotLimit
+            if (overflow > 0) {
+                equippedInGroup.take(overflow).forEach { (i, e) ->
+                    inv[i] = e.copy(equipped = false)
+                    displaced += e.name
+                }
+            }
+        }
+        inv[idx] = inv[idx].copy(equipped = nowEquipped)
+        val staged = ch.copy(inventory = inv)
+        val (newMaxHp, newHp) = EquipmentEffects.recalcHpAfterEquip(oldChar = ch, newChar = staged)
+        val newAc = EquipmentEffects.effectiveAc(staged)
+        _ui.value = s.copy(character = staged.copy(maxHp = newMaxHp, hp = newHp, ac = newAc))
+        val action = when {
+            !nowEquipped -> "I unequip my ${item.name}"
+            displaced.isEmpty() -> "I equip my ${item.name}"
+            else -> "I unequip my ${displaced.joinToString(" and ")} and equip my ${item.name}"
+        }
+        submitAction(action)
     }
 
     fun dismissCompanion(name: String) {
