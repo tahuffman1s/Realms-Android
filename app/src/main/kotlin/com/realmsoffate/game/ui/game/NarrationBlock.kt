@@ -52,7 +52,7 @@ internal fun NarrationBlock(
     onOpenJournal: (name: String) -> Unit = {},
     onOpenStats: () -> Unit = {}
 ) {
-    val dimAlpha = if (isLatestTurn) 1f else 0.55f
+    val dimAlpha = if (isLatestTurn) 1f else 0.7f
     Column(verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)) {
         if (structuredSegments.isNotEmpty()) {
             // ---- Structured rendering: document-order segments ----
@@ -207,7 +207,7 @@ internal fun NarratorProseBubble(
     isLatestTurn: Boolean
 ) {
     val fontSize = (15f * LocalFontScale.current).sp
-    val rail = MaterialTheme.colorScheme.secondary.copy(alpha = 0.55f)
+    val rail = MaterialTheme.colorScheme.secondary.copy(alpha = 0.85f)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -215,7 +215,7 @@ internal fun NarratorProseBubble(
                 drawRect(
                     color = rail,
                     topLeft = Offset.Zero,
-                    size = Size(2.dp.toPx(), size.height)
+                    size = Size(3.dp.toPx(), size.height)
                 )
             }
             .padding(start = 16.dp, top = 2.dp, bottom = 2.dp)
@@ -455,7 +455,7 @@ private fun InlineActionLine(text: String, accent: Color) {
     ) {
         Box(
             Modifier
-                .size(4.dp)
+                .size(5.dp)
                 .clip(CircleShape)
                 .background(accent)
         )
@@ -466,7 +466,7 @@ private fun InlineActionLine(text: String, accent: Color) {
                 fontStyle = FontStyle.Italic,
                 fontSize = 12.5f.sp
             ),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = accent.copy(alpha = 0.85f)
         )
     }
 }

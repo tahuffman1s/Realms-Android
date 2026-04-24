@@ -112,7 +112,7 @@ internal fun BubbleFrame(
     Surface(
         color = bgColor,
         shape = shape,
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.22f)),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.55f)),
         onClick = onClick ?: {},
         enabled = onClick != null,
         modifier = modifier
@@ -140,7 +140,7 @@ internal fun PlayerBubble(
     ) {
         BubbleFrame(
             accent = accent,
-            bgColor = bgTint.copy(alpha = 0.14f),
+            bgColor = bgTint.copy(alpha = 0.28f),
             avatarOnRight = true,
             tailOnTop = true,
             modifier = Modifier.fillMaxWidth(0.85f)
@@ -227,7 +227,7 @@ internal fun StatChangePills(msg: DisplayMessage.Narration, checkText: String? =
             pushStyle(
                 androidx.compose.ui.text.SpanStyle(
                     color = chipColor,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.Bold
                 )
             )
             append(checkText.trim())
@@ -244,14 +244,19 @@ internal fun StatChangePills(msg: DisplayMessage.Narration, checkText: String? =
                 append(" · ")
                 pop()
             }
-            pushStyle(androidx.compose.ui.text.SpanStyle(color = tok.color))
+            pushStyle(
+                androidx.compose.ui.text.SpanStyle(
+                    color = tok.color,
+                    fontWeight = FontWeight.Bold
+                )
+            )
             append(tok.text)
             pop()
         }
     }
     Text(
         text = strip,
-        style = MaterialTheme.typography.labelSmall,
+        style = MaterialTheme.typography.labelMedium,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 4.dp)
@@ -306,13 +311,13 @@ internal fun NpcDialogueBubble(
         Box(
             Modifier
                 .padding(top = 8.dp)
-                .size(6.dp)
+                .size(8.dp)
                 .clip(CircleShape)
                 .background(accent)
         )
         BubbleFrame(
             accent = accent,
-            bgColor = bgTint.copy(alpha = 0.14f),
+            bgColor = bgTint.copy(alpha = 0.28f),
             avatarOnRight = false,
             tailOnTop = true,
             onClick = if (isInteractive) onTap else null,
