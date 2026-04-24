@@ -420,7 +420,8 @@ class GameViewModel(
             if (ch != null) {
                 appendLine("Name: ${ch.name}  Race: ${ch.race}  Class: ${ch.cls}  Level: ${ch.level}")
                 appendLine("HP: ${ch.hp}/${ch.maxHp}  AC: ${ch.ac}  Gold: ${ch.gold}  XP: ${ch.xp}")
-                appendLine("STR:${ch.abilities.str} DEX:${ch.abilities.dex} CON:${ch.abilities.con} INT:${ch.abilities.int} WIS:${ch.abilities.wis} CHA:${ch.abilities.cha}")
+                val effAb = EquipmentEffects.effectiveAbilities(ch)
+                appendLine("STR:${effAb.str} DEX:${effAb.dex} CON:${effAb.con} INT:${effAb.int} WIS:${effAb.wis} CHA:${effAb.cha}")
                 appendLine("Proficiency: +${ch.proficiency}")
                 appendLine("Conditions: ${ch.conditions.joinToString(", ").ifBlank { "none" }}")
                 appendLine("Feats: ${ch.feats.joinToString(", ").ifBlank { "none" }}")
@@ -830,7 +831,7 @@ class GameViewModel(
                 val effectiveSkill = classified ?: "Perception"
                 val roll = Dice.d20()
                 val ability = if (effectiveSkill == "Attack") "STR" else skillToAbility(effectiveSkill)
-                val mod = char.abilities.modByName(ability)
+                val mod = EquipmentEffects.effectiveAbilities(char).modByName(ability)
                 val prof = if (classProficient(char.cls, effectiveSkill)) char.proficiency else 0
                 val total = roll + mod + prof
                 _ui.value = _ui.value.copy(
@@ -854,7 +855,7 @@ class GameViewModel(
         // is deferred until the player taps Send It on the dice breakdown.
         val roll = Dice.d20()
         val ability = skillToAbility(skill)
-        val mod = char.abilities.modByName(ability)
+        val mod = EquipmentEffects.effectiveAbilities(char).modByName(ability)
         val prof = if (classProficient(char.cls, skill)) char.proficiency else 0
         val total = roll + mod + prof
         _ui.value = _ui.value.copy(
@@ -910,7 +911,7 @@ class GameViewModel(
 
             val roll = preRolled
             val ability = skill?.let { skillToAbility(it) } ?: "STR"
-            val mod = char.abilities.modByName(ability)
+            val mod = EquipmentEffects.effectiveAbilities(char).modByName(ability)
             val prof = if (skill != null && classProficient(char.cls, skill)) char.proficiency else 0
             val total = roll + mod + prof
 
