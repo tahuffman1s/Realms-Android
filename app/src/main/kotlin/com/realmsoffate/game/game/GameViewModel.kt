@@ -45,7 +45,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.realmsoffate.game.game.handlers.DeathHandler
-import com.realmsoffate.game.game.handlers.MerchantHandler
 import com.realmsoffate.game.game.handlers.ProgressionHandler
 import com.realmsoffate.game.game.handlers.SaveService
 import com.realmsoffate.game.game.reducers.CombatReducer
@@ -259,9 +258,6 @@ class GameViewModel(
     private val _pendingLevelUp = MutableStateFlow<Int?>(null)
     private val _pendingStatPoints = MutableStateFlow(0)
     private val _pendingFeat = MutableStateFlow(false)
-    private val _activeShop = MutableStateFlow<String?>(null)
-    private val _buybackStocks = MutableStateFlow<Map<String, List<com.realmsoffate.game.ui.overlays.BuybackEntry>>>(emptyMap())
-
     private val sceneSummarizer = SceneSummarizer(ai)
 
     /** Compresses batches of [com.realmsoffate.game.data.SceneSummary] into
@@ -555,23 +551,13 @@ class GameViewModel(
     val showInitiative: StateFlow<Boolean> = _showInitiative.asStateFlow()
     fun dismissInitiative() { _showInitiative.value = false }
 
-    private val merchantHandler = MerchantHandler(_ui, _activeShop, _buybackStocks, ::logTimeline)
-    val activeShop: StateFlow<String?> = merchantHandler.activeShopState
-    val buybackStocks: StateFlow<Map<String, List<com.realmsoffate.game.ui.overlays.BuybackEntry>>> = merchantHandler.buybackStocksState
-    fun dismissShop() = merchantHandler.dismissShop()
-    fun openShop(merchantName: String) = merchantHandler.openShop(merchantName)
-    fun buyItem(merchant: String, itemName: String, price: Int) = merchantHandler.buyItem(merchant, itemName, price)
-    fun sellItem(merchant: String, item: Item, price: Int) = merchantHandler.sellItem(merchant, item, price)
-    fun buybackItem(merchant: String, item: Item, price: Int) = merchantHandler.buybackItem(merchant, item, price)
     fun rollDeathSave() = deathHandler.rollDeathSave()
-    fun haggle(chaMod: Int): Float = merchantHandler.haggle(chaMod)
 
     private val saveService = SaveService(
-        _ui, _screen, _saveSlots, _graveyard, _buybackStocks,
+        _ui, _screen, _saveSlots, _graveyard,
         _debugLog, timeline, viewModelScope,
         clearOverlays = {
             _pendingLevelUp.value = null
-            _activeShop.value = null
             _targetPrompt.value = null
             _showInitiative.value = false
             _lastDeath.value = null
@@ -628,7 +614,6 @@ class GameViewModel(
     fun returnToTitle() {
         // Drop any in-flight overlays so they don't bleed into the next load.
         _pendingLevelUp.value = null
-        _activeShop.value = null
         _targetPrompt.value = null
         _showInitiative.value = false
         _screen.value = Screen.Title
@@ -944,14 +929,15 @@ class GameViewModel(
             val userMsg = ChatMsg(role = "user", content = userPrompt)
             val nh = state.history + userMsg
 
-            // Up to 2 attempts: if DeepSeek produces invalid JSON on attempt 1, append a
-            // correction hint to the system prompt and retry once. Two attempts cap the
-            // token cost; empirically the retry succeeds most of the time because the
-            // model sees the same context plus a reminder to emit valid JSON.
+            // Up to 3 attempts: the envelope parser repairs + salvages most malformations
+            // on the client side (see EnvelopeParser.repairJson / salvageEnvelope). For the
+            // residual cases where DeepSeek emits something too broken even to salvage, we
+            // round-trip with a correction hint. Three attempts cap the token cost while
+            // pushing end-to-end reliability close to 100% on a healthy connection.
             var raw = ""
             var parsed: ParsedReply = TagParser.parse("", state.turns + 1)  // placeholder INVALID
             val invalidHint = "\n\nPREVIOUS RESPONSE WAS INVALID JSON. Emit ONE valid JSON object with keys scene, segments, choices (exactly 4), metadata. Escape all internal double quotes as \\\". No nested objects inside array elements unless the schema specifies one. ASCII straight quotes only."
-            for (attempt in 1..2) {
+            for (attempt in 1..3) {
                 val attemptSys = if (attempt == 1) sys else sys + invalidHint
                 raw = try {
                     ai.generate(
@@ -967,9 +953,28 @@ class GameViewModel(
                 }
                 parsed = TagParser.parse(raw, state.turns + 1)
                 if (parsed.source == ParseSource.JSON) break
-                android.util.Log.w("GameViewModel", "envelope parse failed on attempt $attempt/2; retrying with correction hint")
+                android.util.Log.w("GameViewModel", "envelope parse failed on attempt $attempt/3; retrying with correction hint")
             }
             logDebugTurn(state.turns + 1, action, skill, roll, userPrompt, raw, parsed)
+            // Both attempts produced an unparseable envelope (empty content, truncated
+            // JSON, or off-schema prose). Don't commit a blank Narration bubble —
+            // surface the failure and roll back the optimistic Player bubble so the
+            // player can retry cleanly. History is untouched because we only append to
+            // it on success below.
+            if (parsed.source != ParseSource.JSON) {
+                android.util.Log.w("GameViewModel", "turn aborted: no valid envelope after 2 attempts")
+                val live = _ui.value
+                val lastMsg = live.messages.lastOrNull()
+                val hasOptimisticBubble = !seed && lastMsg is DisplayMessage.Player && lastMsg.text == action
+                val rolledBackMessages = if (hasOptimisticBubble) live.messages.dropLast(1) else live.messages
+                _ui.value = live.copy(
+                    messages = rolledBackMessages,
+                    turnStartIndex = rolledBackMessages.lastIndex.coerceAtLeast(0),
+                    isGenerating = false,
+                    error = "The Narrator is silent — try again."
+                )
+                return@launch
+            }
             // On seed turns we don't surface the dice reveal — the character hasn't acted yet.
             val updated = applyParsed(
                 state, char, parsed, action, roll, mod, prof,

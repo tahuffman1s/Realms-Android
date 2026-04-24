@@ -320,4 +320,75 @@ class EnvelopeParserTest {
         assertEquals(2, p.segments.size)
         assertTrue(p.segments[1] is NarrationSegmentData.PlayerDialog)
     }
+
+    // --- JSON repair tests: real DeepSeek malformations observed in logcat ---
+
+    @Test
+    fun `repair removes orphan string token before close brace`() {
+        // Exact pattern from logcat: trailing empty key with no value inside metadata.
+        val broken = """{"scene":{"type":"town","desc":"x"},"segments":[],"choices":[],"metadata":{"check":null,""}}"""
+        val repaired = EnvelopeParser.repairJson(broken)
+        // Must still be valid JSON after repair, and strip both the orphan "" and preceding comma.
+        assertFalse("orphan key still present: $repaired", repaired.contains(",\"\"") || repaired.contains(", \"\""))
+        // Sanity: schema decode must now succeed.
+        val p = EnvelopeParser.parse(broken, 1)
+        assertEquals(ParseSource.JSON, p.source)
+    }
+
+    @Test
+    fun `repair strips trailing comma before close brace`() {
+        val broken = """{"scene":{"type":"t","desc":"d"},"segments":[],"choices":[],"metadata":{"damage":3,}}"""
+        val p = EnvelopeParser.parse(broken, 1)
+        assertEquals(ParseSource.JSON, p.source)
+        assertEquals(3, p.damage)
+    }
+
+    @Test
+    fun `repair strips trailing comma before close bracket`() {
+        val broken = """{"scene":{"type":"t","desc":"d"},"segments":[{"kind":"prose","text":"a thing happens"},],"choices":[],"metadata":{}}"""
+        val p = EnvelopeParser.parse(broken, 1)
+        assertEquals(ParseSource.JSON, p.source)
+        assertEquals(1, p.segments.size)
+    }
+
+    @Test
+    fun `extractOutermostObject trims prose and markdown fences around the envelope`() {
+        val wrapped = "Sure! Here's the turn:\n```json\n{\"scene\":{\"type\":\"t\",\"desc\":\"d\"}}\n```\nHope that works."
+        val p = EnvelopeParser.parse(wrapped, 1)
+        assertEquals(ParseSource.JSON, p.source)
+        assertEquals("t", p.scene)
+    }
+
+    @Test
+    fun `repair preserves quoted strings that look like malformations`() {
+        // A prose segment legitimately containing `,""` inside its text must NOT be
+        // corrupted by the repair pass. The repair only operates outside string context.
+        val raw = """{"scene":{"type":"t","desc":"d"},"segments":[{"kind":"prose","text":"She muttered \"\" and sighed."}],"choices":[],"metadata":{}}"""
+        val p = EnvelopeParser.parse(raw, 1)
+        assertEquals(ParseSource.JSON, p.source)
+        assertEquals(1, p.segments.size)
+        val prose = p.segments[0] as NarrationSegmentData.Prose
+        assertTrue("prose text was corrupted: ${prose.text}", prose.text.contains("\"\""))
+    }
+
+    @Test
+    fun `salvage recovers segments when metadata is structurally broken`() {
+        // Metadata has an unrecoverable structural error (unquoted identifier). Schema
+        // decode fails; salvage should still pull segments + choices so the turn renders.
+        val broken = """
+            {
+              "scene": {"type": "town", "desc": "x"},
+              "segments": [{"kind":"prose","text":"A thing happens."}],
+              "choices": [{"text":"Go","skill":"Athletics"}],
+              "metadata": { this is broken }
+            }
+        """.trimIndent()
+        val p = EnvelopeParser.parse(broken, 1)
+        assertEquals(ParseSource.JSON, p.source)
+        assertEquals(1, p.segments.size)
+        assertEquals(1, p.choices.size)
+        // Metadata was unrecoverable → mechanical effects all default.
+        assertEquals(0, p.damage)
+        assertEquals(0, p.xp)
+    }
 }

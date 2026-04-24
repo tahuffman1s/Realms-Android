@@ -21,7 +21,6 @@ import com.realmsoffate.game.ui.overlays.CheatsOverlay
 import com.realmsoffate.game.ui.overlays.FeatSelectionOverlay
 import com.realmsoffate.game.ui.overlays.InitiativeOverlay
 import com.realmsoffate.game.ui.overlays.LevelUpOverlay
-import com.realmsoffate.game.ui.overlays.ShopOverlay
 import com.realmsoffate.game.ui.overlays.TargetPromptDialog
 import com.realmsoffate.game.ui.overlays.TargetPromptSpec
 import com.realmsoffate.game.ui.panels.*
@@ -144,15 +143,6 @@ fun GameScreen(vm: GameViewModel) {
         bottomBar = {
             // imePadding keeps the input + hotbar visible above the soft keyboard.
             Column(Modifier.imePadding()) {
-                if (tab == GameTab.Chat
-                    && state.availableMerchants.isNotEmpty()
-                    && !state.isGenerating
-                ) {
-                    MerchantDock(
-                        merchants = state.availableMerchants,
-                        onOpen = { vm.openShop(it) }
-                    )
-                }
                 if (tab == GameTab.Chat) {
                     GameInputBar(
                         state = state,
@@ -305,26 +295,6 @@ fun GameScreen(vm: GameViewModel) {
         )
     }
 
-    val activeShop by vm.activeShop.collectAsState()
-    val buybackStocks by vm.buybackStocks.collectAsState()
-    activeShop?.let { merchantName ->
-        val stock = state.merchantStocks[merchantName].orEmpty()
-        val ch = state.character
-        if (ch != null) {
-            ShopOverlay(
-                merchant = merchantName,
-                stock = stock,
-                character = ch,
-                onBuy = { item, price -> vm.buyItem(merchantName, item, price) },
-                onSell = { item, price -> vm.sellItem(merchantName, item, price) },
-                onBuyback = { item, price -> vm.buybackItem(merchantName, item, price) },
-                onHaggle = { cha -> vm.haggle(cha()) },
-                buybackStock = buybackStocks[merchantName].orEmpty(),
-                onClose = { vm.dismissShop() }
-            )
-        }
-    }
-
     if (choicesOpen && state.currentChoices.isNotEmpty()) {
         ChoicesSheet(
             choices = state.currentChoices,
@@ -380,56 +350,4 @@ fun GameScreen(vm: GameViewModel) {
     }
 
     } // end CompositionLocalProvider
-}
-
-@Composable
-private fun MerchantDock(
-    merchants: List<String>,
-    onOpen: (String) -> Unit
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = MaterialTheme.shapes.extraLarge,
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant
-        ),
-        onClick = {
-            // TODO: multi-merchant picker sheet when merchants.size > 1
-            merchants.firstOrNull()?.let(onOpen)
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-    ) {
-        Row(
-            Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Icon(
-                Icons.Filled.Store,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.size(18.dp)
-            )
-            Text(
-                text = if (merchants.size == 1) {
-                    "Shop: ${merchants[0]}"
-                } else {
-                    "Shops nearby: ${merchants.joinToString(" · ")}"
-                },
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f)
-            )
-            Icon(
-                Icons.Filled.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
 }

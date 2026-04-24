@@ -349,7 +349,6 @@ data class SaveData(
     /** Legacy time accumulator — preserved for save compat, ignored at load. */
     val timeAccumulator: Int = 0,
     val merchantStocks: Map<String, Map<String, Int>> = emptyMap(),
-    val buybackStocks: Map<String, List<SerializedBuyback>> = emptyMap(),
     val currentChoices: List<Choice> = emptyList(),
     val timeline: List<TimelineEntry> = emptyList(),
     /** Rendered chat feed so reloads restore the entire visible history. */
@@ -364,13 +363,6 @@ data class SaveData(
     /** Arc summaries — scene-rollup records from [ArcSummarizer]. Phase 2 addition. */
     val arcSummaries: List<ArcSummary> = emptyList()
 )
-
-/**
- * Persistable buyback row — the live UI uses ui.overlays.BuybackEntry but
- * that type is in the UI module. Save/load translates between them.
- */
-@Serializable
-data class SerializedBuyback(val item: Item, val price: Int)
 
 @Serializable
 data class Choice(val n: Int, val text: String, val skill: String)

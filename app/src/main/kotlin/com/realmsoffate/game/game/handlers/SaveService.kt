@@ -6,12 +6,10 @@ import com.realmsoffate.game.data.SaveData
 import com.realmsoffate.game.data.sanitizeDisplayName
 import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
-import com.realmsoffate.game.data.SerializedBuyback
 import com.realmsoffate.game.data.TimelineEntry
 import com.realmsoffate.game.data.db.RealmsDbHolder
 import com.realmsoffate.game.data.db.dbKeyForSave
 import com.realmsoffate.game.game.*
-import com.realmsoffate.game.ui.overlays.BuybackEntry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +21,6 @@ class SaveService(
     private val screen: MutableStateFlow<Screen>,
     private val saveSlots: MutableStateFlow<List<SaveSlotMeta>>,
     private val graveyard: MutableStateFlow<List<GraveyardEntry>>,
-    private val buybackStocks: MutableStateFlow<Map<String, List<BuybackEntry>>>,
     private val debugLog: MutableList<DebugTurn>,
     private val timeline: MutableList<TimelineEntry>,
     private val scope: CoroutineScope,
@@ -60,9 +57,6 @@ class SaveService(
         val s = ui.value
         val ch = s.character ?: return null
         val wm = s.worldMap ?: return null
-        val buyback = buybackStocks.value.mapValues { entry ->
-            entry.value.map { SerializedBuyback(item = it.item, price = it.price) }
-        }
         return SaveData(
             character = ch,
             morality = s.morality,
@@ -84,7 +78,6 @@ class SaveService(
             sceneDesc = s.currentSceneDesc,
             merchantStocks = s.merchantStocks,
             availableMerchants = s.availableMerchants,
-            buybackStocks = buyback,
             currentChoices = s.currentChoices,
             timeline = timeline.toList(),
             displayMessages = s.messages,
@@ -101,10 +94,6 @@ class SaveService(
             // Restore the in-memory timeline so death-screen reads the full life.
             timeline.clear()
             timeline.addAll(d.timeline)
-            // Restore buyback stocks from the persisted form.
-            buybackStocks.value = d.buybackStocks.mapValues { e ->
-                e.value.map { BuybackEntry(item = it.item, price = it.price) }
-            }
             // Restore the debug log so reload → dump still shows historical cache/source data.
             debugLog.clear()
             debugLog.addAll(d.debugLog)
