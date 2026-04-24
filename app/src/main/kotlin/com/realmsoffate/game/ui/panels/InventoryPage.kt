@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.realmsoffate.game.data.Item
+import com.realmsoffate.game.data.ItemEffect
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.ui.components.EmptyState
 import com.realmsoffate.game.ui.components.PanelSheet
@@ -23,6 +24,8 @@ import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
 private val EQUIPPABLE_TYPES = setOf("weapon", "armor", "shield", "amulet", "ring", "clothes")
+
+private fun signedAmt(n: Int): String = if (n >= 0) "+$n" else "$n"
 
 // ----------------- INVENTORY (equipped slots + 5-col backpack grid) -----------------
 
@@ -279,6 +282,22 @@ private fun SelectedItemCard(item: Item, onEquipToggle: () -> Unit, onUse: () ->
         if (item.desc.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Text(item.desc, style = MaterialTheme.typography.bodySmall)
+        }
+        if (item.effects.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            item.effects.forEach { e ->
+                val line = when (e) {
+                    is ItemEffect.AbilityBonus -> "${signedAmt(e.amount)} ${e.stat.uppercase()}"
+                    is ItemEffect.SkillBonus   -> "${signedAmt(e.amount)} ${e.skill}"
+                    is ItemEffect.Resistance   -> "Resist ${e.damageType}"
+                    is ItemEffect.Immunity     -> "Immune ${e.damageType}"
+                    is ItemEffect.OnHit        -> "On hit: +${e.dice} ${e.damageType}"
+                    is ItemEffect.MaxHpBonus   -> "${signedAmt(e.amount)} max HP"
+                    is ItemEffect.PassiveTrigger -> e.text
+                }
+                Text(line, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
