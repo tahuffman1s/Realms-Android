@@ -1,6 +1,7 @@
 package com.realmsoffate.game.data
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * Decodes a DeepSeek turn response (a single JSON envelope) into ParsedReply.
@@ -22,7 +23,27 @@ object EnvelopeParser {
         // Caller placeholders may pass empty string; return INVALID silently
         // so the log isn't spammed with "EOF at $" false alarms.
         if (raw.isBlank()) return invalidReply()
-        val envelope = runCatching { json.decodeFromString<TurnEnvelope>(raw.trim()) }
+        val extracted = extractOutermostObject(raw.trim())
+        // First attempt: strict decode. The common case succeeds here.
+        val envelope = runCatching { json.decodeFromString<TurnEnvelope>(extracted) }
+            .recoverCatching {
+                // Second attempt: repair known DeepSeek malformations (orphan string tokens,
+                // trailing commas). This salvages turns where the model hallucinated a stray
+                // field — e.g. `"check": null, "" }` — without requiring a round-trip retry.
+                val repaired = repairJson(extracted)
+                if (repaired != extracted) {
+                    android.util.Log.w("EnvelopeParser", "decoded after JSON repair pass")
+                }
+                json.decodeFromString<TurnEnvelope>(repaired)
+            }
+            .recoverCatching {
+                // Final attempt: schema-free salvage. Decode as JsonObject and hand-extract
+                // the bare minimum needed to render a turn (segments + choices + scene). If
+                // metadata is broken we drop it; the turn renders with narrative but no
+                // mechanical effects, which is strictly better than a dead bubble.
+                android.util.Log.w("EnvelopeParser", "salvaging envelope from malformed JSON")
+                salvageEnvelope(repairJson(extracted))
+            }
             .getOrElse {
                 android.util.Log.w("EnvelopeParser", "invalid envelope: ${it.message}", it)
                 android.util.Log.w("EnvelopeParser", "raw payload[0..500]: ${raw.take(500)}")
@@ -316,6 +337,224 @@ object EnvelopeParser {
             }
         }
         return t
+    }
+
+    /**
+     * Return the substring from the first top-level `{` to the matching `}`. Strips
+     * markdown fences and surrounding prose. Falls back to the original string if no
+     * balanced object is found — the decoder will fail naturally in that case.
+     */
+    internal fun extractOutermostObject(raw: String): String {
+        val start = raw.indexOf('{')
+        if (start < 0) return raw
+        var depth = 0
+        var inString = false
+        var escaped = false
+        var i = start
+        while (i < raw.length) {
+            val c = raw[i]
+            if (inString) {
+                if (escaped) escaped = false
+                else if (c == '\\') escaped = true
+                else if (c == '"') inString = false
+            } else {
+                when (c) {
+                    '"' -> inString = true
+                    '{' -> depth++
+                    '}' -> {
+                        depth--
+                        if (depth == 0) return raw.substring(start, i + 1)
+                    }
+                }
+            }
+            i++
+        }
+        return raw.substring(start)
+    }
+
+    /**
+     * Repair the two DeepSeek malformations we've observed in the wild:
+     *   1. Orphan string tokens preceding a close brace/bracket (e.g.
+     *      `"check": null, "" }` — the trailing `""` has no `:value`).
+     *   2. Trailing commas before `}` or `]`.
+     * Both patterns occur OUTSIDE quoted strings only, so we walk the string
+     * state-aware (findStringEnd skips over quoted content including escapes)
+     * rather than running a blind regex (regex would corrupt prose that
+     * legitimately contains the same byte sequences inside strings).
+     *
+     * A string is classified as an orphan key ONLY when: preceded by a `,`
+     * (comma in key position) AND followed by `}` or `]` (no `:value` in between).
+     * This avoids misclassifying string values — `"key":"value",` — as orphans
+     * just because they aren't followed by a colon.
+     */
+    internal fun repairJson(raw: String): String {
+        if (raw.isEmpty()) return raw
+        val sb = StringBuilder(raw.length)
+        var i = 0
+        while (i < raw.length) {
+            val c = raw[i]
+            if (c == '"') {
+                val strEnd = findStringEnd(raw, i)
+                if (strEnd < 0) {
+                    sb.append(raw, i, raw.length)
+                    return sb.toString()
+                }
+                var k = strEnd + 1
+                while (k < raw.length && raw[k].isWhitespace()) k++
+                val followedByClose = k < raw.length && (raw[k] == '}' || raw[k] == ']')
+                val lastNonWs = sb.indexOfLastNonWhitespace()
+                val precededByComma = lastNonWs >= 0 && sb[lastNonWs] == ','
+                if (followedByClose && precededByComma) {
+                    // Orphan key — strip both the string token and the preceding comma.
+                    sb.deleteCharAt(lastNonWs)
+                    i = strEnd + 1
+                    continue
+                }
+                sb.append(raw, i, strEnd + 1)
+                i = strEnd + 1
+                continue
+            }
+            if (c == ',') {
+                var k = i + 1
+                while (k < raw.length && raw[k].isWhitespace()) k++
+                if (k < raw.length && (raw[k] == '}' || raw[k] == ']')) {
+                    i++
+                    continue
+                }
+            }
+            sb.append(c)
+            i++
+        }
+        return sb.toString()
+    }
+
+    private fun findStringEnd(raw: String, openIdx: Int): Int {
+        var j = openIdx + 1
+        var esc = false
+        while (j < raw.length) {
+            val c = raw[j]
+            if (esc) esc = false
+            else if (c == '\\') esc = true
+            else if (c == '"') return j
+            j++
+        }
+        return -1
+    }
+
+    private fun StringBuilder.indexOfLastNonWhitespace(): Int {
+        var i = length - 1
+        while (i >= 0 && this[i].isWhitespace()) i--
+        return i
+    }
+
+    /**
+     * Last-resort: extract just enough to render a turn even if schema decoding fails.
+     * Walks the envelope by locating each expected top-level field and extracting its
+     * value substring via bracket-tracking, then parses each piece independently.
+     * A broken sub-field (e.g. unquoted identifiers in metadata) no longer prevents
+     * scene/segments/choices from surfacing — the turn still renders with narrative
+     * even if mechanical effects are lost.
+     */
+    private fun salvageEnvelope(raw: String): TurnEnvelope {
+        val scene = extractFieldValue(raw, "scene")?.let {
+            runCatching { json.decodeFromString<SceneInfo>(it) }.getOrNull()
+        } ?: SceneInfo()
+        val segments = extractFieldValue(raw, "segments")?.let { arr ->
+            runCatching {
+                (json.parseToJsonElement(arr) as? kotlinx.serialization.json.JsonArray)
+                    ?.mapNotNull { el -> runCatching { json.decodeFromJsonElement<Segment>(el) }.getOrNull() }
+                    .orEmpty()
+            }.getOrDefault(emptyList())
+        } ?: emptyList()
+        val choices = extractFieldValue(raw, "choices")?.let { arr ->
+            runCatching {
+                (json.parseToJsonElement(arr) as? kotlinx.serialization.json.JsonArray)
+                    ?.mapNotNull { el -> runCatching { json.decodeFromJsonElement<ChoiceSpec>(el) }.getOrNull() }
+                    .orEmpty()
+            }.getOrDefault(emptyList())
+        } ?: emptyList()
+        val metadata = extractFieldValue(raw, "metadata")?.let {
+            runCatching { json.decodeFromString<TurnMetadata>(it) }.getOrNull()
+        } ?: TurnMetadata()
+        // Salvage is only valid if we extracted SOMETHING recognizable. Plain junk input
+        // (e.g. "not json") has no salvageable fields — throw so the outer recoverCatching
+        // falls through to INVALID instead of silently returning an empty "valid" envelope.
+        if (segments.isEmpty() && choices.isEmpty() && scene.desc.isBlank() && scene.type == "default") {
+            throw IllegalStateException("no salvageable fields in envelope")
+        }
+        return TurnEnvelope(scene, segments, choices, metadata)
+    }
+
+    /**
+     * Locate `"fieldName": <value>` at any depth in [raw] and return the value
+     * substring (balanced across `{...}` / `[...]` / quoted strings). Returns
+     * null if the field is absent or the value span is unterminated. Scans outside
+     * string context so field names inside narrative prose don't cause false hits.
+     */
+    internal fun extractFieldValue(raw: String, fieldName: String): String? {
+        val needle = "\"$fieldName\""
+        var i = 0
+        while (i < raw.length) {
+            val c = raw[i]
+            if (c == '"') {
+                val end = findStringEnd(raw, i)
+                if (end < 0) return null
+                // Check if this string matches the field name AND is in key position (next non-ws is `:`).
+                if (end - i == needle.length - 1 && raw.regionMatches(i, needle, 0, needle.length)) {
+                    var k = end + 1
+                    while (k < raw.length && raw[k].isWhitespace()) k++
+                    if (k < raw.length && raw[k] == ':') {
+                        k++
+                        while (k < raw.length && raw[k].isWhitespace()) k++
+                        return extractValueSpan(raw, k)
+                    }
+                }
+                i = end + 1
+                continue
+            }
+            i++
+        }
+        return null
+    }
+
+    /** Return the substring of the JSON value starting at [start]. Handles objects,
+     *  arrays, strings, and primitives (number/bool/null). Null on malformed input. */
+    private fun extractValueSpan(raw: String, start: Int): String? {
+        if (start >= raw.length) return null
+        return when (val c = raw[start]) {
+            '{', '[' -> {
+                val open = c
+                val close = if (c == '{') '}' else ']'
+                var depth = 0
+                var i = start
+                while (i < raw.length) {
+                    val ch = raw[i]
+                    if (ch == '"') {
+                        val e = findStringEnd(raw, i)
+                        if (e < 0) return null
+                        i = e + 1
+                        continue
+                    }
+                    if (ch == open) depth++
+                    else if (ch == close) {
+                        depth--
+                        if (depth == 0) return raw.substring(start, i + 1)
+                    }
+                    i++
+                }
+                null
+            }
+            '"' -> {
+                val e = findStringEnd(raw, start)
+                if (e < 0) null else raw.substring(start, e + 1)
+            }
+            else -> {
+                // Primitive: number, true, false, null. Read until `,`, `}`, `]`, or whitespace.
+                var i = start
+                while (i < raw.length && raw[i] !in charArrayOf(',', '}', ']') && !raw[i].isWhitespace()) i++
+                raw.substring(start, i)
+            }
+        }
     }
 
     private fun invalidReply(): ParsedReply = ParsedReply(

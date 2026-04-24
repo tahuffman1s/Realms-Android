@@ -166,7 +166,10 @@ class AiRepository(
         val resp = client.newCall(req).execute()
         resp.use {
             val text = it.body?.string().orEmpty()
-            if (!it.isSuccessful) return fallback(text)
+            if (!it.isSuccessful) {
+                val snippet = text.take(200).replace("\n", " ")
+                throw java.io.IOException("DeepSeek HTTP ${it.code}: $snippet")
+            }
             val root = json.parseToJsonElement(text).jsonObject
             // Extract cache-hit stats from the usage object for diagnostics.
             root["usage"]?.jsonObject?.let { usage ->
@@ -176,7 +179,7 @@ class AiRepository(
             return root["choices"]?.jsonArray?.firstOrNull()
                 ?.jsonObject?.get("message")?.jsonObject?.get("content")
                 ?.jsonPrimitive?.content
-                ?: "The world falls silent..."
+                .orEmpty()
         }
     }
 
@@ -379,14 +382,5 @@ If the action is combat/attacking, respond "Attack". If purely dialogue with no 
         }.getOrNull()
     }
 
-    private fun fallback(err: String): String {
-        return "[SCENE:default|Mystery] *(Connection flickers...)* Try again, adventurer.\n" +
-                "[CHOICES]\n" +
-                "1. Try again [Athletics]\n" +
-                "2. Look around [Perception]\n" +
-                "3. Wait [Patience]\n" +
-                "4. Pray [Religion]\n" +
-                "[/CHOICES]"
-    }
 }
 

@@ -23,7 +23,6 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -326,52 +325,25 @@ private fun LoadSheet(
     onDelete: (SaveSlotMeta) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    // Optimistic list — slots removed immediately; restored if Undo is tapped
-    var visibleSlots by remember(slots) { mutableStateOf(slots) }
-
     ModalBottomSheet(onDismissRequest = onDismiss, shape = BottomSheetDefaults.ExpandedShape) {
-        Box {
-            Column(Modifier.padding(horizontal = RealmsSpacing.xl, vertical = RealmsSpacing.s)) {
-                Text("LOAD SAVE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(8.dp))
-                if (visibleSlots.isEmpty()) {
-                    Text("No saves yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(24.dp))
-                } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 500.dp)) {
-                        items(visibleSlots, key = { it.slot }) { s ->
-                            SaveRow(
-                                s = s,
-                                onPick = { onPick(s) },
-                                onDelete = {
-                                    // Optimistically remove
-                                    visibleSlots = visibleSlots.filter { it.slot != s.slot }
-                                    scope.launch {
-                                        val result = snackbarHostState.showSnackbar(
-                                            message = "Deleted",
-                                            actionLabel = "Undo",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                        if (result == SnackbarResult.ActionPerformed) {
-                                            // Restore the slot at its original position
-                                            visibleSlots = slots
-                                        } else {
-                                            onDelete(s)
-                                        }
-                                    }
-                                }
-                            )
-                        }
+        Column(Modifier.padding(horizontal = RealmsSpacing.xl, vertical = RealmsSpacing.s)) {
+            Text("LOAD SAVE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(8.dp))
+            if (slots.isEmpty()) {
+                Text("No saves yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(24.dp))
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 500.dp)) {
+                    items(slots, key = { it.slot }) { s ->
+                        SaveRow(
+                            s = s,
+                            onPick = { onPick(s) },
+                            onDelete = { onDelete(s) }
+                        )
                     }
                 }
-                Spacer(Modifier.navigationBarsPadding().height(16.dp))
             }
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
+            Spacer(Modifier.navigationBarsPadding().height(16.dp))
         }
     }
 }
