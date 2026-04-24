@@ -1,28 +1,24 @@
 package com.realmsoffate.game.ui.game
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.DirectionsRun
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.GpsFixed
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.data.LogNpc
@@ -37,6 +33,11 @@ import com.realmsoffate.game.util.NarrationMarkdown
 // ============================================================
 
 @Composable
+private fun Dim(alpha: Float, content: @Composable () -> Unit) {
+    Box(Modifier.alpha(alpha)) { content() }
+}
+
+@Composable
 internal fun NarrationBlock(
     text: String,
     characterName: String? = null,
@@ -44,27 +45,29 @@ internal fun NarrationBlock(
     structuredSegments: List<NarrationSegmentData> = emptyList(),
     npcLog: List<LogNpc> = emptyList(),
     isLatestTurn: Boolean = false,
+    checkText: String? = null,
     onNpcTap: (name: String) -> Unit = {},
     onNpcReply: (name: String) -> Unit = {},
     onAttackNpc: (name: String) -> Unit = {},
     onOpenJournal: (name: String) -> Unit = {},
     onOpenStats: () -> Unit = {}
 ) {
+    val dimAlpha = if (isLatestTurn) 1f else 0.55f
     Column(verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)) {
         if (structuredSegments.isNotEmpty()) {
             // ---- Structured rendering: document-order segments ----
             structuredSegments.forEach { seg ->
                 when (seg) {
-                    is NarrationSegmentData.Prose -> {
+                    is NarrationSegmentData.Prose -> Dim(dimAlpha) {
                         NarratorProseBubble(
                             text = seg.text,
                             isLatestTurn = isLatestTurn
                         )
                     }
-                    is NarrationSegmentData.Aside -> {
+                    is NarrationSegmentData.Aside -> Dim(dimAlpha) {
                         NarratorAsideLine(text = seg.text)
                     }
-                    is NarrationSegmentData.NpcDialog -> {
+                    is NarrationSegmentData.NpcDialog -> Dim(dimAlpha) {
                         val displayName = resolveNpcDisplayName(seg.name, npcLog)
                         SwipeableMessage(
                             onSwipeLeft = if (isLatestTurn) { { onAttackNpc(displayName) } } else { {} },
@@ -82,7 +85,7 @@ internal fun NarrationBlock(
                             )
                         }
                     }
-                    is NarrationSegmentData.NpcAction -> {
+                    is NarrationSegmentData.NpcAction -> Dim(dimAlpha) {
                         val displayName = resolveNpcDisplayName(seg.name, npcLog)
                         val actionText = when {
                             seg.name.isBlank() -> seg.text
@@ -117,8 +120,11 @@ internal fun NarrationBlock(
                     }
                 }
             }
-            // Stat change pills at the end
-            if (msg != null) StatChangePills(msg)
+            // Stat change strip (with optional inline check chip) at the end — dimmed with the turn
+            Dim(dimAlpha) {
+                if (msg != null) StatChangePills(msg, checkText = checkText)
+                else if (!checkText.isNullOrBlank()) SystemLine(checkText)
+            }
         } else {
             // ---- Legacy fallback: regex-based splitting for old saves ----
             val segments = splitNarration(text, characterName)
@@ -127,18 +133,20 @@ internal fun NarrationBlock(
             val nonProseSegments = segments.filter { it !is NarrationSegment.Prose }
 
             if (allProse.isNotBlank()) {
-                NarratorProseBubble(
-                    text = allProse,
-                    isLatestTurn = isLatestTurn
-                )
+                Dim(dimAlpha) {
+                    NarratorProseBubble(
+                        text = allProse,
+                        isLatestTurn = isLatestTurn
+                    )
+                }
             }
 
             nonProseSegments.forEach { seg ->
                 when (seg) {
-                    is NarrationSegment.NarratorQuip -> {
+                    is NarrationSegment.NarratorQuip -> Dim(dimAlpha) {
                         NarratorAsideLine(text = seg.text)
                     }
-                    is NarrationSegment.Dialogue -> {
+                    is NarrationSegment.Dialogue -> Dim(dimAlpha) {
                         SwipeableMessage(
                             onSwipeLeft = if (isLatestTurn) { { onAttackNpc(seg.name) } } else { {} },
                             onSwipeRight = { onOpenJournal(seg.name) },
@@ -170,16 +178,20 @@ internal fun NarrationBlock(
                             )
                         }
                     }
-                    is NarrationSegment.Action -> {
+                    is NarrationSegment.Action -> Dim(dimAlpha) {
                         NarratorAsideLine(text = seg.text)
                     }
                     else -> {}
                 }
             }
 
-            // Stat change pills at the bottom (always shown)
-            if (msg != null) {
-                StatChangePills(msg)
+            // Stat change strip (with optional inline check chip) at the bottom — dimmed with the turn
+            Dim(dimAlpha) {
+                if (msg != null) {
+                    StatChangePills(msg, checkText = checkText)
+                } else if (!checkText.isNullOrBlank()) {
+                    SystemLine(checkText)
+                }
             }
         }
     }
@@ -194,54 +206,25 @@ internal fun NarratorProseBubble(
     text: String,
     isLatestTurn: Boolean
 ) {
-    var expanded by remember { mutableStateOf(isLatestTurn) }
-    val borderColor = MaterialTheme.colorScheme.outlineVariant
-
     val fontSize = (15f * LocalFontScale.current).sp
-    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(
-            onClick = { expanded = !expanded },
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            shape = MaterialTheme.shapes.medium,
-            border = BorderStroke(1.dp, borderColor),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(Modifier.padding(RealmsSpacing.m)) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.MenuBook,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.secondary
-                    )
-                    Spacer(Modifier.width(RealmsSpacing.xs))
-                    Text(
-                        "NARRATOR",
-                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.5.sp),
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                    Spacer(Modifier.width(RealmsSpacing.xs))
-                    Icon(
-                        if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                        contentDescription = if (expanded) "Collapse" else "Expand",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.outline
-                    )
-                }
-                if (expanded) {
-                    Spacer(Modifier.height(RealmsSpacing.s))
-                    NarrationMarkdown(
-                        text = text,
-                        modifier = Modifier.fillMaxWidth(),
-                        baseStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = fontSize)
-                    )
-                }
+    val rail = MaterialTheme.colorScheme.secondary.copy(alpha = 0.55f)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .drawBehind {
+                drawRect(
+                    color = rail,
+                    topLeft = Offset.Zero,
+                    size = Size(2.dp.toPx(), size.height)
+                )
             }
-        }
+            .padding(start = 16.dp, top = 2.dp, bottom = 2.dp)
+    ) {
+        NarrationMarkdown(
+            text = text,
+            modifier = Modifier.fillMaxWidth(),
+            baseStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = fontSize)
+        )
     }
 }
 
@@ -465,55 +448,40 @@ private fun splitNarration(text: String, characterName: String? = null): List<Na
 // ============================================================
 
 @Composable
-private fun ActionPill(
-    text: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    accent: Color
-) {
-    Surface(
-        color = accent.copy(alpha = 0.12f),
-        shape = MaterialTheme.shapes.large,
-        modifier = Modifier.fillMaxWidth()
+private fun InlineActionLine(text: String, accent: Color) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xxs),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.size(12.dp),
-                tint = accent.copy(alpha = 0.7f)
-            )
-            Spacer(Modifier.width(RealmsSpacing.s))
-            Text(
-                text,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontStyle = FontStyle.Italic,
-                    fontSize = 10.sp
-                ),
-                color = accent.copy(alpha = 0.8f),
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center
-            )
-        }
+        Box(
+            Modifier
+                .size(4.dp)
+                .clip(CircleShape)
+                .background(accent)
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontStyle = FontStyle.Italic,
+                fontSize = 12.5f.sp
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
 @Composable
 private fun NpcActionLine(text: String, accentColor: Color) =
-    ActionPill(text = text, icon = Icons.Filled.DirectionsRun, accent = accentColor)
+    InlineActionLine(text = text, accent = accentColor)
 
 @Composable
-internal fun NarratorAsideLine(text: String) = ActionPill(
-    text = text,
-    icon = Icons.Filled.AutoAwesome,
-    accent = MaterialTheme.colorScheme.secondary
-)
+internal fun NarratorAsideLine(text: String) =
+    InlineActionLine(text = text, accent = MaterialTheme.colorScheme.secondary)
 
 @Composable
 private fun PlayerActionLine(text: String) =
-    ActionPill(text = text, icon = Icons.Filled.Bolt, accent = MaterialTheme.colorScheme.tertiary)
+    InlineActionLine(text = text, accent = MaterialTheme.colorScheme.tertiary)
 
 /** Extracts a 1-3 sentence summary from the full prose text. */
 private fun summarizeProse(text: String): String {

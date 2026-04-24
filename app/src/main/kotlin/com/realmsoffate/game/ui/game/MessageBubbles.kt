@@ -10,10 +10,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -25,13 +21,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -87,30 +81,22 @@ internal fun formatSignedRoll(n: Int) = if (n >= 0) "+$n" else n.toString()
 // COMPOSABLES
 // ============================================================
 
-/** Avatar diameter — Material 3 list-item leading-icon size. */
-private val BubbleAvatarSize = 36.dp
-
 /**
- * Shared bubble frame used by every chat message type. Guarantees consistent
- * avatar size, spacing token usage, tail-corner treatment, and label tracking
- * across PlayerBubble / NpcDialogueBubble / NarratorProseBubble.
+ * Shared bubble frame used by player + NPC dialogue. Renders a Surface with
+ * tail-corner treatment. No avatar, no label — ownership is signaled by
+ * alignment (player right, NPC left) and, for NPCs, a leading accent dot
+ * rendered outside the frame by the caller.
  */
 @Composable
 internal fun BubbleFrame(
-    avatarInitial: String?,
-    avatarAccent: Color,
-    label: String?,
     accent: Color,
     bgColor: Color,
     avatarOnRight: Boolean,
     tailOnTop: Boolean,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    contentAlign: TextAlign? = null,
     content: @Composable () -> Unit
 ) {
-    // Tail corner: use extraSmall radius on the side closest to the avatar so
-    // the shape reads as attached. Everything else uses shapes.medium.
     val mediumRadius = 14.dp
     val tailRadius = 4.dp
     val shape = when {
@@ -123,63 +109,17 @@ internal fun BubbleFrame(
         else ->
             RoundedCornerShape(mediumRadius, mediumRadius, mediumRadius, tailRadius)
     }
-    Row(
-        modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
+    Surface(
+        color = bgColor,
+        shape = shape,
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.22f)),
+        onClick = onClick ?: {},
+        enabled = onClick != null,
+        modifier = modifier
     ) {
-        if (!avatarOnRight && avatarInitial != null) BubbleAvatar(avatarInitial, avatarAccent)
-        val bubble: @Composable () -> Unit = {
-            Surface(
-                color = bgColor,
-                shape = shape,
-                border = BorderStroke(1.dp, accent.copy(alpha = 0.22f)),
-                onClick = onClick ?: {},
-                enabled = onClick != null,
-                modifier = Modifier.weight(1f, fill = true)
-            ) {
-                Column(Modifier.padding(RealmsSpacing.m)) {
-                    if (!label.isNullOrBlank()) {
-                        Text(
-                            label.uppercase(),
-                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.6.sp),
-                            color = accent,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = contentAlign,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(Modifier.height(RealmsSpacing.xs))
-                    }
-                    content()
-                }
-            }
+        Column(Modifier.padding(RealmsSpacing.m)) {
+            content()
         }
-        bubble()
-        if (avatarOnRight && avatarInitial != null) BubbleAvatar(avatarInitial, avatarAccent)
-    }
-}
-
-@Composable
-private fun BubbleAvatar(initial: String, accent: Color) {
-    Box(
-        Modifier
-            .size(BubbleAvatarSize)
-            .clip(CircleShape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(accent.copy(alpha = 0.42f), accent.copy(alpha = 0.18f))
-                )
-            )
-            .border(1.dp, accent.copy(alpha = 0.5f), CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            initial,
-            style = MaterialTheme.typography.labelLarge,
-            color = accent,
-            fontWeight = FontWeight.Bold
-        )
     }
 }
 
@@ -190,142 +130,132 @@ internal fun PlayerBubble(
 ) {
     val realms = RealmsTheme.colors
     val (accent, bgTint) = npcColor(characterName ?: "You", realms.npcPalette)
-    val displayName = characterName ?: "You"
-    val initial = displayName.take(1).uppercase()
     val cleanText = text
         .removeSurrounding("\"")
         .removeSurrounding("\u201C", "\u201D")
         .trim()
-    BubbleFrame(
-        avatarInitial = initial,
-        avatarAccent = accent,
-        label = displayName,
-        accent = accent,
-        bgColor = bgTint.copy(alpha = 0.14f),
-        avatarOnRight = true,
-        tailOnTop = true,
-        contentAlign = TextAlign.End
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End
     ) {
-        Text(
-            text = com.realmsoffate.game.util.parseInline(
-                cleanText,
-                boldColor = accent,
-                codeBackground = MaterialTheme.colorScheme.surfaceContainerHigh,
-                codeText = MaterialTheme.colorScheme.onSurfaceVariant
-            ),
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontStyle = FontStyle.Italic,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = (15f * LocalFontScale.current).sp
-            ),
-            textAlign = TextAlign.End,
-            modifier = Modifier.fillMaxWidth()
-        )
+        BubbleFrame(
+            accent = accent,
+            bgColor = bgTint.copy(alpha = 0.14f),
+            avatarOnRight = true,
+            tailOnTop = true,
+            modifier = Modifier.fillMaxWidth(0.85f)
+        ) {
+            Text(
+                text = com.realmsoffate.game.util.parseInline(
+                    cleanText,
+                    boldColor = accent,
+                    codeBackground = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    codeText = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontStyle = FontStyle.Italic,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = (15f * LocalFontScale.current).sp
+                ),
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun StatChangePills(msg: DisplayMessage.Narration) {
-    val pills = mutableListOf<Triple<String, Color, Color>>() // text, bg, fg
+internal fun StatChangePills(msg: DisplayMessage.Narration, checkText: String? = null) {
+    val cs = MaterialTheme.colorScheme
+    val neutral = cs.onSurfaceVariant
+    val gain = cs.tertiary
+    val loss = cs.error
+    val goldTint = cs.secondary
+    val sep = cs.outline
+
+    data class Tok(val text: String, val color: Color)
+    val toks = mutableListOf<Tok>()
 
     if (msg.hpBefore != msg.hpAfter) {
-        val hpDiff = msg.hpAfter - msg.hpBefore
-        val lost = hpDiff < 0
-        pills.add(Triple(
-            "♥ ${if (hpDiff > 0) "+" else ""}$hpDiff HP",
-            if (lost) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
-            if (lost) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-        ))
+        val d = msg.hpAfter - msg.hpBefore
+        toks.add(Tok("${if (d > 0) "+" else ""}$d HP", if (d < 0) loss else gain))
     }
     if (msg.goldBefore != msg.goldAfter) {
-        val diff = msg.goldAfter - msg.goldBefore
-        pills.add(Triple(
-            "💰 ${if (diff > 0) "+" else ""}${diff}g",
-            MaterialTheme.colorScheme.tertiaryContainer,
-            MaterialTheme.colorScheme.tertiary
-        ))
+        val d = msg.goldAfter - msg.goldBefore
+        toks.add(Tok("${if (d > 0) "+" else ""}${d}g", goldTint))
     }
-    if (msg.xpGained > 0) {
-        pills.add(Triple(
-            "★ +${msg.xpGained} XP",
-            MaterialTheme.colorScheme.secondaryContainer,
-            MaterialTheme.colorScheme.secondary
-        ))
-    }
-    // Status effects gained
-    msg.conditionsAdded.forEach { condition ->
-        pills.add(Triple(
-            "+$condition",
-            MaterialTheme.colorScheme.secondaryContainer,
-            MaterialTheme.colorScheme.secondary
-        ))
-    }
-    // Status effects removed
-    msg.conditionsRemoved.forEach { condition ->
-        pills.add(Triple(
-            "-$condition",
-            MaterialTheme.colorScheme.surfaceContainerHigh,
-            MaterialTheme.colorScheme.onSurfaceVariant
-        ))
-    }
-    // Items gained
-    msg.itemsGained.forEach { item ->
-        pills.add(Triple(
-            "+$item",
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.primary
-        ))
-    }
-    // Items lost
-    msg.itemsRemoved.forEach { item ->
-        pills.add(Triple(
-            "-$item",
-            MaterialTheme.colorScheme.errorContainer,
-            MaterialTheme.colorScheme.error
-        ))
-    }
-    // Morality shift
-    if (msg.moralDelta != 0) {
-        val good = msg.moralDelta > 0
-        pills.add(Triple(
-            "⚖ ${if (good) "+" else ""}${msg.moralDelta} Moral",
-            if (good) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
-            if (good) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-        ))
-    }
-    // Faction reputation changes
-    msg.repDeltas.forEach { (faction, delta) ->
-        val positive = delta > 0
-        pills.add(Triple(
-            "💡 ${if (positive) "+" else ""}$delta $faction",
-            if (positive) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.secondaryContainer,
-            if (positive) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary
-        ))
-    }
+    if (msg.xpGained > 0) toks.add(Tok("+${msg.xpGained} XP", gain))
+    msg.conditionsAdded.forEach { toks.add(Tok("+$it", gain)) }
+    msg.conditionsRemoved.forEach { toks.add(Tok("-$it", neutral)) }
 
-    if (pills.isNotEmpty()) {
-        FlowRow(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            pills.forEach { (text, bg, fg) ->
-                Surface(
-                    color = bg,
-                    shape = MaterialTheme.shapes.large
-                ) {
-                    Text(
-                        text,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = fg,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = RealmsSpacing.s, vertical = RealmsSpacing.xs)
-                    )
-                }
-            }
+    // Item gains: cap at 3, summarize overflow
+    val itemsGained = msg.itemsGained
+    if (itemsGained.isNotEmpty()) {
+        val shown = itemsGained.take(3)
+        shown.forEach { toks.add(Tok("+$it", gain)) }
+        if (itemsGained.size > shown.size) {
+            toks.add(Tok("+${itemsGained.size - shown.size} more…", neutral))
         }
     }
+    val itemsRemoved = msg.itemsRemoved
+    if (itemsRemoved.isNotEmpty()) {
+        val shown = itemsRemoved.take(3)
+        shown.forEach { toks.add(Tok("-$it", loss)) }
+        if (itemsRemoved.size > shown.size) {
+            toks.add(Tok("-${itemsRemoved.size - shown.size} more…", neutral))
+        }
+    }
+    if (msg.moralDelta != 0) {
+        val d = msg.moralDelta
+        toks.add(Tok("${if (d > 0) "+" else ""}$d Moral", if (d > 0) gain else loss))
+    }
+    msg.repDeltas.forEach { (faction, delta) ->
+        toks.add(Tok("${if (delta > 0) "+" else ""}$delta $faction", if (delta > 0) gain else loss))
+    }
+
+    if (toks.isEmpty() && checkText.isNullOrBlank()) return
+
+    val strip = androidx.compose.ui.text.buildAnnotatedString {
+        if (!checkText.isNullOrBlank()) {
+            val pass = checkText.trimStart().startsWith("✓")
+            val fail = checkText.trimStart().startsWith("✗")
+            val chipColor = when {
+                pass -> cs.primary
+                fail -> cs.error
+                else -> neutral
+            }
+            pushStyle(
+                androidx.compose.ui.text.SpanStyle(
+                    color = chipColor,
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
+            append(checkText.trim())
+            pop()
+            if (toks.isNotEmpty()) {
+                pushStyle(androidx.compose.ui.text.SpanStyle(color = sep))
+                append("  ·  ")
+                pop()
+            }
+        }
+        toks.forEachIndexed { idx, tok ->
+            if (idx > 0) {
+                pushStyle(androidx.compose.ui.text.SpanStyle(color = sep))
+                append(" · ")
+                pop()
+            }
+            pushStyle(androidx.compose.ui.text.SpanStyle(color = tok.color))
+            append(tok.text)
+            pop()
+        }
+    }
+    Text(
+        text = strip,
+        style = MaterialTheme.typography.labelSmall,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 4.dp)
+    )
 }
 
 @Composable
@@ -336,36 +266,60 @@ internal fun NpcDialogueBubble(
     isInteractive: Boolean = true
 ) {
     val (accent, bgTint) = npcColor(name, RealmsTheme.colors.npcPalette)
-    val initial = if (name.isNotBlank()) name.take(1).uppercase() else null
     val cleanQuote = quote
         .removeSurrounding("\"")
         .removeSurrounding("\u201C", "\u201D")
         .removeSurrounding("'")
         .removeSurrounding("\u2018", "\u2019")
         .trim()
-    BubbleFrame(
-        avatarInitial = initial,
-        avatarAccent = accent,
-        label = name.takeIf { it.isNotBlank() },
-        accent = accent,
-        bgColor = bgTint.copy(alpha = 0.14f),
-        avatarOnRight = false,
-        tailOnTop = true,
-        onClick = if (isInteractive) onTap else null
-    ) {
-        Text(
-            text = com.realmsoffate.game.util.parseInline(
-                cleanQuote,
-                boldColor = accent,
-                codeBackground = MaterialTheme.colorScheme.surfaceContainerHigh,
-                codeText = MaterialTheme.colorScheme.onSurfaceVariant
-            ),
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontStyle = FontStyle.Italic,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = (15f * LocalFontScale.current).sp
+    val quoteStyle = MaterialTheme.typography.bodyMedium.copy(
+        fontStyle = FontStyle.Italic,
+        color = MaterialTheme.colorScheme.onSurface,
+        fontSize = (15f * LocalFontScale.current).sp
+    )
+    val inlineQuote = com.realmsoffate.game.util.parseInline(
+        cleanQuote,
+        boldColor = accent,
+        codeBackground = MaterialTheme.colorScheme.surfaceContainerHigh,
+        codeText = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    val rendered = if (name.isNotBlank()) {
+        androidx.compose.ui.text.buildAnnotatedString {
+            pushStyle(
+                androidx.compose.ui.text.SpanStyle(
+                    color = accent,
+                    fontWeight = FontWeight.SemiBold,
+                    fontStyle = FontStyle.Normal
+                )
             )
+            append(name)
+            pop()
+            append(" ")
+            append(inlineQuote)
+        }
+    } else inlineQuote
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            Modifier
+                .padding(top = 8.dp)
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(accent)
         )
+        BubbleFrame(
+            accent = accent,
+            bgColor = bgTint.copy(alpha = 0.14f),
+            avatarOnRight = false,
+            tailOnTop = true,
+            onClick = if (isInteractive) onTap else null,
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(text = rendered, style = quoteStyle)
+        }
     }
 }
 

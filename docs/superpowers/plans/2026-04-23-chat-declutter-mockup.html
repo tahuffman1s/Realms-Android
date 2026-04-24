@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Realms of Fate — Chat Declutter Mockup</title>
+<style>
+  :root {
+    --bg: #14121a;
+    --surface: #1c1a24;
+    --surface-hi: #24222e;
+    --surface-hi2: #2a2834;
+    --outline: #3a3744;
+    --outline-var: #2d2b37;
+    --on-surface: #e8e4ef;
+    --on-surface-var: #a9a4b5;
+    --primary: #c8b8ff;
+    --primary-c: #332a55;
+    --on-primary-c: #e9def9;
+    --secondary: #d4c4a3;
+    --secondary-c: #3d3521;
+    --tertiary: #9ecbbf;
+    --tertiary-c: #1e3a34;
+    --error: #ffb4ab;
+    --error-c: #5c1f1a;
+    --on-error-c: #ffdad6;
+    --npc-a: #b094e8;
+    --npc-b: #e8a87c;
+    --npc-c: #7fc8a9;
+    --npc-d: #e8c06c;
+    --player: #ff9db6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:#0b0a0f; color:var(--on-surface); font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif; font-size:15px; }
+  header { padding: 16px 24px; border-bottom:1px solid #222029; display:flex; align-items:center; justify-content:space-between; }
+  header h1 { font-size:14px; font-weight:600; letter-spacing:.5px; margin:0; color:var(--on-surface-var); text-transform:uppercase; }
+  .toggle { display:flex; gap:6px; background:var(--surface); border:1px solid var(--outline); padding:4px; border-radius:999px; }
+  .toggle button { background:transparent; border:0; color:var(--on-surface-var); padding:6px 14px; border-radius:999px; font-size:12px; font-weight:600; letter-spacing:.5px; cursor:pointer; text-transform:uppercase; }
+  .toggle button.active { background:var(--primary-c); color:var(--on-primary-c); }
+  main { display:grid; grid-template-columns: 1fr 1fr; gap:24px; padding:24px; max-width:1200px; margin:0 auto; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .phone {
+    background: var(--bg);
+    border: 1px solid var(--outline);
+    border-radius: 28px;
+    overflow: hidden;
+    min-height: 780px;
+    display:flex; flex-direction:column;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  }
+  .phone h2 { margin:0; padding:14px 20px; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--on-surface-var); border-bottom:1px solid var(--outline-var); background:var(--surface); display:flex; justify-content:space-between; align-items:center; }
+  .phone h2 .tag { font-size:10px; padding:3px 8px; border-radius:999px; background:var(--surface-hi); color:var(--on-surface-var); letter-spacing:.5px; }
+  .phone h2 .tag.good { background:#1e3a34; color:#9ecbbf; }
+  .phone h2 .tag.bad { background:#5c1f1a; color:#ffb4ab; }
+
+  .topbar { padding: 12px 16px; background: var(--surface); border-bottom:1px solid var(--outline-var); display:flex; align-items:center; gap:10px; }
+  .topbar .avatar { width:28px; height:28px; border-radius:50%; background: linear-gradient(180deg, rgba(176,148,232,.4), rgba(176,148,232,.15)); border:1px solid rgba(176,148,232,.5); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--npc-a); }
+  .topbar .name { font-weight:600; font-size:13px; }
+  .topbar .sub { font-size:11px; color:var(--on-surface-var); }
+  .topbar .hp { margin-left:auto; font-size:11px; color:var(--on-surface-var); }
+  .topbar .hp b { color:var(--on-surface); font-weight:600; }
+
+  .feed { flex:1; overflow:auto; padding: 12px 16px; display:flex; flex-direction:column; gap: 14px; }
+
+  /* =========== BUSY VERSION =========== */
+  .busy .turn-divider { display:flex; align-items:center; gap:10px; padding: 4px 2px; }
+  .busy .turn-divider .rule { flex:1; height:1px; background: var(--outline); }
+  .busy .turn-divider .label { font-size: 10px; letter-spacing:2px; color: var(--on-surface-var); text-transform:uppercase; }
+
+  .bubble-row { display:flex; gap:8px; align-items:flex-start; }
+  .bubble-row.right { flex-direction: row-reverse; }
+  .avatar36 { width:36px; height:36px; border-radius:50%; border:1px solid; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex-shrink:0; }
+  .avatar36.a { background: linear-gradient(180deg, rgba(176,148,232,.42), rgba(176,148,232,.18)); border-color: rgba(176,148,232,.5); color:var(--npc-a); }
+  .avatar36.b { background: linear-gradient(180deg, rgba(232,168,124,.42), rgba(232,168,124,.18)); border-color: rgba(232,168,124,.5); color:var(--npc-b); }
+  .avatar36.p { background: linear-gradient(180deg, rgba(255,157,182,.42), rgba(255,157,182,.18)); border-color: rgba(255,157,182,.5); color:var(--player); }
+
+  .bubble { flex:1; padding: 12px 14px; border-radius: 14px; border:1px solid; font-size:14px; line-height:1.45; }
+  .bubble .label { display:block; font-size: 10px; letter-spacing:.6px; text-transform:uppercase; font-weight:700; margin-bottom:6px; }
+  .bubble.narrator { background: var(--surface-hi); border-color: var(--outline); border-top-left-radius:4px; }
+  .bubble.narrator .hdr { display:flex; align-items:center; justify-content:center; gap:6px; font-size:10px; letter-spacing:.5px; color:var(--secondary); font-weight:600; padding-bottom: 8px; }
+  .bubble.narrator .hdr .icon { font-size:12px; }
+  .bubble.narrator .body { font-style: normal; color:var(--on-surface); }
+  .bubble.narrator .body em { color:var(--on-surface-var); }
+
+  .bubble.npc { background: rgba(176,148,232,.09); border-color: rgba(176,148,232,.22); border-top-left-radius:4px; font-style: italic; }
+  .bubble.npc .label { color: var(--npc-a); text-align:left; }
+  .bubble.npc.b { background: rgba(232,168,124,.09); border-color: rgba(232,168,124,.22); }
+  .bubble.npc.b .label { color: var(--npc-b); }
+
+  .bubble.player { background: rgba(255,157,182,.09); border-color: rgba(255,157,182,.22); border-top-right-radius:4px; font-style:italic; text-align:right; }
+  .bubble.player .label { color: var(--player); text-align:right; }
+
+  .pills { display:flex; flex-wrap:wrap; gap:6px 6px; justify-content:center; margin-top: 10px; }
+  .pill { padding: 4px 10px; border-radius: 999px; font-size:11px; font-weight:700; letter-spacing:.2px; }
+  .pill.hp-loss { background: var(--error-c); color: var(--error); }
+  .pill.gold { background: var(--secondary-c); color: var(--secondary); }
+  .pill.xp { background: var(--tertiary-c); color: var(--tertiary); }
+  .pill.cond { background: var(--tertiary-c); color: var(--tertiary); }
+  .pill.item-add { background: var(--primary-c); color: var(--primary); }
+  .pill.item-loss { background: var(--error-c); color: var(--error); }
+  .pill.moral { background: var(--primary-c); color: var(--primary); }
+  .pill.rep { background: var(--tertiary-c); color: var(--tertiary); }
+
+  .action-pill { display:flex; align-items:center; gap:8px; padding: 5px 10px; border-radius:999px; font-size:11px; font-style:italic; }
+  .action-pill.npc-action { background: rgba(176,148,232,.12); color:#b094e8; }
+  .action-pill.aside { background: rgba(212,196,163,.12); color: var(--secondary); }
+  .action-pill.player-action { background: rgba(158,203,191,.12); color: var(--tertiary); }
+  .action-pill .glyph { font-size:10px; opacity:.75; }
+
+  .system-line { align-self:center; padding: 5px 14px; border-radius:999px; font-size:11px; font-weight:600; }
+  .system-line.good { background: var(--primary-c); color: var(--on-primary-c); }
+  .system-line.bad { background: var(--error-c); color: var(--on-error-c); }
+
+  .merchant-chips { display:flex; gap:8px; padding-top:4px; }
+  .merchant-chip { display:flex; align-items:center; gap:6px; padding: 6px 12px; border-radius:999px; background:var(--secondary-c); color:var(--secondary); font-size:12px; font-weight:700; letter-spacing:.3px; border:1px solid rgba(212,196,163,.3); }
+
+  .chat-input { padding:12px 16px; border-top:1px solid var(--outline-var); background:var(--surface); display:flex; gap:10px; align-items:center; }
+  .chat-input .field { flex:1; background: var(--surface-hi); border-radius:999px; padding:10px 16px; color:var(--on-surface-var); font-size:13px; }
+  .chat-input .send { width:40px; height:40px; border-radius:50%; background: var(--primary-c); color: var(--on-primary-c); display:flex; align-items:center; justify-content:center; font-size:16px; }
+
+  /* =========== CLEAN VERSION =========== */
+  .clean .feed { gap: 18px; }
+  .clean .turn-gap { height: 2px; background: var(--outline-var); width: 40px; align-self:center; border-radius:2px; opacity:.6; }
+
+  .clean .narrator {
+    position: relative;
+    padding: 14px 14px 14px 16px;
+    background: transparent;
+    border: 0;
+    border-left: 2px solid var(--secondary);
+    border-radius: 0;
+    color: var(--on-surface);
+    font-size: 14.5px;
+    line-height: 1.55;
+  }
+  .clean .narrator.past { opacity:.55; }
+  .clean .narrator em { color: var(--on-surface-var); }
+
+  .clean .npc-row { display:flex; gap:10px; align-items:flex-start; }
+  .clean .npc-row .dot { width:6px; height:6px; border-radius:50%; margin-top:9px; flex-shrink:0; }
+  .clean .npc-row.a .dot { background: var(--npc-a); }
+  .clean .npc-row.b .dot { background: var(--npc-b); }
+  .clean .npc-row .bubble {
+    flex:1;
+    background: var(--surface-hi);
+    border: 0;
+    padding: 10px 13px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.45;
+    font-style: italic;
+  }
+  .clean .npc-row .bubble .name { font-style: normal; font-weight:600; font-size:12.5px; margin-right:6px; }
+  .clean .npc-row.a .bubble .name { color: var(--npc-a); }
+  .clean .npc-row.b .bubble .name { color: var(--npc-b); }
+
+  .clean .player-row { display:flex; justify-content:flex-end; }
+  .clean .player-row .bubble {
+    max-width: 85%;
+    background: rgba(255,157,182,.12);
+    padding: 10px 13px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height:1.45;
+    font-style: italic;
+    color: var(--on-surface);
+    text-align:right;
+  }
+
+  .clean .aside-inline { font-size: 12.5px; color: var(--on-surface-var); font-style: italic; padding: 0 4px; display:flex; align-items:center; gap:8px; }
+  .clean .aside-inline .dot { width:4px; height:4px; border-radius:50%; background: var(--secondary); flex-shrink:0; }
+  .clean .aside-inline.action .dot { background: var(--npc-a); }
+  .clean .aside-inline.player-action .dot { background: var(--tertiary); }
+
+  .clean .stat-strip {
+    font-size: 12px;
+    color: var(--on-surface-var);
+    padding: 2px 4px 0 18px;
+    letter-spacing: .1px;
+    font-variant-numeric: tabular-nums;
+  }
+  .clean .stat-strip .hp-loss { color: var(--error); font-weight:600; }
+  .clean .stat-strip .hp-gain { color: var(--tertiary); font-weight:600; }
+  .clean .stat-strip .gold    { color: var(--secondary); font-weight:600; }
+  .clean .stat-strip .xp      { color: var(--tertiary); font-weight:600; }
+  .clean .stat-strip .cond    { color: var(--primary); font-weight:600; }
+  .clean .stat-strip .sep     { color: var(--outline); margin: 0 6px; }
+  .clean .stat-strip .more    { color: var(--on-surface-var); text-decoration: underline; cursor:pointer; opacity:.8; }
+
+  .clean .check-inline {
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+  }
+  .clean .check-inline.pass { background: rgba(158,203,191,.14); color: var(--tertiary); }
+  .clean .check-inline.fail { background: rgba(255,180,171,.14); color: var(--error); }
+
+  .clean .shops-dock {
+    margin: 0 12px 0 12px;
+    padding: 8px 14px;
+    background: var(--surface);
+    border:1px solid var(--outline-var);
+    border-radius: 999px;
+    display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--on-surface-var);
+  }
+  .clean .shops-dock b { color: var(--secondary); margin-right:6px; }
+
+  .notes {
+    padding: 16px 24px 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+    color: var(--on-surface-var);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .notes h3 { color: var(--on-surface); font-size: 13px; letter-spacing:.5px; text-transform:uppercase; margin-top: 24px; }
+  .notes ul { margin:8px 0; padding-left: 20px; }
+  .notes li { margin: 4px 0; }
+  .notes code { background: var(--surface); padding: 1px 6px; border-radius:4px; font-size:12px; color:var(--primary); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Realms of Fate — Chat Declutter Mockup</h1>
+  <div class="toggle">
+    <button class="active" onclick="document.body.dataset.mode='both'">Compare</button>
+    <button onclick="document.body.dataset.mode='busy'">Busy only</button>
+    <button onclick="document.body.dataset.mode='clean'">Clean only</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ============================================================ -->
+<!-- BUSY (current)                                                 -->
+<!-- ============================================================ -->
+<section class="phone busy">
+  <h2>Current <span class="tag bad">chrome-heavy</span></h2>
+  <div class="topbar">
+    <div class="avatar">V</div>
+    <div>
+      <div class="name">Vex</div>
+      <div class="sub">Half-Elf Rogue · Lvl 4</div>
+    </div>
+    <div class="hp"><b>22</b>/30 HP · <b>47</b>g</div>
+  </div>
+
+  <div class="feed">
+
+    <!-- Turn 6 -->
+    <div class="turn-divider"><div class="rule"></div><div class="label">Turn 6</div><div class="rule"></div></div>
+
+    <div class="bubble-row right">
+      <div class="avatar36 p">V</div>
+      <div class="bubble player">
+        <span class="label">Vex</span>
+        I pick the lock on the iron chest.
+      </div>
+    </div>
+
+    <div class="bubble-row">
+      <div class="avatar36 a">N</div>
+      <div class="bubble narrator">
+        <div class="hdr"><span class="icon">📖</span><span>NARRATOR</span><span class="icon">▲</span></div>
+        <div class="body">Metal teeth click under Vex's careful fingers. A faint <em>snap</em> — the tumbler gives. Inside, velvet cloth wraps a single silver vial.</div>
+      </div>
+    </div>
+
+    <div class="action-pill player-action"><span class="glyph">⚡</span><span>Vex crouches low, picks at the lock</span></div>
+
+    <div class="system-line good">✓ Sleight of Hand DC 14 — rolled 17</div>
+
+    <div class="pills">
+      <span class="pill xp">★ +80 XP</span>
+      <span class="pill item-add">+Silver Vial</span>
+      <span class="pill item-add">+Folded Note</span>
+      <span class="pill moral">⚖ +1 Moral</span>
+    </div>
+
+    <!-- Turn 7 -->
+    <div class="turn-divider"><div class="rule"></div><div class="label">Turn 7</div><div class="rule"></div></div>
+
+    <div class="bubble-row right">
+      <div class="avatar36 p">V</div>
+      <div class="bubble player">
+        <span class="label">Vex</span>
+        "What is this, then?" I whisper, holding up the vial.
+      </div>
+    </div>
+
+    <div class="bubble-row">
+      <div class="avatar36 a">N</div>
+      <div class="bubble narrator">
+        <div class="hdr"><span class="icon">📖</span><span>NARRATOR</span><span class="icon">▲</span></div>
+        <div class="body">The merchant's eyes widen as torchlight catches the silver. He leans in close, voice tight.</div>
+      </div>
+    </div>
+
+    <div class="bubble-row">
+      <div class="avatar36 b">B</div>
+      <div class="bubble npc b">
+        <span class="label">Borin the Broker</span>
+        "You — you shouldn't have that. Put it away. <em>Now</em>, before anyone sees."
+      </div>
+    </div>
+
+    <div class="action-pill npc-action"><span class="glyph">→</span><span>Borin glances toward the door</span></div>
+
+    <div class="action-pill aside"><span class="glyph">✦</span><span>Whatever this is, it's trouble.</span></div>
+
+    <div class="system-line bad">✗ Persuasion DC 15 — rolled 9</div>
+
+    <div class="pills">
+      <span class="pill hp-loss">♥ -4 HP</span>
+      <span class="pill gold">💰 -5g</span>
+      <span class="pill cond">+Suspicious</span>
+      <span class="pill rep">💡 -2 Merchants</span>
+    </div>
+
+    <div class="merchant-chips">
+      <div class="merchant-chip">🏪 Borin's Stall</div>
+      <div class="merchant-chip">🏪 Night Market</div>
+    </div>
+
+  </div>
+
+  <div class="chat-input">
+    <div class="field">What do you do?</div>
+    <div class="send">▶</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- CLEAN                                                           -->
+<!-- ============================================================ -->
+<section class="phone clean">
+  <h2>Decluttered <span class="tag good">breathing room</span></h2>
+  <div class="topbar">
+    <div class="avatar">V</div>
+    <div>
+      <div class="name">Vex</div>
+      <div class="sub">Half-Elf Rogue · Lvl 4</div>
+    </div>
+    <div class="hp"><b>22</b>/30 HP · <b>47</b>g</div>
+  </div>
+
+  <div class="feed">
+
+    <!-- Turn 6 (past, dimmed) -->
+    <div class="player-row">
+      <div class="bubble">I pick the lock on the iron chest.</div>
+    </div>
+
+    <div class="narrator past">
+      Metal teeth click under Vex's careful fingers. A faint <em>snap</em> — the tumbler gives. Inside, velvet cloth wraps a single silver vial.
+    </div>
+
+    <div class="aside-inline player-action"><div class="dot"></div>Vex crouches low, picks at the lock</div>
+
+    <div class="stat-strip">
+      <span class="check-inline pass">✓ SLEIGHT 14 · 17</span>
+      &nbsp;<span class="xp">+80 XP</span><span class="sep">·</span><span class="cond">+Silver Vial, +Folded Note</span><span class="sep">·</span><span>+1 Moral</span>
+    </div>
+
+    <div class="turn-gap"></div>
+
+    <!-- Turn 7 (latest) -->
+    <div class="player-row">
+      <div class="bubble">"What is this, then?" I whisper, holding up the vial.</div>
+    </div>
+
+    <div class="narrator">
+      The merchant's eyes widen as torchlight catches the silver. He leans in close, voice tight.
+    </div>
+
+    <div class="npc-row b">
+      <div class="dot"></div>
+      <div class="bubble"><span class="name">Borin</span>"You — you shouldn't have that. Put it away. <em>Now</em>, before anyone sees."</div>
+    </div>
+
+    <div class="aside-inline action"><div class="dot"></div>Borin glances toward the door</div>
+    <div class="aside-inline"><div class="dot"></div>Whatever this is, it's trouble.</div>
+
+    <div class="stat-strip">
+      <span class="check-inline fail">✗ PERSUASION 15 · 9</span>
+      &nbsp;<span class="hp-loss">−4 HP</span><span class="sep">·</span><span class="gold">−5g</span><span class="sep">·</span><span class="cond">+Suspicious</span><span class="sep">·</span><span>−2 Merchants</span>
+    </div>
+
+    <div class="shops-dock"><span><b>Shops nearby</b>Borin's Stall · Night Market</span><span>›</span></div>
+
+  </div>
+
+  <div class="chat-input">
+    <div class="field">What do you do?</div>
+    <div class="send">▶</div>
+  </div>
+</section>
+
+</main>
+
+<div class="notes">
+  <h3>What changed</h3>
+  <ul>
+    <li><b>Narrator chrome gone.</b> No header row, no icon, no chevron, no surrounding bubble. Replaced by a subtle left rail. <code>NarrationBlock.kt:210–234</code></li>
+    <li><b>Turn divider retired</b> to a 40dp centered hairline gap. <code>ChatFeed.kt:164–187</code></li>
+    <li><b>Bubble labels dropped.</b> NPC name inlines with the first word of the quote; player bubble has no label — right-alignment already signals ownership. <code>MessageBubbles.kt:142–153</code></li>
+    <li><b>Avatars removed from feed.</b> NPC identity carried by a 6px leading dot + inline name in accent color. Player identity carried by right-alignment. <code>MessageBubbles.kt:91, 163–184</code></li>
+    <li><b>Stat pills collapsed</b> to a single muted dot-separated strip. Red for losses, green for gains, no emoji. Overflow hides behind a tap. <code>MessageBubbles.kt:229–328</code></li>
+    <li><b>Action pills unified</b> to inline italic lines with a tiny colored leading dot (NPC action / aside / player action). Same space, fraction of the weight. <code>NarrationBlock.kt:467–516</code></li>
+    <li><b>Check results inlined</b> as a leading chip on the stat strip instead of a center-row Surface. <code>MessageBubbles.kt:477–499</code></li>
+    <li><b>Past turns dimmed to 55%</b> — the latest beat is the brightest thing on screen.</li>
+    <li><b>Merchant chips moved</b> from inline-after-turn to a persistent footer dock above the input. <code>ChatFeed.kt:101–127</code></li>
+  </ul>
+
+  <h3>What stayed</h3>
+  <ul>
+    <li>Per-NPC accent colors (via the 6px dot and the inline name).</li>
+    <li>Italic for all dialogue/action text.</li>
+    <li>Player bubble right-alignment.</li>
+    <li>Check PASS/FAIL legibility (still color-coded, just attached).</li>
+  </ul>
+
+  <h3>Taste calls still open</h3>
+  <ul>
+    <li>Avatars: gone entirely, or keep a 20dp version on the <em>latest</em> turn only?</li>
+    <li>Turn gap: silent hairline (shown) vs. tiny "T7" superscript for long-session wayfinding?</li>
+    <li>Past-turn dimming: on by default vs. only when the feed exceeds N turns?</li>
+    <li>Stat strip: current dot-separated text, vs. emoji-only (no words) to shave another pass of visual noise?</li>
+  </ul>
+</div>
+
+<script>
+  const body = document.body;
+  body.dataset.mode = 'both';
+  const buttons = document.querySelectorAll('.toggle button');
+  const observer = new MutationObserver(() => {
+    buttons.forEach(b => b.classList.remove('active'));
+    const label = { both:'Compare', busy:'Busy only', clean:'Clean only' }[body.dataset.mode];
+    buttons.forEach(b => { if (b.textContent === label) b.classList.add('active'); });
+    const main = document.querySelector('main');
+    main.style.gridTemplateColumns = body.dataset.mode === 'both' ? '1fr 1fr' : '1fr';
+    document.querySelector('.busy').style.display = body.dataset.mode === 'clean' ? 'none' : '';
+    document.querySelector('.clean').style.display = body.dataset.mode === 'busy' ? 'none' : '';
+  });
+  observer.observe(body, { attributes: true, attributeFilter: ['data-mode'] });
+</script>
+
+</body>
+</html>
