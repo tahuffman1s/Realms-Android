@@ -27,6 +27,9 @@ private val EQUIPPABLE_TYPES = setOf("weapon", "armor", "shield", "amulet", "rin
 
 private fun signedAmt(n: Int): String = if (n >= 0) "+$n" else "$n"
 
+private fun String.titlecase(): String =
+    if (isEmpty()) this else this[0].uppercaseChar() + substring(1)
+
 // ----------------- INVENTORY (equipped slots + 5-col backpack grid) -----------------
 
 @Composable
@@ -226,7 +229,7 @@ private fun EquippedSlot(
                 Text(itemIconFor(item), style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.width(8.dp))
                 Column {
-                    Text(item.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                    Text(item.name.titlecase(), style = MaterialTheme.typography.titleSmall, maxLines = 1)
                     if (item.ac != null) Text("AC ${item.ac}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (item.damage != null) Text(item.damage, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -236,7 +239,7 @@ private fun EquippedSlot(
                 Text(icon, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.outline)
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "empty",
+                    "Empty",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -264,7 +267,7 @@ private fun SelectedItemCard(item: Item, onEquipToggle: () -> Unit, onUse: () ->
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(item.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(item.name.titlecase(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     RarityTag(item.rarity, color)
                     TypeTag(item.type)
@@ -350,7 +353,7 @@ private fun BackpackCell(item: Item, selected: Boolean, onClick: () -> Unit) {
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    item.name,
+                    item.name.titlecase(),
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1
                 )
