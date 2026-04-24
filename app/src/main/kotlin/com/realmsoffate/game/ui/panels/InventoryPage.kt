@@ -206,7 +206,7 @@ private fun EquippedSlot(
         outlined = true,
         accentColor = rarityColor,
         contentPadding = RealmsSpacing.m,
-        modifier = modifier
+        modifier = modifier.heightIn(min = 88.dp)
     ) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(4.dp))
