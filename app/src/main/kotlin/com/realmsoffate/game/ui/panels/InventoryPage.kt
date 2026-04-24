@@ -96,13 +96,6 @@ internal fun InventoryContent(state: GameUiState, onEquip: (Item) -> Unit, onUse
             onTap = { selected = amulet },
             modifier = Modifier.weight(1f)
         )
-        Spacer(Modifier.weight(1f))
-    }
-    Spacer(Modifier.height(8.dp))
-    Row(
-        Modifier.padding(horizontal = RealmsSpacing.l).fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
         EquippedSlot(
             label = "RING 1",
             icon = "💍",
