@@ -1647,10 +1647,32 @@ class GameViewModel(
         val idx = inv.indexOfFirst { it.name == item.name }
         if (idx < 0) return
         val nowEquipped = !inv[idx].equipped
+        val displaced = mutableListOf<String>()
+        if (nowEquipped) {
+            val itemType = inv[idx].type
+            val slotLimit = if (itemType == "ring") 2 else 1
+            val groupTypes: Set<String> = when (itemType) {
+                "armor", "shield" -> setOf("armor", "shield")
+                else -> setOf(itemType)
+            }
+            val equippedInGroup = inv.withIndex()
+                .filter { (i, e) -> i != idx && e.equipped && e.type in groupTypes }
+            val overflow = (equippedInGroup.size + 1) - slotLimit
+            if (overflow > 0) {
+                equippedInGroup.take(overflow).forEach { (i, e) ->
+                    inv[i] = e.copy(equipped = false)
+                    displaced += e.name
+                }
+            }
+        }
         inv[idx] = inv[idx].copy(equipped = nowEquipped)
         _ui.value = s.copy(character = ch.copy(inventory = inv))
-        val verb = if (nowEquipped) "equip" else "unequip"
-        submitAction("I $verb my ${item.name}")
+        val action = when {
+            !nowEquipped -> "I unequip my ${item.name}"
+            displaced.isEmpty() -> "I equip my ${item.name}"
+            else -> "I unequip my ${displaced.joinToString(" and ")} and equip my ${item.name}"
+        }
+        submitAction(action)
     }
 
     fun dismissCompanion(name: String) {
