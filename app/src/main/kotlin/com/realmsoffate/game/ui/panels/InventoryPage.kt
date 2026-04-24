@@ -312,7 +312,7 @@ private fun BackpackCell(item: Item, selected: Boolean, onClick: () -> Unit) {
         accentColor = color,
         selected = selected,
         contentPadding = RealmsSpacing.m,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 88.dp)
+        modifier = Modifier.fillMaxWidth().heightIn(min = 68.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
