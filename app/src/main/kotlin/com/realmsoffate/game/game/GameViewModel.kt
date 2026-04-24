@@ -425,7 +425,9 @@ class GameViewModel(
                 appendLine("Proficiency: +${ch.proficiency}")
                 appendLine("Conditions: ${ch.conditions.joinToString(", ").ifBlank { "none" }}")
                 appendLine("Feats: ${ch.feats.joinToString(", ").ifBlank { "none" }}")
-                appendLine("Equipped: ${ch.inventory.filter { it.equipped }.joinToString(", ") { it.name }.ifBlank { "nothing" }}")
+                val gearSummary = EquipmentEffects.promptSummary(ch)
+                if (gearSummary.isBlank()) appendLine("Equipped: nothing")
+                else { appendLine(); appendLine(gearSummary) }
                 appendLine("Inventory: ${ch.inventory.joinToString(", ") { "${it.name}(x${it.qty})" }.ifBlank { "empty" }}")
                 ch.backstory?.let {
                     appendLine("Backstory: origin=${it.origin}, flaw=${it.flaw}, bond=${it.bond}")
@@ -1178,7 +1180,7 @@ class GameViewModel(
             .joinToString("\n") { "${it.name} (${it.race} ${it.role})" }
             .let { if (it.isNotBlank()) "\nNPCs HERE:\n$it" else "" }
 
-        val inv = ch.inventory.filter { it.equipped }.joinToString(", ") { it.name }.ifBlank { "nothing" }
+        val inv = EquipmentEffects.promptSummary(ch).ifBlank { "Equipped: nothing" }
         val invAll = ch.inventory.joinToString(", ") { "${it.name} (x${it.qty})" }
 
         val currentLocName = s.worldMap?.locations?.getOrNull(s.currentLoc)?.name ?: ""
@@ -1236,7 +1238,7 @@ class GameViewModel(
             append("\nNEARBY: ${nearby.joinToString(", ") { "${it.first.name} (${it.second}lg)" }}")
             append("\nTURN: ${s.turns + 1}")
             append(partyCtx); append(questCtx); append(npcCtx); append(knownNpcsCtx); append(eventCtx)
-            append("\nEquipped: $inv")
+            append("\n").append(inv)
             append("\nInventory: ${invAll.ifBlank { "empty" }}")
             // Long-term memory: arcs (matched first, then newest to fill), then
             // scene summaries (recent working set), then keyword-matched past scenes
