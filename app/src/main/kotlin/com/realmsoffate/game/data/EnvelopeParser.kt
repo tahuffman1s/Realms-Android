@@ -189,8 +189,11 @@ object EnvelopeParser {
                     out.add(seg)
                 }
                 is NarrationSegmentData.Prose -> {
+                    // Model separates a continuation quote from prose with a
+                    // single `\n` (not a blank line), so split on any newline
+                    // run — we only re-classify explicitly quoted paragraphs.
                     val paragraphs = seg.text
-                        .split(Regex("\\n\\s*\\n"))
+                        .split(Regex("\\n+"))
                         .map { it.trim() }
                         .filter { it.isNotBlank() }
                     if (paragraphs.isEmpty()) {

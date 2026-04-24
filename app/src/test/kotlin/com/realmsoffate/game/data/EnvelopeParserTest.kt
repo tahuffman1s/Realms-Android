@@ -285,6 +285,28 @@ class EnvelopeParserTest {
     }
 
     @Test
+    fun `bare-quote prose separated by single newline still splits and promotes`() {
+        // Observed in the wild: the model joins a prose line and a continuation
+        // quote with a single `\n` rather than a blank-line paragraph break.
+        // We still want the bare-quote line to promote to NpcDialog. The quote
+        // contains contractions so cleanSegmentText leaves the outer wrap intact.
+        val raw = """
+            {
+              "segments": [
+                {"kind":"npc_dialog","name":"Morwen","text":"Fine. It was a hooded woman."},
+                {"kind":"prose","text":"Morwen's eyes flick to the door.\n'She smelled of lavender. Said you'd know what to do.'"}
+              ]
+            }
+        """.trimIndent()
+        val p = EnvelopeParser.parse(raw, 1)
+        assertEquals(3, p.segments.size)
+        assertTrue(p.segments[0] is NarrationSegmentData.NpcDialog)
+        assertTrue("line 1 stays prose", p.segments[1] is NarrationSegmentData.Prose)
+        assertTrue("line 2 promotes to NpcDialog", p.segments[2] is NarrationSegmentData.NpcDialog)
+        assertEquals("Morwen", (p.segments[2] as NarrationSegmentData.NpcDialog).name)
+    }
+
+    @Test
     fun `bare-quote prose after PlayerDialog promotes to PlayerDialog`() {
         val raw = """
             {
