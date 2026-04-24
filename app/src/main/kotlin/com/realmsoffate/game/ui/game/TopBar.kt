@@ -90,7 +90,7 @@ internal fun GameTopBar(
 ) {
     val ch = state.character ?: return
     val location = state.worldMap?.locations?.getOrNull(state.currentLoc)
-    var statsExpanded by remember { mutableStateOf(true) }
+    var statsExpanded by remember { mutableStateOf(false) }
 
     val chromeSurface = MaterialTheme.colorScheme.surfaceContainer
     val configuration = LocalConfiguration.current
