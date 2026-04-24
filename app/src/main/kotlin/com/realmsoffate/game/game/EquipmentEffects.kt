@@ -73,4 +73,39 @@ object EquipmentEffects {
 
     fun passiveTriggers(ch: Character): List<String> =
         activeEffects(ch).filterIsInstance<ItemEffect.PassiveTrigger>().map { it.text }
+
+    fun promptSummary(ch: Character): String {
+        val eq = ch.inventory.filter { it.equipped }
+        val interesting = eq.filter { it.damage != null || it.ac != null || it.effects.isNotEmpty() }
+        val res = resistances(ch)
+        val imm = immunities(ch)
+        if (interesting.isEmpty() && res.isEmpty() && imm.isEmpty()) return ""
+        val sb = StringBuilder()
+        sb.appendLine("Equipped gear:")
+        interesting.forEach { item ->
+            sb.append("- ").append(item.name).append(" (").append(item.type)
+            if (item.damage != null) sb.append(", ").append(item.damage)
+            if (item.ac != null) sb.append(", AC ").append(item.ac)
+            sb.append(")")
+            val extras = mutableListOf<String>()
+            item.effects.forEach { e ->
+                when (e) {
+                    is ItemEffect.AbilityBonus -> extras.add("${signed(e.amount)} ${e.stat.uppercase()} (applied)")
+                    is ItemEffect.SkillBonus   -> extras.add("${signed(e.amount)} ${e.skill} checks")
+                    is ItemEffect.Resistance   -> { /* rolled up below */ }
+                    is ItemEffect.Immunity     -> { /* rolled up below */ }
+                    is ItemEffect.OnHit        -> extras.add("on hit: +${e.dice} ${e.damageType}")
+                    is ItemEffect.MaxHpBonus   -> extras.add("${signed(e.amount)} max HP")
+                    is ItemEffect.PassiveTrigger -> extras.add("passive: ${e.text}")
+                }
+            }
+            if (extras.isNotEmpty()) sb.append(" — ").append(extras.joinToString("; "))
+            sb.append('\n')
+        }
+        if (res.isNotEmpty()) sb.appendLine("Resistances: ${res.sorted().joinToString(", ")}")
+        if (imm.isNotEmpty()) sb.appendLine("Immunities: ${imm.sorted().joinToString(", ")}")
+        return sb.toString().trimEnd()
+    }
+
+    private fun signed(n: Int): String = if (n >= 0) "+$n" else "$n"
 }
