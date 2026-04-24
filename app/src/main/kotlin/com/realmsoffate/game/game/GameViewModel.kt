@@ -1625,6 +1625,10 @@ class GameViewModel(
         _ui.value = s.copy(hotbar = hb)
     }
 
+    fun useConsumable(item: Item) {
+        submitAction("I use ${item.name}")
+    }
+
     fun equipToggle(item: Item) {
         val s = _ui.value
         val ch = s.character ?: return

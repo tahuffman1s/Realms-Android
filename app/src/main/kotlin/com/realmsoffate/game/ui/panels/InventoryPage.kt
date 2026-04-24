@@ -1,11 +1,10 @@
 package com.realmsoffate.game.ui.panels
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,25 +14,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.data.Item
 import com.realmsoffate.game.game.GameUiState
 import com.realmsoffate.game.ui.components.EmptyState
 import com.realmsoffate.game.ui.components.PanelSheet
 import com.realmsoffate.game.ui.components.RealmsCard
-import com.realmsoffate.game.ui.components.SectionHeader
 import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
 // ----------------- INVENTORY (equipped slots + 5-col backpack grid) -----------------
 
 @Composable
-internal fun InventoryContent(state: GameUiState, onEquip: (Item) -> Unit) {
+internal fun InventoryContent(state: GameUiState, onEquip: (Item) -> Unit, onUse: (Item) -> Unit) {
     val ch = state.character ?: return
     var selected by remember(ch) { mutableStateOf<Item?>(null) }
     // ---- Equipped slots (2 col) ----
     val weapon = ch.inventory.firstOrNull { it.equipped && it.type == "weapon" }
     val armor = ch.inventory.firstOrNull { it.equipped && (it.type == "armor" || it.type == "shield") }
+    val equippedNames = listOfNotNull(weapon?.name, armor?.name)
+    val selectedIsEquipped = selected?.name in equippedNames
+    InventorySectionHeader("EQUIPMENT")
     Row(
         Modifier.padding(horizontal = RealmsSpacing.l).fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -53,21 +53,21 @@ internal fun InventoryContent(state: GameUiState, onEquip: (Item) -> Unit) {
             modifier = Modifier.weight(1f)
         )
     }
-    // ---- Selected item detail card ----
-    selected?.let { item ->
+    if (selectedIsEquipped) {
         Spacer(Modifier.height(8.dp))
-        SelectedItemCard(
-            item = item,
-            onEquipToggle = { onEquip(item); selected = item.copy(equipped = !item.equipped) },
-            onUse = {
-                // Consumables route through onEquip for now (a "use" hook would live on the VM).
-                onEquip(item); selected = null
-            }
-        )
+        Box(Modifier.padding(horizontal = RealmsSpacing.l)) {
+            SelectedItemCard(
+                item = selected!!,
+                onEquipToggle = {
+                    val i = selected!!
+                    onEquip(i); selected = i.copy(equipped = !i.equipped)
+                },
+                onUse = { val i = selected!!; onUse(i); selected = null }
+            )
+        }
     }
-    // ---- Backpack grid (5 col) ----
-    Spacer(Modifier.height(10.dp))
-    SectionHeader("  BACKPACK")
+    // ---- Backpack grid (2 col; detail card appears inline under the tapped row) ----
+    InventorySectionHeader("BACKPACK")
     val backpack = ch.inventory.filter { !(it.equipped && it.type in setOf("weapon", "armor", "shield")) }
     if (backpack.isEmpty()) {
         Text(
@@ -78,32 +78,70 @@ internal fun InventoryContent(state: GameUiState, onEquip: (Item) -> Unit) {
         )
         return
     }
+    val cols = 2
+    val rows = backpack.chunked(cols)
     LazyVerticalGrid(
-        columns = GridCells.Fixed(5),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.padding(horizontal = RealmsSpacing.m).heightIn(max = 380.dp)
+        columns = GridCells.Fixed(cols),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(horizontal = RealmsSpacing.l).heightIn(max = 520.dp)
     ) {
-        items(backpack) { item ->
-            BackpackCell(
-                item = item,
-                selected = selected?.name == item.name,
-                onClick = { selected = item }
-            )
+        rows.forEach { row ->
+            row.forEach { bpItem ->
+                item(key = "cell-${bpItem.name}") {
+                    BackpackCell(
+                        item = bpItem,
+                        selected = selected?.name == bpItem.name,
+                        onClick = { selected = bpItem }
+                    )
+                }
+            }
+            repeat(cols - row.size) { idx ->
+                item(key = "pad-${row.first().name}-$idx") {}
+            }
+            val selInRow = selected != null && row.any { it.name == selected!!.name }
+            if (selInRow) {
+                item(
+                    key = "detail-${selected!!.name}",
+                    span = { GridItemSpan(maxLineSpan) }
+                ) {
+                    SelectedItemCard(
+                        item = selected!!,
+                        onEquipToggle = {
+                            val i = selected!!
+                            onEquip(i); selected = i.copy(equipped = !i.equipped)
+                        },
+                        onUse = { val i = selected!!; onUse(i); selected = null }
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-internal fun InventoryPanel(state: GameUiState, onClose: () -> Unit, onEquip: (Item) -> Unit) {
+internal fun InventoryPanel(state: GameUiState, onClose: () -> Unit, onEquip: (Item) -> Unit, onUse: (Item) -> Unit) {
     val ch = state.character
     PanelSheet(
         "\uD83C\uDF92  Inventory",
         subtitle = if (ch == null || ch.inventory.isEmpty()) null else "${ch.inventory.size} items",
         onClose = onClose
     ) {
-        InventoryContent(state, onEquip)
+        InventoryContent(state, onEquip, onUse)
     }
+}
+
+@Composable
+private fun InventorySectionHeader(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = RealmsSpacing.s)
+    )
 }
 
 @Composable
@@ -157,7 +195,7 @@ private fun SelectedItemCard(item: Item, onEquipToggle: () -> Unit, onUse: () ->
         accentColor = color,
         shape = MaterialTheme.shapes.medium,
         contentPadding = RealmsSpacing.m,
-        modifier = Modifier.padding(horizontal = RealmsSpacing.l).fillMaxWidth()
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -205,55 +243,58 @@ private fun SelectedItemCard(item: Item, onEquipToggle: () -> Unit, onUse: () ->
 @Composable
 private fun BackpackCell(item: Item, selected: Boolean, onClick: () -> Unit) {
     val color = rarityColor(item.rarity)
-    Surface(
+    RealmsCard(
         onClick = onClick,
-        color = if (selected) color.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceContainer,
-        shape = MaterialTheme.shapes.small,
-        modifier = Modifier.aspectRatio(0.85f).border(
-            1.dp,
-            if (selected) color else color.copy(alpha = 0.25f),
-            MaterialTheme.shapes.small
-        )
+        shape = MaterialTheme.shapes.medium,
+        outlined = true,
+        accentColor = color,
+        selected = selected,
+        contentPadding = RealmsSpacing.m,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Box(Modifier.fillMaxSize()) {
-            Column(
-                Modifier.fillMaxSize().padding(4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(itemIconFor(item), style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(2.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                item.type.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = color,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+                maxLines = 1
+            )
+            if (item.qty > 1) {
                 Text(
-                    item.name,
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    textAlign = TextAlign.Center
+                    "×${item.qty}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
                 )
             }
-            if (item.qty > 1) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = MaterialTheme.shapes.extraSmall,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(2.dp)
-                ) {
+        }
+        Spacer(Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(itemIconFor(item), style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    item.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1
+                )
+                val sub = when {
+                    item.ac != null -> "AC ${item.ac}"
+                    item.damage != null -> item.damage
+                    item.equipped -> "equipped"
+                    else -> null
+                }
+                if (sub != null) {
                     Text(
-                        "${item.qty}",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                        sub,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
                     )
                 }
             }
-            // Rarity color bar at the bottom.
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(2.dp)
-                    .background(color)
-            )
         }
     }
 }

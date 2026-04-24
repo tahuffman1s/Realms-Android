@@ -27,6 +27,7 @@ private enum class CharacterTab(val label: String) {
 internal fun CharacterPager(
     state: GameUiState,
     onEquip: (Item) -> Unit,
+    onUse: (Item) -> Unit,
     onDismiss: (String) -> Unit,
     onHotbar: (Int, String?) -> Unit,
     onCast: (Spell) -> Unit
@@ -50,7 +51,7 @@ internal fun CharacterPager(
             Column(mod) {
                 when (tabs[page]) {
                     CharacterTab.Stats -> StatsContent(state)
-                    CharacterTab.Inventory -> InventoryContent(state, onEquip)
+                    CharacterTab.Inventory -> InventoryContent(state, onEquip, onUse)
                     CharacterTab.Spells -> SpellsContent(state, onHotbar, onCast)
                     CharacterTab.Party -> PartyContent(state, onDismiss)
                 }
