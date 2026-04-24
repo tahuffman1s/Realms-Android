@@ -1,0 +1,52 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="192"
+    android:viewportHeight="192">
+
+    <!--
+      Splash-screen variant of the launcher sword. Identical geometry, but the
+      stroke color tracks @color/splash_icon_tint so it stays visible against
+      the themed splash background (light / dark / Material You dynamic).
+    -->
+
+    <group
+        android:pivotX="96"
+        android:pivotY="96"
+        android:rotation="45">
+
+        <!-- Blade -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="@color/splash_icon_tint"
+            android:strokeWidth="6"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M96,51 L102,66 L102,108 L96,113 L90,108 L90,66 Z" />
+
+        <!-- Cross-guard -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="@color/splash_icon_tint"
+            android:strokeWidth="6"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M72,114 L120,114" />
+
+        <!-- Grip -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="@color/splash_icon_tint"
+            android:strokeWidth="6"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M96,114 L96,134" />
+
+        <!-- Pommel -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="@color/splash_icon_tint"
+            android:strokeWidth="6"
+            android:pathData="M96,141 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0" />
+    </group>
+</vector>
