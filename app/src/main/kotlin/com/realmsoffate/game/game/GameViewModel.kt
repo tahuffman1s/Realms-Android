@@ -1651,10 +1651,7 @@ class GameViewModel(
         if (nowEquipped) {
             val itemType = inv[idx].type
             val slotLimit = if (itemType == "ring") 2 else 1
-            val groupTypes: Set<String> = when (itemType) {
-                "armor", "shield" -> setOf("armor", "shield")
-                else -> setOf(itemType)
-            }
+            val groupTypes: Set<String> = setOf(itemType)
             val equippedInGroup = inv.withIndex()
                 .filter { (i, e) -> i != idx && e.equipped && e.type in groupTypes }
             val overflow = (equippedInGroup.size + 1) - slotLimit

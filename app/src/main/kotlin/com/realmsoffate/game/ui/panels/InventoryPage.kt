@@ -32,13 +32,14 @@ internal fun InventoryContent(state: GameUiState, onEquip: (Item) -> Unit, onUse
     var selected by remember(ch) { mutableStateOf<Item?>(null) }
     // ---- Equipped slots ----
     val weapon = ch.inventory.firstOrNull { it.equipped && it.type == "weapon" }
-    val armor = ch.inventory.firstOrNull { it.equipped && (it.type == "armor" || it.type == "shield") }
+    val armor = ch.inventory.firstOrNull { it.equipped && it.type == "armor" }
+    val shield = ch.inventory.firstOrNull { it.equipped && it.type == "shield" }
     val amulet = ch.inventory.firstOrNull { it.equipped && it.type == "amulet" }
     val clothes = ch.inventory.firstOrNull { it.equipped && it.type == "clothes" }
     val equippedRings = ch.inventory.filter { it.equipped && it.type == "ring" }.take(2)
     val ring1 = equippedRings.getOrNull(0)
     val ring2 = equippedRings.getOrNull(1)
-    val equippedNames = listOfNotNull(weapon?.name, armor?.name, amulet?.name, clothes?.name, ring1?.name, ring2?.name)
+    val equippedNames = listOfNotNull(weapon?.name, armor?.name, shield?.name, amulet?.name, clothes?.name, ring1?.name, ring2?.name)
     val selectedIsEquipped = selected?.name in equippedNames
     InventorySectionHeader("EQUIPMENT")
     Row(
@@ -53,10 +54,30 @@ internal fun InventoryContent(state: GameUiState, onEquip: (Item) -> Unit, onUse
             modifier = Modifier.weight(1f)
         )
         EquippedSlot(
-            label = "ARMOR",
+            label = "SHIELD",
             icon = "\uD83D\uDEE1\uFE0F",
+            item = shield,
+            onTap = { selected = shield },
+            modifier = Modifier.weight(1f)
+        )
+    }
+    Spacer(Modifier.height(8.dp))
+    Row(
+        Modifier.padding(horizontal = RealmsSpacing.l).fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        EquippedSlot(
+            label = "ARMOR",
+            icon = "🥼",
             item = armor,
             onTap = { selected = armor },
+            modifier = Modifier.weight(1f)
+        )
+        EquippedSlot(
+            label = "CLOTHES",
+            icon = "👕",
+            item = clothes,
+            onTap = { selected = clothes },
             modifier = Modifier.weight(1f)
         )
     }
@@ -72,13 +93,7 @@ internal fun InventoryContent(state: GameUiState, onEquip: (Item) -> Unit, onUse
             onTap = { selected = amulet },
             modifier = Modifier.weight(1f)
         )
-        EquippedSlot(
-            label = "CLOTHES",
-            icon = "👕",
-            item = clothes,
-            onTap = { selected = clothes },
-            modifier = Modifier.weight(1f)
-        )
+        Spacer(Modifier.weight(1f))
     }
     Spacer(Modifier.height(8.dp))
     Row(
@@ -297,7 +312,7 @@ private fun BackpackCell(item: Item, selected: Boolean, onClick: () -> Unit) {
         accentColor = color,
         selected = selected,
         contentPadding = RealmsSpacing.m,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().heightIn(min = 88.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
