@@ -55,4 +55,47 @@ class EquipmentEffectsTest {
         val ch = char(Item("X", effects = listOf(ItemEffect.Resistance("fire"))))
         assertTrue(EquipmentEffects.activeEffects(ch).isEmpty())
     }
+
+    @Test fun effectiveAc_unarmoredEquals10PlusDex() {
+        val ch = char(abilities = Abilities(dex = 14))
+        assertEquals(12, EquipmentEffects.effectiveAc(ch))
+    }
+
+    @Test fun effectiveAc_lightArmorAddsDex() {
+        val leather = Item("Leather Armor", type = "armor", ac = 11, equipped = true)
+        val ch = char(leather, abilities = Abilities(dex = 14))
+        assertEquals(13, EquipmentEffects.effectiveAc(ch))
+    }
+
+    @Test fun effectiveAc_heavyArmorIgnoresDex() {
+        val plate = Item("Plate Armor", type = "armor", ac = 18, equipped = true)
+        val ch = char(plate, abilities = Abilities(dex = 16))
+        assertEquals(18, EquipmentEffects.effectiveAc(ch))
+    }
+
+    @Test fun effectiveAc_chainMailIgnoresDex() {
+        val chain = Item("Chain Mail", type = "armor", ac = 16, equipped = true)
+        val ch = char(chain, abilities = Abilities(dex = 16))
+        assertEquals(16, EquipmentEffects.effectiveAc(ch))
+    }
+
+    @Test fun effectiveAc_shieldAddsTwo() {
+        val leather = Item("Leather Armor", type = "armor", ac = 11, equipped = true)
+        val shield = Item("Shield", type = "shield", equipped = true)
+        val ch = char(leather, shield, abilities = Abilities(dex = 14))
+        assertEquals(15, EquipmentEffects.effectiveAc(ch))
+    }
+
+    @Test fun effectiveAc_unequippedArmorIgnored() {
+        val leather = Item("Leather Armor", type = "armor", ac = 11, equipped = false)
+        val ch = char(leather, abilities = Abilities(dex = 14))
+        assertEquals(12, EquipmentEffects.effectiveAc(ch))
+    }
+
+    @Test fun effectiveAc_usesEffectiveDex() {
+        val cloak = Item("Cloak of Dex", type = "clothes", equipped = true,
+            effects = listOf(ItemEffect.AbilityBonus("DEX", 2)))
+        val ch = char(cloak, abilities = Abilities(dex = 14))
+        assertEquals(13, EquipmentEffects.effectiveAc(ch))
+    }
 }

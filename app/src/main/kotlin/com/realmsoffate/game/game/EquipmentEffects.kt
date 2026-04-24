@@ -30,4 +30,19 @@ object EquipmentEffects {
         }
         return Abilities(str, dex, con, int, wis, cha)
     }
+
+    private val HEAVY_ARMOR_TOKENS = listOf("Chain Mail", "Plate", "Ring Mail", "Splint")
+
+    fun effectiveAc(ch: Character): Int {
+        val eq = ch.inventory.filter { it.equipped }
+        val armor = eq.firstOrNull { it.ac != null }
+        val hasShield = eq.any { it.type.equals("shield", ignoreCase = true) }
+        val effDex = effectiveAbilities(ch).dexMod
+        val base = when {
+            armor == null -> 10 + effDex
+            HEAVY_ARMOR_TOKENS.any { armor.name.contains(it, ignoreCase = true) } -> armor.ac!!
+            else -> armor.ac!! + effDex
+        }
+        return base + if (hasShield) 2 else 0
+    }
 }
