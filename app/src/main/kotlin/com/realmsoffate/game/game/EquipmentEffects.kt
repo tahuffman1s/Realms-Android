@@ -108,4 +108,20 @@ object EquipmentEffects {
     }
 
     private fun signed(n: Int): String = if (n >= 0) "+$n" else "$n"
+
+    /**
+     * Given the character before and after an equip-state change, return the
+     * (newMaxHp, newHp) pair. Uses the MaxHpBonus delta so base maxHp is
+     * preserved; never heals on equip; clamps down on unequip.
+     */
+    fun recalcHpAfterEquip(oldChar: Character, newChar: Character): Pair<Int, Int> {
+        val oldBonus = oldChar.inventory.filter { it.equipped }
+            .flatMap { it.effects }.filterIsInstance<ItemEffect.MaxHpBonus>().sumOf { it.amount }
+        val newBonus = newChar.inventory.filter { it.equipped }
+            .flatMap { it.effects }.filterIsInstance<ItemEffect.MaxHpBonus>().sumOf { it.amount }
+        val delta = newBonus - oldBonus
+        val newMax = (oldChar.maxHp + delta).coerceAtLeast(1)
+        val newHp = oldChar.hp.coerceAtMost(newMax)
+        return newMax to newHp
+    }
 }

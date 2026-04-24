@@ -1432,7 +1432,9 @@ class GameViewModel(
             parsed = parsed,
             existingNpcs = state.npcLog,
             currentLoc = currentLocNameForParse,
-            turn = state.turns + 1
+            turn = state.turns + 1,
+            itemNames = state.character?.inventory?.map { it.name }?.toSet().orEmpty(),
+            spellNames = state.character?.knownSpells?.toSet().orEmpty()
         )
         val parsedAugmented = if (autoTagged.isEmpty()) parsed
         else parsed.copy(npcsMet = parsed.npcsMet + autoTagged)
@@ -1663,7 +1665,10 @@ class GameViewModel(
             }
         }
         inv[idx] = inv[idx].copy(equipped = nowEquipped)
-        _ui.value = s.copy(character = ch.copy(inventory = inv))
+        val staged = ch.copy(inventory = inv)
+        val (newMaxHp, newHp) = EquipmentEffects.recalcHpAfterEquip(oldChar = ch, newChar = staged)
+        val newAc = EquipmentEffects.effectiveAc(staged)
+        _ui.value = s.copy(character = staged.copy(maxHp = newMaxHp, hp = newHp, ac = newAc))
         val action = when {
             !nowEquipped -> "I unequip my ${item.name}"
             displaced.isEmpty() -> "I equip my ${item.name}"
