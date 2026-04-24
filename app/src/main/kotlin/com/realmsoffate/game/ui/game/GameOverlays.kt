@@ -1,8 +1,10 @@
 package com.realmsoffate.game.ui.game
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -142,44 +144,27 @@ internal fun SettingsPanel(
 
             Row(
                 Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedButton(
-                    onClick = { onExportSave(); onClose() },
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.s)
+                OutlinedIconButton(
+                    onClick = { onExportSave(); onClose() }
                 ) {
-                    Text(
-                        "Export Save",
-                        maxLines = 2,
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.labelLarge
-                    )
+                    Icon(Icons.Filled.FileDownload, contentDescription = "Export save")
                 }
-                OutlinedButton(
-                    onClick = { onDebugDump(); onClose() },
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.s)
+                OutlinedIconButton(
+                    onClick = { onDebugDump(); onClose() }
                 ) {
-                    Text(
-                        "Debug Dump",
-                        maxLines = 2,
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.labelLarge
-                    )
+                    Icon(Icons.Filled.BugReport, contentDescription = "Debug dump")
                 }
-                OutlinedButton(
+                OutlinedIconButton(
                     onClick = { onReturnToTitle() },
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = RealmsSpacing.xs, vertical = RealmsSpacing.s),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    colors = IconButtonDefaults.outlinedIconButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
                 ) {
-                    Text(
-                        "Return to Title",
-                        maxLines = 2,
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.labelLarge
-                    )
+                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Return to title")
                 }
             }
 
