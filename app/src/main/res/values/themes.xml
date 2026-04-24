@@ -1,19 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Launch theme used by the activity until Compose takes over. -->
+    <!--
+      Launch theme shown before Compose mounts. Colors come from the M3
+      palette (values/ + values-night/ for day/night, values-v31/ +
+      values-night-v31/ for Material You dynamic tokens on Android 12+).
+    -->
     <style name="Theme.RealmsOfFate" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/bg_dark</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenBackground">@color/splash_bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_sword</item>
         <item name="postSplashScreenTheme">@style/Theme.RealmsOfFate.Main</item>
-        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:windowBackground">@color/window_bg</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:enforceStatusBarContrast">false</item>
         <item name="android:enforceNavigationBarContrast">false</item>
     </style>
 
+    <!--
+      Post-splash window theme. Compose drives all colors via MaterialTheme;
+      this only needs to match window chrome so the first frame doesn't flash.
+    -->
     <style name="Theme.RealmsOfFate.Main" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:windowBackground">@color/window_bg</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>

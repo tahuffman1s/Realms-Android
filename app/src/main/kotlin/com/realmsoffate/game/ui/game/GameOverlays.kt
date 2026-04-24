@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.realmsoffate.game.BuildConfig
 import com.realmsoffate.game.data.Choice
 import com.realmsoffate.game.ui.theme.RealmsElevation
 import com.realmsoffate.game.ui.theme.RealmsSpacing
@@ -176,6 +177,14 @@ internal fun SettingsPanel(
                 }
             }
 
+            Spacer(Modifier.height(RealmsSpacing.l))
+            Text(
+                "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
             Spacer(Modifier.navigationBarsPadding().height(RealmsSpacing.m))
         }
     }

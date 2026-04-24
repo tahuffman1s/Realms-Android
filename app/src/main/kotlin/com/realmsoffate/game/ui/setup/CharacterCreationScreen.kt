@@ -780,7 +780,7 @@ private fun GradientBeginButton(enabled: Boolean, onClick: () -> Unit, modifier:
                 Icon(Icons.Default.Check, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "BEGIN THE TALE",
+                    "BEGIN",
                     style = MaterialTheme.typography.titleSmall.copy(letterSpacing = 2.sp),
                     fontWeight = FontWeight.Bold,
                     maxLines = 1

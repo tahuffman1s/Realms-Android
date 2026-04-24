@@ -4,4 +4,13 @@
     <color name="purple">#8B6CC7</color>
     <color name="bg_dark">#1D1B20</color>
     <color name="ic_launcher_background">#F4F1F6</color>
+
+    <!--
+      Splash + pre-Compose window colors track the Compose M3 palette.
+      Values here = light mode / FallbackLight. values-night/ overrides for dark.
+      values-v31/ + values-night-v31/ swap in Material You dynamic tokens.
+    -->
+    <color name="splash_bg">#FDFAF2</color>
+    <color name="splash_icon_tint">#B8891A</color>
+    <color name="window_bg">#FDFAF2</color>
 </resources>

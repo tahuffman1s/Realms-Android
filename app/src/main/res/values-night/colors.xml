@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark-mode counterparts of splash colors in values/colors.xml. -->
+    <color name="splash_bg">#121015</color>
+    <color name="splash_icon_tint">#E2B84A</color>
+    <color name="window_bg">#121015</color>
+</resources>
