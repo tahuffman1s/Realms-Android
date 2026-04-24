@@ -1,148 +1,150 @@
-# Realms of Fate
+<div align="center">
 
-A native Android RPG where every adventure is narrated by an AI dungeon master. Built with Kotlin, Jetpack Compose, and D&D 5e mechanics. Each playthrough generates a unique world with factions, NPCs, quests, morality, and consequences that ripple across sessions.
+# ⚔️ Realms of Fate
 
-Ported from a single-file HTML original with full feature parity.
+### A native Android RPG where every adventure is narrated by an AI Dungeon Master.
 
-## How it works
+Kotlin · Jetpack Compose · D&D 5e · DeepSeek V3
 
-You type what your character does. The AI narrates what happens next, rolling dice, tracking NPCs, advancing quests, and mutating the world behind the scenes. A structured tag protocol (`[DAMAGE:N]`, `[QUEST_START:...]`, `[NPC_MET:...]`, etc.) bridges the AI's prose with real game mechanics — HP, inventory, faction reputation, and 20+ other state variables update automatically each turn.
+[![Release](https://img.shields.io/github/v/release/tahuffman1s/Realms-Android?include_prereleases&style=flat-square&color=8B5CF6)](https://github.com/tahuffman1s/Realms-Android/releases)
+[![Platform](https://img.shields.io/badge/platform-Android%208%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com/)
+[![Kotlin](https://img.shields.io/badge/kotlin-2.2-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Compose](https://img.shields.io/badge/jetpack%20compose-M3-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![License](https://img.shields.io/badge/license-see%20parent-lightgrey?style=flat-square)](#license)
 
-The narrator is modeled after the Baldur's Gate 3 narrator: sardonic, omniscient, and willing to let you fail spectacularly. Narrator asides ("Well, that was genuinely painful to watch") appear as distinct elements between prose blocks.
+<img src="docs/images/title.png" alt="Realms of Fate — title screen" width="320" />
 
-## Tech stack
+</div>
 
-| Layer | Choice |
-|-------|--------|
-| Language | Kotlin 2.2 |
-| UI | Jetpack Compose, Material 3 with Material You dynamic color |
-| Architecture | Single `ComponentActivity`, `GameViewModel` (StateFlow), pure reducers |
-| AI | DeepSeek V3 via OkHttp (Gemini + Claude supported but dormant) |
-| Persistence | DataStore (prefs), JSON save slots via kotlinx.serialization |
-| Map | Compose `Canvas` — no external mapping library |
-| Target | SDK 34 (Android 14), min SDK 26 (Android 8) |
+---
 
-## Game systems
+## 🎲 What is this?
 
-**World generation** — Seeded procedural worlds with 11-15 locations, roads, rivers, terrain, and local points of interest. Deterministic from seed so saves reload identically.
+You type what your character does. The AI narrates what happens next — rolling dice, tracking NPCs, advancing quests, and mutating the world behind the scenes. A structured tag protocol (`[DAMAGE:N]`, `[QUEST_START:…]`, `[NPC_MET:…]`) bridges the AI's prose with real game mechanics. HP, inventory, faction reputation, and 20+ other state variables update automatically each turn.
 
-**Factions & lore** — 8-12 factions per world with government types, economies, currencies, rulers, and dynasty history. 300+ NPC name pool. Historical timeline spanning primordial through present era.
+The narrator is modeled after Baldur's Gate 3: sardonic, omniscient, willing to let you fail spectacularly. Asides like *"Well, that was genuinely painful to watch"* appear between prose blocks as the story plays out.
 
-**World mutations** — 2-3 per playthrough from a pool of 16 (The Dead Walk, Eternal Winter, Fey Crossing, Dragon Tyranny, etc.). Each injects a narrator prompt that colors every scene.
+---
 
-**D&D 5e mechanics** — 11 races, 12 classes, point-buy abilities, proficiency scaling, spell slots, 34-entry spell database, skill checks (d20 + mod + prof vs DC), death saves, short/long rest.
+## ✨ Features
 
-**Morality & reputation** — Morality tracks -100 to +100 across 7 tiers. Per-faction reputation affects prices, NPC reactions, and available choices.
+| | |
+|---|---|
+| 🧙 **AI Game Master** | DeepSeek V3 narrates turn-by-turn with prompt caching that saves 70%+ of tokens after the first turn. |
+| 🌍 **Procedural worlds** | Seeded, deterministic worlds with 11–15 locations, 8–12 factions, 300+ NPC names, and a full historical timeline. |
+| ⚔️ **D&D 5e mechanics** | 11 races · 12 classes · point-buy abilities · proficiency scaling · 34-entry spell database · skill checks · death saves. |
+| 🎒 **Deep equipment** | Weapon, shield, armor, amulet, clothes, two rings — each with effects on AC, HP, abilities, skills, resistances, and on-hit triggers. |
+| 🏛️ **Lore & mutations** | 2–3 world mutations per run from a pool of 16 — *The Dead Walk*, *Eternal Winter*, *Dragon Tyranny*, *Fey Crossing* — each rewriting how the narrator frames every scene. |
+| 🪙 **Economy & morality** | Per-faction currency with exchange rates. Morality tracked from -100 to +100 across 7 tiers. Reputation colors NPC reactions and prices. |
+| 💾 **Persistent NPCs** | Stable slug IDs survive 100+ turns. Dialogue history, memorable quotes, relationships, location awareness — all round-trip through the save format. |
+| 🎨 **Material You** | Dynamic color on Android 12+, day/night palette, Cinzel + Crimson serif typography. |
 
-**Multi-currency economy** — Each faction mints its own currency. Exchange rates reflect economic wealth. Merchants accept local currency or gold.
+---
 
-**Dynamic events** — Weighted random world events (faction mobilizations, assassinations, festivals, storms) trigger based on turns elapsed and player context.
+## 📸 Screens
 
-**NPC tracking** — Stable slug IDs persist across 100+ turns. Dialogue history (last 5 lines per NPC), memorable AI-curated quotes, relationship tracking, location awareness.
+<table>
+<tr>
+<td width="33%"><img src="docs/images/character-creation.png" alt="Character creation — class selection" /><br/><sub><b>Class selection</b> · 12 classes with starting gear</sub></td>
+<td width="33%"><img src="docs/images/chat.png" alt="AI narrator chat" /><br/><sub><b>Narrator</b> · prose + asides between scene beats</sub></td>
+<td width="33%"><img src="docs/images/stats.png" alt="Character sheet" /><br/><sub><b>Character sheet</b> · stats, morality, backstory</sub></td>
+</tr>
+<tr>
+<td width="33%"><img src="docs/images/inventory.png" alt="Inventory with equipment slots" /><br/><sub><b>Inventory</b> · 7 equipment slots + effects</sub></td>
+<td width="33%"><img src="docs/images/lore.png" alt="World lore panel" /><br/><sub><b>World lore</b> · realm, mutations, factions</sub></td>
+<td width="33%"><img src="docs/images/title.png" alt="Title screen" /><br/><sub><b>Title</b> · continue, new, import, graveyard</sub></td>
+</tr>
+</table>
 
-## Prompt engineering
+---
+
+## 🧠 Prompt engineering
 
 The AI integration is the core of the game. Key design decisions:
 
-- **Prompt caching** — The system prefix (DS_PREFIX + SYS + world palette) is stable across turns. Dynamic state goes in the user message so DeepSeek's cache hits the full prefix, saving 70%+ of tokens on subsequent turns.
-- **Structured output** — A `[METADATA]{JSON}` block carries all mechanical state (damage, XP, items, NPC updates, quest changes). Regex fallback exists as a safety net but hasn't fired in production.
-- **Skill classification** — Freeform player actions get a lightweight pre-call: "What D&D 5e skill fits this?" Returns a skill name for the d20 check, or null if no check needed.
+- **Prompt caching** — The system prefix (`DS_PREFIX` + `SYS` + world palette) is stable across turns. Dynamic state lives in the user message, so DeepSeek's cache hits the full prefix every turn.
+- **Structured output** — A `[METADATA]{JSON}` block carries all mechanical state (damage, XP, items, NPC updates, quest changes). A regex fallback exists as a safety net — and hasn't fired in production.
+- **Skill classification** — Freeform player actions get a lightweight pre-call: *"What D&D 5e skill fits this?"* Returns a skill name for the d20 check, or `null` if none is needed.
 - **Per-turn reminder** — A short trailer appended to the last user message reinforces tag structure, narrative voice, and mechanical rules late in long conversations.
 
-## Building
+---
 
-**Requirements:** Gradle 9.4+, AGP 9.0, Kotlin 2.2, Android SDK 34, JDK 17+.
+## 🛠️ Tech stack
+
+| Layer | Choice |
+|---|---|
+| Language | Kotlin 2.2 |
+| UI | Jetpack Compose · Material 3 · Material You dynamic color |
+| Architecture | Single `ComponentActivity` · `GameViewModel` with `StateFlow` · pure reducers |
+| AI | DeepSeek V3 via OkHttp (Gemini + Claude supported but dormant) |
+| Persistence | DataStore prefs · JSON save slots via `kotlinx.serialization` · per-save Room DB |
+| Map | Compose `Canvas` — no external mapping library |
+| Target | SDK 34 (Android 14) · min SDK 26 (Android 8) |
+
+---
+
+## 🚀 Getting started
+
+**Requirements:** Gradle 9.4+ · AGP 9.0 · Kotlin 2.2 · Android SDK 34 · JDK 17+
 
 ```bash
-# First time — set your SDK path
+# First-time setup
 cp local.properties.sample local.properties
 # Edit local.properties: sdk.dir=/path/to/Android/Sdk
 
-# Debug APK
-gradle assembleDebug
-# -> app/build/outputs/apk/debug/app-debug.apk
-
-# Release APK (needs signing config)
-gradle assembleRelease
-
-# Lint
+# Build & install
+gradle assembleDebug     # app/build/outputs/apk/debug/app-debug.apk
+gradle assembleRelease   # needs signing config (see .cursor/rules/releases-signing.mdc)
 gradle lint
-
-# Tests
 gradle test
 ```
 
-## Cursor / AI agents
-
-Detailed workflow, deploy checks, and testing policies live in **`.cursor/rules/`** (`*.mdc`). **`CLAUDE.md`** is a short index to those rules.
-
-## First run
+### First run
 
 1. Launch the app.
 2. Pick a provider and paste your API key (stored on-device via DataStore).
 3. Create a character — race, class, abilities, appearance.
 4. The narrator takes over.
 
-## Project structure
+---
+
+## 🗂️ Project layout
 
 ```
 app/src/main/kotlin/com/realmsoffate/game/
-├── MainActivity.kt                  Single activity, Compose root
-├── data/
-│   ├── Models.kt                    Character, WorldMap, Quest, Item, NPC, SaveData
-│   ├── TagParser.kt                 [METADATA] JSON + legacy regex tag extraction
-│   ├── AiRepository.kt             OkHttp client, DeepSeek prompt caching
-│   ├── Prompts.kt                   SYS + DS_PREFIX + per-turn reminder
-│   ├── PreferencesStore.kt          DataStore prefs
-│   └── SaveStore.kt                 JSON save slots
-├── game/
-│   ├── GameViewModel.kt             State + turn pipeline (1741 lines)
-│   ├── WorldGen.kt                  Seeded procedural world generator
-│   ├── LoreGen.kt                   Factions, NPCs, history, rumors
-│   ├── BackstoryGen.kt              Player backstory (secret, enemy, prophecy)
-│   ├── Scenarios.kt                 18 opening scene templates
-│   ├── Mutations.kt                 16 world mutations with narrator prompts
-│   ├── WorldEvents.kt               Dynamic event triggers
-│   ├── Races.kt                     11 races with physique text
-│   ├── Classes.kt                   12 classes with starting gear
-│   ├── Spells.kt                    34-entry spell/ability database
-│   ├── Feats.kt                     Level-up feat selection
-│   ├── Dice.kt                      d20 + NdM±K formula parser
-│   └── reducers/
-│       ├── CharacterReducer.kt      HP, XP, inventory, conditions
-│       ├── CombatReducer.kt         Enemy HP, initiative, rounds
-│       ├── NpcLogReducer.kt         NPC meet/update/death/dialogue
-│       ├── QuestAndPartyReducer.kt  Quest lifecycle, party joins/leaves
-│       └── WorldReducer.kt          Faction updates, travel, events
-├── ui/
-│   ├── theme/                       Material You + Cinzel/Crimson fonts
-│   ├── setup/                       API setup, title, character creation, death
-│   ├── game/                        Main game screen + top/bottom bars
-│   ├── map/                         Compose Canvas world map
-│   ├── panels/                      Inventory, quests, party, lore, stats, etc.
-│   ├── overlays/                    Shop, target prompt, rest, level-up
-│   └── dice/                        d20 roll animation
-└── util/
-    └── Markdown.kt                  Narrator prose markdown renderer
+├── data/          Models, AI repo, prompts, envelope parser, save/prefs
+├── game/          GameViewModel · reducers · handlers · world/lore gen · classes/races
+├── ui/            theme · setup · game · panels · overlays · map · dice
+└── util/          Markdown, helpers
 ```
 
-## Testing
+Full rules and workflow for contributors live in **`CLAUDE.md`** and **`.cursor/rules/*.mdc`** (debug-bridge procedures, testing policy, release/signing, auto-tagger rules).
+
+---
+
+## 🧪 Testing
 
 Integration tests cover the per-turn state-mutation pipeline via Robolectric:
 
 - `ApplyParsedIntegrationTest` — 20 tests across all reducer domains
-- `GameStateFixture` + `ParsedReplyBuilder` — test harness for constructing game state and AI responses
+- `EquipmentEffectsTest` · `PromptSummaryTest` · `EnvelopeParserTest` · `SceneSummaryTest`
+- `GameStateFixture` + `ParsedReplyBuilder` — harness for constructing game state and AI responses
 
 Run with `gradle test`.
 
-## Roadmap
+---
 
-See [ROADMAP.md](ROADMAP.md) for shipped phases, pending work, and strategic concerns. Key threads:
+## 🗺️ Roadmap
 
-- **AI Reliability** (Phases 1-4 shipped) — prompt caching, stable NPC IDs, JSON metadata, few-shot polish
-- **Parser** (Phases A-B shipped) — tokenizer + stack parser replacing regex
-- **GameViewModel Refactor** (Phases I-III shipped) — reducer extraction, handler extraction, `applyParsed` down from 528 to ~140 lines, GameViewModel from 2131 to 1389 lines
+See **[ROADMAP.md](ROADMAP.md)** for shipped phases, pending work, and strategic concerns. Highlights:
 
-## License
+- **AI Reliability** (Phases 1–4 shipped) — prompt caching, stable NPC IDs, JSON metadata, few-shot polish
+- **Parser** (Phases A–B shipped) — tokenizer + stack parser replacing regex
+- **GameViewModel Refactor** (Phases I–III shipped) — reducer extraction, handler extraction, `applyParsed` from 528 → ~140 lines
+- **Equipment Effects** (shipped) — `ItemEffect` sealed interface, `EquipmentEffects` aggregator, narrator integration
 
-Same as the parent project.
+---
+
+## 📄 License
+
+Same as the parent project. Ported from a single-file HTML original with full feature parity.
