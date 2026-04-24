@@ -32,9 +32,12 @@ internal fun SettingsPanel(
     onExportSave: () -> Unit = {},
     onDebugDump: () -> Unit = {},
     onReturnToTitle: () -> Unit = {},
+    onDisableCheats: () -> Unit = {},
+    cheatsEnabled: Boolean = false,
     balanceUsd: String? = null,
     onRefreshBalance: () -> Unit = {}
 ) {
+    var showDisableCheatsDialog by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onClose,
@@ -163,18 +166,49 @@ internal fun SettingsPanel(
                     onClick = { onReturnToTitle() },
                     tint = MaterialTheme.colorScheme.error
                 )
+                if (cheatsEnabled) {
+                    ActionIcon(
+                        iconText = "🃏",
+                        label = "Disable Cheats",
+                        onClick = { showDisableCheatsDialog = true },
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
 
             Spacer(Modifier.navigationBarsPadding().height(RealmsSpacing.m))
         }
     }
+
+    if (showDisableCheatsDialog) {
+        AlertDialog(
+            onDismissRequest = { showDisableCheatsDialog = false },
+            title = { Text("Disable Cheats?") },
+            text = { Text("All cheat toggles will be cleared. Type the code in chat to re-enable.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDisableCheats()
+                        showDisableCheatsDialog = false
+                        onClose()
+                    }
+                ) {
+                    Text("Disable", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDisableCheatsDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
 }
 
 @Composable
 private fun ActionIcon(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    iconText: String? = null,
     tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
 ) {
     Column(
@@ -186,7 +220,10 @@ private fun ActionIcon(
             colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = tint),
             border = BorderStroke(1.dp, tint.copy(alpha = 0.5f))
         ) {
-            Icon(icon, contentDescription = label)
+            when {
+                icon != null -> Icon(icon, contentDescription = label)
+                iconText != null -> Text(iconText, style = MaterialTheme.typography.titleMedium)
+            }
         }
         Spacer(Modifier.height(RealmsSpacing.xxs))
         Text(

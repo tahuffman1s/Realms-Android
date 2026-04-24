@@ -370,6 +370,8 @@ fun GameScreen(vm: GameViewModel) {
                 },
                 onDebugDump = { dumpDebugToFile() },
                 onReturnToTitle = { vm.returnToTitle() },
+                onDisableCheats = { vm.disableCheats() },
+                cheatsEnabled = cheatsEnabled,
                 balanceUsd = balance,
                 onRefreshBalance = { vm.refreshBalance(force = true) }
             )
