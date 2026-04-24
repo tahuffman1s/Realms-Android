@@ -153,6 +153,15 @@ class EquipmentEffectsTest {
         assertEquals("thunder", riders[2].damageType)
     }
 
+    @Test fun applyClassStart_setsAcViaEffectiveAc() {
+        val ch = Character(name = "T", race = "Human", cls = "Fighter",
+            abilities = Abilities(dex = 14, con = 12))
+        val cls = Classes.find("Fighter")!!
+        applyClassStart(ch, cls)
+        // Fighter starts with Chain Mail (heavy, AC 16, ignores DEX) + Shield (+2) = 18.
+        assertEquals(18, ch.ac)
+    }
+
     @Test fun passiveTriggers_returnsText() {
         val cursed = Item("Cursed Ring", equipped = true,
             effects = listOf(ItemEffect.PassiveTrigger("cursed: -1 to all rolls")))
