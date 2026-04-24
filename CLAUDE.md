@@ -1,4 +1,4 @@
-# Realms of Fate — Android
+# Realms — Android
 
 Kotlin + Jetpack Compose RPG. `com.realmsoffate.game`. Gradle Kotlin DSL.
 

@@ -53,4 +53,4 @@ Without credentials, release builds may be **unsigned**.
 
 Encode keystore for Secrets: `base64 -w0 realms-upload.jks` (pipe to clipboard on Linux).
 
-Release APK name pattern: **`realms-of-fate-vX.Y.Z-release.apk`** via `archivesBaseName` in Gradle.
+Release APK name pattern: **`realms-vX.Y.Z-release.apk`** (renamed in CI).

@@ -1,4 +1,4 @@
-# Realms of Fate — Roadmap
+# Realms — Roadmap
 
 Phases that have shipped, phases queued, and phases deliberately deferred or
 declined. Updated at each commit. Read top-to-bottom for full context, or skim
@@ -182,7 +182,7 @@ Critical bugs found via codebase audit and fixed:
 | Semver versioning (0.1.0), computed versionCode | ✅ Shipped |
 | Tag-driven GitHub Actions release pipeline | ✅ Shipped |
 | APK signing (local keystore.properties + CI GitHub Secrets) | ✅ Shipped |
-| APK renamed to `realms-of-fate-vX.Y.Z-release.apk` in CI | ✅ Shipped |
+| APK renamed to `realms-vX.Y.Z-release.apk` in CI | ✅ Shipped |
 
 ---
 

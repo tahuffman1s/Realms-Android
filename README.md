@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚔️ Realms of Fate
+# ⚔️ Realms
 
 ### A native Android RPG where every adventure is narrated by an AI Dungeon Master.
 
@@ -10,9 +10,9 @@ Kotlin · Jetpack Compose · D&D 5e · DeepSeek V3
 [![Platform](https://img.shields.io/badge/platform-Android%208%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com/)
 [![Kotlin](https://img.shields.io/badge/kotlin-2.2-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![Compose](https://img.shields.io/badge/jetpack%20compose-M3-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
-[![License](https://img.shields.io/badge/license-see%20parent-lightgrey?style=flat-square)](#license)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
-<img src="docs/images/title.png" alt="Realms of Fate — title screen" width="320" />
+<img src="docs/images/title.png" alt="Realms — title screen" width="320" />
 
 </div>
 
@@ -31,11 +31,11 @@ The narrator is modeled after Baldur's Gate 3: sardonic, omniscient, willing to 
 | | |
 |---|---|
 | 🧙 **AI Game Master** | DeepSeek V3 narrates turn-by-turn with prompt caching that saves 70%+ of tokens after the first turn. |
-| 🌍 **Procedural worlds** | Seeded, deterministic worlds with 11–15 locations, 8–12 factions, 300+ NPC names, and a full historical timeline. |
+| 🌍 **Procedural worlds** | Seeded, deterministic worlds with 11–14 locations, 2–4 factions, 300+ NPC names, and a full historical timeline. |
 | ⚔️ **D&D 5e mechanics** | 11 races · 12 classes · point-buy abilities · proficiency scaling · 34-entry spell database · skill checks · death saves. |
 | 🎒 **Deep equipment** | Weapon, shield, armor, amulet, clothes, two rings — each with effects on AC, HP, abilities, skills, resistances, and on-hit triggers. |
 | 🏛️ **Lore & mutations** | 2–3 world mutations per run from a pool of 16 — *The Dead Walk*, *Eternal Winter*, *Dragon Tyranny*, *Fey Crossing* — each rewriting how the narrator frames every scene. |
-| 🪙 **Economy & morality** | Per-faction currency with exchange rates. Morality tracked from -100 to +100 across 7 tiers. Reputation colors NPC reactions and prices. |
+| ⚖️ **Morality & reputation** | Morality tracked from -100 to +100 across 7 tiers. Per-faction reputation colors NPC reactions and available choices. |
 | 💾 **Persistent NPCs** | Stable slug IDs survive 100+ turns. Dialogue history, memorable quotes, relationships, location awareness — all round-trip through the save format. |
 | 🎨 **Material You** | Dynamic color on Android 12+, day/night palette, Cinzel + Crimson serif typography. |
 
@@ -78,7 +78,6 @@ The AI integration is the core of the game. Key design decisions:
 | Architecture | Single `ComponentActivity` · `GameViewModel` with `StateFlow` · pure reducers |
 | AI | DeepSeek V3 via OkHttp (Gemini + Claude supported but dormant) |
 | Persistence | DataStore prefs · JSON save slots via `kotlinx.serialization` · per-save Room DB |
-| Map | Compose `Canvas` — no external mapping library |
 | Target | SDK 34 (Android 14) · min SDK 26 (Android 8) |
 
 ---
@@ -114,7 +113,7 @@ gradle test
 app/src/main/kotlin/com/realmsoffate/game/
 ├── data/          Models, AI repo, prompts, envelope parser, save/prefs
 ├── game/          GameViewModel · reducers · handlers · world/lore gen · classes/races
-├── ui/            theme · setup · game · panels · overlays · map · dice
+├── ui/            theme · setup · game · panels · overlays · dice
 └── util/          Markdown, helpers
 ```
 
@@ -126,7 +125,7 @@ Full rules and workflow for contributors live in **`CLAUDE.md`** and **`.cursor/
 
 Integration tests cover the per-turn state-mutation pipeline via Robolectric:
 
-- `ApplyParsedIntegrationTest` — 20 tests across all reducer domains
+- `ApplyParsedIntegrationTest` — tests across all reducer domains
 - `EquipmentEffectsTest` · `PromptSummaryTest` · `EnvelopeParserTest` · `SceneSummaryTest`
 - `GameStateFixture` + `ParsedReplyBuilder` — harness for constructing game state and AI responses
 
@@ -147,4 +146,4 @@ See **[ROADMAP.md](ROADMAP.md)** for shipped phases, pending work, and strategic
 
 ## 📄 License
 
-Same as the parent project. Ported from a single-file HTML original with full feature parity.
+MIT — see [LICENSE](LICENSE).

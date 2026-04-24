@@ -46,7 +46,7 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME}"
           apk=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
-          mv "$apk" "app/build/outputs/apk/release/realms-of-fate-${version}-release.apk"
+          mv "$apk" "app/build/outputs/apk/release/realms-${version}-release.apk"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -54,4 +54,4 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           generate_release_notes: true
-          files: app/build/outputs/apk/release/realms-of-fate-*.apk
+          files: app/build/outputs/apk/release/realms-*.apk
