@@ -1626,7 +1626,18 @@ class GameViewModel(
     }
 
     fun useConsumable(item: Item) {
-        submitAction("I use ${item.name}")
+        val s = _ui.value
+        val ch = s.character
+        if (ch != null) {
+            val inv = ch.inventory.toMutableList()
+            val idx = inv.indexOfFirst { it.name.equals(item.name, true) }
+            if (idx >= 0) {
+                val e = inv[idx]
+                if (e.qty > 1) inv[idx] = e.copy(qty = e.qty - 1) else inv.removeAt(idx)
+                _ui.value = s.copy(character = ch.copy(inventory = inv))
+            }
+        }
+        submitAction("I use my ${item.name}")
     }
 
     fun equipToggle(item: Item) {
@@ -1635,8 +1646,11 @@ class GameViewModel(
         val inv = ch.inventory.toMutableList()
         val idx = inv.indexOfFirst { it.name == item.name }
         if (idx < 0) return
-        inv[idx] = inv[idx].copy(equipped = !inv[idx].equipped)
+        val nowEquipped = !inv[idx].equipped
+        inv[idx] = inv[idx].copy(equipped = nowEquipped)
         _ui.value = s.copy(character = ch.copy(inventory = inv))
+        val verb = if (nowEquipped) "equip" else "unequip"
+        submitAction("I $verb my ${item.name}")
     }
 
     fun dismissCompanion(name: String) {

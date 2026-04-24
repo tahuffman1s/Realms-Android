@@ -201,7 +201,10 @@ fun GameScreen(vm: GameViewModel) {
                 GameTab.Character -> {
                     CharacterPager(
                         state = state,
-                        onEquip = vm::equipToggle,
+                        onEquip = { item ->
+                            tab = GameTab.Chat
+                            vm.equipToggle(item)
+                        },
                         onUse = { item ->
                             tab = GameTab.Chat
                             vm.useConsumable(item)
