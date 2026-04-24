@@ -145,31 +145,56 @@ internal fun SettingsPanel(
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-                OutlinedIconButton(
+                ActionIcon(
+                    icon = Icons.Filled.FileDownload,
+                    label = "Export Save",
                     onClick = { onExportSave(); onClose() }
-                ) {
-                    Icon(Icons.Filled.FileDownload, contentDescription = "Export save")
-                }
-                OutlinedIconButton(
+                )
+                ActionIcon(
+                    icon = Icons.Filled.BugReport,
+                    label = "Debug Dump",
                     onClick = { onDebugDump(); onClose() }
-                ) {
-                    Icon(Icons.Filled.BugReport, contentDescription = "Debug dump")
-                }
-                OutlinedIconButton(
+                )
+                ActionIcon(
+                    icon = Icons.AutoMirrored.Filled.Logout,
+                    label = "Return to Title",
                     onClick = { onReturnToTitle() },
-                    colors = IconButtonDefaults.outlinedIconButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    ),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Return to title")
-                }
+                    tint = MaterialTheme.colorScheme.error
+                )
             }
 
             Spacer(Modifier.navigationBarsPadding().height(RealmsSpacing.m))
         }
+    }
+}
+
+@Composable
+private fun ActionIcon(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.widthIn(min = 72.dp)
+    ) {
+        OutlinedIconButton(
+            onClick = onClick,
+            colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = tint),
+            border = BorderStroke(1.dp, tint.copy(alpha = 0.5f))
+        ) {
+            Icon(icon, contentDescription = label)
+        }
+        Spacer(Modifier.height(RealmsSpacing.xxs))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = tint,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
