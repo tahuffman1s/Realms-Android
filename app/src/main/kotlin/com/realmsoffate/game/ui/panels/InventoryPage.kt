@@ -22,16 +22,23 @@ import com.realmsoffate.game.ui.components.RealmsCard
 import com.realmsoffate.game.ui.theme.RealmsSpacing
 import com.realmsoffate.game.ui.theme.RealmsTheme
 
+private val EQUIPPABLE_TYPES = setOf("weapon", "armor", "shield", "amulet", "ring", "clothes")
+
 // ----------------- INVENTORY (equipped slots + 5-col backpack grid) -----------------
 
 @Composable
 internal fun InventoryContent(state: GameUiState, onEquip: (Item) -> Unit, onUse: (Item) -> Unit) {
     val ch = state.character ?: return
     var selected by remember(ch) { mutableStateOf<Item?>(null) }
-    // ---- Equipped slots (2 col) ----
+    // ---- Equipped slots ----
     val weapon = ch.inventory.firstOrNull { it.equipped && it.type == "weapon" }
     val armor = ch.inventory.firstOrNull { it.equipped && (it.type == "armor" || it.type == "shield") }
-    val equippedNames = listOfNotNull(weapon?.name, armor?.name)
+    val amulet = ch.inventory.firstOrNull { it.equipped && it.type == "amulet" }
+    val clothes = ch.inventory.firstOrNull { it.equipped && it.type == "clothes" }
+    val equippedRings = ch.inventory.filter { it.equipped && it.type == "ring" }.take(2)
+    val ring1 = equippedRings.getOrNull(0)
+    val ring2 = equippedRings.getOrNull(1)
+    val equippedNames = listOfNotNull(weapon?.name, armor?.name, amulet?.name, clothes?.name, ring1?.name, ring2?.name)
     val selectedIsEquipped = selected?.name in equippedNames
     InventorySectionHeader("EQUIPMENT")
     Row(
@@ -53,6 +60,46 @@ internal fun InventoryContent(state: GameUiState, onEquip: (Item) -> Unit, onUse
             modifier = Modifier.weight(1f)
         )
     }
+    Spacer(Modifier.height(8.dp))
+    Row(
+        Modifier.padding(horizontal = RealmsSpacing.l).fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        EquippedSlot(
+            label = "AMULET",
+            icon = "📿",
+            item = amulet,
+            onTap = { selected = amulet },
+            modifier = Modifier.weight(1f)
+        )
+        EquippedSlot(
+            label = "CLOTHES",
+            icon = "👕",
+            item = clothes,
+            onTap = { selected = clothes },
+            modifier = Modifier.weight(1f)
+        )
+    }
+    Spacer(Modifier.height(8.dp))
+    Row(
+        Modifier.padding(horizontal = RealmsSpacing.l).fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        EquippedSlot(
+            label = "RING 1",
+            icon = "💍",
+            item = ring1,
+            onTap = { selected = ring1 },
+            modifier = Modifier.weight(1f)
+        )
+        EquippedSlot(
+            label = "RING 2",
+            icon = "💍",
+            item = ring2,
+            onTap = { selected = ring2 },
+            modifier = Modifier.weight(1f)
+        )
+    }
     if (selectedIsEquipped) {
         Spacer(Modifier.height(8.dp))
         Box(Modifier.padding(horizontal = RealmsSpacing.l)) {
@@ -68,7 +115,7 @@ internal fun InventoryContent(state: GameUiState, onEquip: (Item) -> Unit, onUse
     }
     // ---- Backpack grid (2 col; detail card appears inline under the tapped row) ----
     InventorySectionHeader("BACKPACK")
-    val backpack = ch.inventory.filter { !(it.equipped && it.type in setOf("weapon", "armor", "shield")) }
+    val backpack = ch.inventory.filter { !(it.equipped && it.type in EQUIPPABLE_TYPES) }
     if (backpack.isEmpty()) {
         Text(
             "Pack is empty.",
@@ -220,7 +267,7 @@ private fun SelectedItemCard(item: Item, onEquipToggle: () -> Unit, onUse: () ->
         }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (item.type in setOf("weapon", "armor", "shield")) {
+            if (item.type in EQUIPPABLE_TYPES) {
                 Button(
                     onClick = onEquipToggle,
                     modifier = Modifier.weight(1f),
@@ -347,6 +394,9 @@ private fun itemEmoji(type: String): String = when (type.lowercase()) {
     "armor" -> "\uD83E\uDD7C"
     "shield" -> "\uD83D\uDEE1\uFE0F"
     "consumable" -> "\uD83E\uDDEA"
+    "amulet" -> "\uD83D\uDCFF"
+    "ring" -> "\uD83D\uDC8D"
+    "clothes" -> "\uD83D\uDC55"
     "scroll" -> "\uD83D\uDCDC"
     "key" -> "\uD83D\uDD11"
     "food" -> "\uD83C\uDF57"

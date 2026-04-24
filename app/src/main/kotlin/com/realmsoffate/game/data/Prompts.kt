@@ -218,7 +218,7 @@ Every response MUST be exactly ONE valid JSON object. No markdown, no prose befo
   "metadata": {
     "damage": 0, "heal": 0, "xp": 0,
     "gold_gained": 0, "gold_lost": 0, "moral_delta": 0,
-    "items_gained": [{"name":"","desc":"","type":"weapon|armor|consumable|item","rarity":"common|uncommon|rare|epic|legendary"}],
+    "items_gained": [{"name":"","desc":"","type":"weapon|armor|shield|amulet|ring|clothes|consumable|item","rarity":"common|uncommon|rare|epic|legendary"}],
     "items_removed": [], "conditions_added": [], "conditions_removed": [],
     "npcs_met": [{"id":"slug","name":"Display","race":"","role":"","age":"","relationship":"neutral","appearance":"","personality":"","thoughts":""}],
     "npc_updates": [{"id":"slug","field":"relationship|role|faction|location|status|name","value":""}],
