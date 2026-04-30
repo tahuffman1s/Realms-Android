@@ -2,14 +2,19 @@
 
 package com.realmsoffate.game.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -25,7 +30,8 @@ import com.realmsoffate.game.ui.theme.RealmsSpacing
 /** One segment in a [PanelTabRow]. */
 internal data class PanelTab(
     val label: String,
-    val icon: String? = null
+    val icon: String? = null,
+    val badge: Boolean = false
 )
 
 /**
@@ -89,5 +95,14 @@ private fun PanelTabLabel(tab: PanelTab) {
             softWrap = false,
             overflow = TextOverflow.Ellipsis
         )
+        if (tab.badge) {
+            Spacer(Modifier.width(RealmsSpacing.xs))
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+            )
+        }
     }
 }
