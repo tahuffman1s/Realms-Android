@@ -4,6 +4,7 @@ import com.realmsoffate.game.data.LogNpc
 import com.realmsoffate.game.data.ParsedReply
 import com.realmsoffate.game.game.ParsedReplyBuilder
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -136,5 +137,22 @@ class NpcLogReducerTest {
 
         assertEquals(1, result.npcLog.size)
         assertEquals("Mira Cole", result.npcLog[0].name)
+    }
+
+    @Test
+    fun `resolveNpcIdx matches an alias`() {
+        val npcs = listOf(
+            LogNpc(
+                id = "voss-ironhand",
+                name = "Voss Ironhand",
+                aliases = listOf("grey-cloak-hunter", "Grey Cloak Hunter"),
+                metTurn = 1,
+                lastSeenTurn = 5
+            )
+        )
+        val byOldSlug = NpcLogReducer.resolveNpcIdx("grey-cloak-hunter", npcs)
+        val byOldName = NpcLogReducer.resolveNpcIdx("Grey Cloak Hunter", npcs)
+        assertEquals(0, byOldSlug)
+        assertEquals(0, byOldName)
     }
 }

@@ -283,7 +283,13 @@ object NpcLogReducer {
         val byId = npcLog.indexOfFirst { it.id == ref }
         if (byId >= 0) return byId
         val refKey = IdGen.nameKey(ref)
-        return npcLog.indexOfFirst { IdGen.nameKey(it.name) == refKey }
+        val byName = npcLog.indexOfFirst { IdGen.nameKey(it.name) == refKey }
+        if (byName >= 0) return byName
+        return npcLog.indexOfFirst { npc ->
+            npc.aliases.any { alias ->
+                alias == ref || IdGen.nameKey(alias) == refKey
+            }
+        }
     }
 
     /** Private merge helper — used only by the rename-fallback in npcUpdates. */

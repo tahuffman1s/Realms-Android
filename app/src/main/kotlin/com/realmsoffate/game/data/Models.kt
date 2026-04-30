@@ -275,6 +275,13 @@ data class LogNpc(
      * Format: "T{turn}: \"quote\"".
      */
     val memorableQuotes: MutableList<String> = mutableListOf(),
+    /**
+     * Prior names and slugs this NPC has been known under. Populated when the
+     * reducer detects a descriptor-to-real-name reveal (e.g. "Grey Cloak
+     * Hunter" → "Voss Ironhand" preserves "grey-cloak-hunter" + "Grey Cloak
+     * Hunter"). Lets old prompt references and saved-game refs still resolve.
+     */
+    val aliases: List<String> = emptyList(),
     var relationshipNote: String = "",
     var status: String = "alive" // alive, dead, missing, imprisoned
 )
