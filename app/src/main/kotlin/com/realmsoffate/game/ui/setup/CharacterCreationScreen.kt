@@ -11,7 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -444,7 +444,7 @@ private fun StatsStep(
         AssistChip(
             onClick = onRecommend,
             label = { Text("Recommended") },
-            leadingIcon = { Icon(Icons.Default.Casino, null, Modifier.size(18.dp)) }
+            leadingIcon = { Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp)) }
         )
     }
     labels.forEachIndexed { i, label ->
