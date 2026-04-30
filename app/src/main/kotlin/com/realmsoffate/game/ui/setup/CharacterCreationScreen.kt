@@ -35,6 +35,8 @@ import com.realmsoffate.game.game.defaultBonusIndices
 import com.realmsoffate.game.ui.components.SectionHeader
 import com.realmsoffate.game.ui.theme.RealmsSpacing
 
+private const val STATS_STEP_INDEX = 4
+
 /**
  * 6-step character creation wizard — mirrors the web source of truth:
  *   Step 0 Identity   — name, gender, age band
@@ -72,6 +74,11 @@ fun CharacterCreationScreen(vm: GameViewModel) {
     var cls by rememberSaveable { mutableStateOf(Classes.list.first().name) }
     val baseStats = rememberSaveable { mutableStateOf(intArrayOf(8, 8, 8, 8, 8, 8)) }
 
+    val pointsRemaining by remember(baseStats.value) {
+        mutableIntStateOf(27 - pointCost(baseStats.value))
+    }
+    var showUnspentWarning by remember { mutableStateOf(false) }
+
     val totalSteps = 6
     val stepValid = remember(step, name, race, cls, baseStats.value, primaryBonus, secondaryBonus) {
         when (step) {
@@ -79,10 +86,19 @@ fun CharacterCreationScreen(vm: GameViewModel) {
             1 -> true
             2 -> Races.find(race) != null
             3 -> Classes.find(cls) != null
-            4 -> pointCost(baseStats.value) <= 27 && primaryBonus != secondaryBonus
+            STATS_STEP_INDEX -> pointCost(baseStats.value) <= 27 && primaryBonus != secondaryBonus
             5 -> true
             else -> false
         }
+    }
+
+    val beginCharacter = {
+        val (final, ap) = finalizeCharacter(
+            name, race, cls, baseStats.value,
+            primaryBonus, secondaryBonus,
+            skinTone, hairColor, hairStyle, build, gender, ageBand
+        )
+        vm.startNewGame(final.apply { appearance = ap })
     }
 
     Scaffold(
@@ -139,12 +155,11 @@ fun CharacterCreationScreen(vm: GameViewModel) {
                         GradientBeginButton(
                             enabled = stepValid,
                             onClick = {
-                                val (final, ap) = finalizeCharacter(
-                                    name, race, cls, baseStats.value,
-                                    primaryBonus, secondaryBonus,
-                                    skinTone, hairColor, hairStyle, build, gender, ageBand
-                                )
-                                vm.startNewGame(final.apply { appearance = ap })
+                                if (pointsRemaining > 0) {
+                                    showUnspentWarning = true
+                                } else {
+                                    beginCharacter()
+                                }
                             },
                             modifier = Modifier.weight(1f).height(52.dp)
                         )
@@ -175,7 +190,7 @@ fun CharacterCreationScreen(vm: GameViewModel) {
                 )
                 2 -> RaceStep(race = race, onRace = { race = it })
                 3 -> ClassStep(cls = cls, onCls = { cls = it })
-                4 -> StatsStep(
+                STATS_STEP_INDEX -> StatsStep(
                     baseStats = baseStats.value,
                     onUpdate = { i, v ->
                         val arr = baseStats.value.copyOf()
@@ -204,6 +219,32 @@ fun CharacterCreationScreen(vm: GameViewModel) {
             // last bit of the confirm summary on short screens.
             Spacer(Modifier.height(120.dp))
         }
+    }
+
+    if (showUnspentWarning) {
+        AlertDialog(
+            onDismissRequest = { showUnspentWarning = false },
+            title = { Text("Unspent points") },
+            text = {
+                Text(
+                    "You still have $pointsRemaining ability " +
+                    "${if (pointsRemaining == 1) "point" else "points"} to spend. " +
+                    "Continue anyway?"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showUnspentWarning = false
+                    beginCharacter()
+                }) { Text("Begin anyway") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showUnspentWarning = false
+                    step = STATS_STEP_INDEX
+                }) { Text("Go back") }
+            }
+        )
     }
 }
 
