@@ -101,6 +101,23 @@ fun CharacterCreationScreen(vm: GameViewModel) {
         vm.startNewGame(final.apply { appearance = ap })
     }
 
+    val randomizeAll = {
+        val r = com.realmsoffate.game.game.RandomCharacter.generate()
+        name = r.name
+        gender = r.gender
+        ageBand = r.ageBand
+        skinTone = r.skinTone
+        hairColor = r.hairColor
+        hairStyle = r.hairStyle
+        build = r.build
+        race = r.race
+        cls = r.cls
+        baseStats.value = r.baseStats.copyOf()
+        primaryBonus = r.primaryBonus
+        secondaryBonus = r.secondaryBonus
+        step = 5
+    }
+
     Scaffold(
         topBar = {
             Surface(tonalElevation = 1.dp) {
@@ -180,7 +197,8 @@ fun CharacterCreationScreen(vm: GameViewModel) {
                 0 -> IdentityStep(
                     name = name, onName = { name = it.take(30) },
                     gender = gender, onGender = { gender = it },
-                    ageBand = ageBand, onAge = { ageBand = it }
+                    ageBand = ageBand, onAge = { ageBand = it },
+                    onRandom = randomizeAll
                 )
                 1 -> AppearanceStep(
                     skinTone = skinTone, onSkin = { skinTone = it },
@@ -254,7 +272,8 @@ fun CharacterCreationScreen(vm: GameViewModel) {
 private fun IdentityStep(
     name: String, onName: (String) -> Unit,
     gender: String, onGender: (String) -> Unit,
-    ageBand: String, onAge: (String) -> Unit
+    ageBand: String, onAge: (String) -> Unit,
+    onRandom: () -> Unit
 ) {
     SectionHeader("\uD83D\uDCDC  IDENTITY")
     OutlinedTextField(
@@ -265,6 +284,21 @@ private fun IdentityStep(
         singleLine = true,
         shape = MaterialTheme.shapes.medium,
         modifier = Modifier.fillMaxWidth()
+    )
+    Spacer(Modifier.height(RealmsSpacing.xs))
+    OutlinedButton(
+        onClick = onRandom,
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text("Randomize Everything")
+    }
+    Text(
+        "Roll a complete character: name, look, race, class, stats, all randomized. Lands on the final review.",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     SectionHeader("GENDER")
     ChipRow(

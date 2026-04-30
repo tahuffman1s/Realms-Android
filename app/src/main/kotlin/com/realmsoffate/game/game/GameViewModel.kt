@@ -64,6 +64,8 @@ data class GameUiState(
     val currentLoc: Int = 0,
     val playerPos: PlayerPos? = null,
     val worldLore: WorldLore? = null,
+    /** Cursor for unseen-lore badge: when worldLore.history.size exceeds this, the Lore tab dots. */
+    val lastSeenLoreSize: Int = 0,
     val worldEvents: List<WorldEvent> = emptyList(),
     val lastEventTurn: Int = 0,
     val npcLog: List<LogNpc> = emptyList(),
@@ -310,6 +312,14 @@ class GameViewModel(
 
     fun setInfiniteGold(on: Boolean) {
         viewModelScope.launch { cheatsStore.setInfiniteGold(on) }
+    }
+
+    fun markLoreSeen() {
+        val cur = _ui.value
+        val total = cur.worldLore?.history?.size ?: 0
+        if (cur.lastSeenLoreSize != total) {
+            _ui.value = cur.copy(lastSeenLoreSize = total)
+        }
     }
 
     private val _fontScale = MutableStateFlow(1.0f)

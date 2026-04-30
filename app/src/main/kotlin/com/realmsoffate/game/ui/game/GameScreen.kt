@@ -129,8 +129,6 @@ fun GameScreen(vm: GameViewModel) {
     var showCheatsOverlay by remember { mutableStateOf(false) }
     val cheatsEnabled by vm.cheatsEnabled.collectAsState()
     val infiniteGold by vm.cheatInfiniteGold.collectAsState()
-    val unnaturalTwenty by vm.cheatUnnaturalTwenty.collectAsState()
-    val loser by vm.cheatLoser.collectAsState()
 
     val systemFontScale = LocalConfiguration.current.fontScale
     CompositionLocalProvider(
@@ -250,6 +248,7 @@ fun GameScreen(vm: GameViewModel) {
                     JournalPager(
                         state = state,
                         onAbandon = vm::abandonQuest,
+                        onLoreSeen = vm::markLoreSeen,
                         focusNpc = journalFocusNpc
                     )
                 }
@@ -353,6 +352,8 @@ fun GameScreen(vm: GameViewModel) {
     }
 
     if (showCheatsOverlay) {
+        val unnaturalTwenty by vm.cheatUnnaturalTwenty.collectAsState()
+        val loser by vm.cheatLoser.collectAsState()
         CheatsOverlay(
             unnaturalTwenty = unnaturalTwenty,
             loser = loser,
