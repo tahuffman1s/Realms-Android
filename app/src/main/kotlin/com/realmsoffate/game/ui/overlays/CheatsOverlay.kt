@@ -6,10 +6,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -74,7 +74,7 @@ fun CheatsOverlay(
     onApplyOverprepared: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    var expanded by remember { mutableStateOf<CheatId?>(null) }
+    var expanded by remember { mutableStateOf<CheatId?>(CheatId.UNNATURAL_20) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -123,44 +123,37 @@ fun CheatsOverlay(
                         modifier = Modifier.weight(1f)
                     )
                 }
-                // AnimatedContent cross-fades between tile descriptions on tile-switch,
-                // and fade-in/out on open/close. Without this, (a) closing a tile pops
-                // its description away instantly because the content tree resolves with
-                // expanded=null before the exit animation runs, and (b) switching between
-                // tiles swaps text synchronously with no transition — both read as "flashing".
-                AnimatedContent(
-                    targetState = expanded,
-                    transitionSpec = { fadeIn() togetherWith fadeOut() },
-                    label = "cheat-description"
-                ) { targetId ->
-                    val tile = TILES.firstOrNull { it.id == targetId }
-                    if (tile != null) {
-                        Column(Modifier.padding(top = RealmsSpacing.m)) {
-                            Text(tile.description, style = MaterialTheme.typography.bodyMedium)
-                            Spacer(Modifier.height(RealmsSpacing.s))
-                            when (tile.id) {
-                                CheatId.UNNATURAL_20 -> ActionButton(
-                                    label = if (unnaturalTwenty) "Turn Off" else "Turn On",
-                                    onClick = { onToggleUnnaturalTwenty(!unnaturalTwenty) }
-                                )
-                                CheatId.LOSER -> ActionButton(
-                                    label = if (loser) "Turn Off" else "Turn On",
-                                    onClick = { onToggleLoser(!loser) }
-                                )
-                                CheatId.INFINITE_GOLD -> ActionButton(
-                                    label = if (infiniteGold) "Turn Off" else "Turn On",
-                                    onClick = { onToggleInfiniteGold(!infiniteGold) }
-                                )
-                                CheatId.OVERPREPARED -> ActionButton(
-                                    label = if (characterLevel >= 20) "Already maxed" else "Apply",
-                                    enabled = characterLevel < 20,
-                                    onClick = { onApplyOverprepared(); expanded = null }
+                Spacer(Modifier.height(RealmsSpacing.m))
+                // Fixed-height container: AlertDialog never reflows mid-fade, so swapping
+                // tiles cross-fades cleanly without the height jump that read as a flash.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 132.dp)
+                ) {
+                    AnimatedContent(
+                        targetState = expanded,
+                        transitionSpec = { fadeIn() togetherWith fadeOut() },
+                        label = "cheat-description"
+                    ) { targetId ->
+                        val tile = remember(targetId) { TILES.firstOrNull { it.id == targetId } }
+                        if (tile != null) {
+                            Column {
+                                Text(tile.description, style = MaterialTheme.typography.bodyMedium)
+                                Spacer(Modifier.height(RealmsSpacing.s))
+                                CheatActionButton(
+                                    tile = tile,
+                                    unnaturalTwenty = unnaturalTwenty,
+                                    loser = loser,
+                                    infiniteGold = infiniteGold,
+                                    characterLevel = characterLevel,
+                                    onToggleUnnaturalTwenty = onToggleUnnaturalTwenty,
+                                    onToggleLoser = onToggleLoser,
+                                    onToggleInfiniteGold = onToggleInfiniteGold,
+                                    onApplyOverprepared = { onApplyOverprepared(); expanded = null }
                                 )
                             }
                         }
-                    } else {
-                        // Empty when collapsed — AnimatedContent still runs the fade.
-                        Spacer(Modifier.height(0.dp))
                     }
                 }
             }
@@ -217,6 +210,39 @@ private fun Tile(
                     color = MaterialTheme.colorScheme.primary
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun CheatActionButton(
+    tile: CheatTile,
+    unnaturalTwenty: Boolean,
+    loser: Boolean,
+    infiniteGold: Boolean,
+    characterLevel: Int,
+    onToggleUnnaturalTwenty: (Boolean) -> Unit,
+    onToggleLoser: (Boolean) -> Unit,
+    onToggleInfiniteGold: (Boolean) -> Unit,
+    onApplyOverprepared: () -> Unit
+) {
+    when (tile.id) {
+        CheatId.UNNATURAL_20 -> {
+            val label = remember(unnaturalTwenty) { if (unnaturalTwenty) "Turn Off" else "Turn On" }
+            ActionButton(label = label, onClick = { onToggleUnnaturalTwenty(!unnaturalTwenty) })
+        }
+        CheatId.LOSER -> {
+            val label = remember(loser) { if (loser) "Turn Off" else "Turn On" }
+            ActionButton(label = label, onClick = { onToggleLoser(!loser) })
+        }
+        CheatId.INFINITE_GOLD -> {
+            val label = remember(infiniteGold) { if (infiniteGold) "Turn Off" else "Turn On" }
+            ActionButton(label = label, onClick = { onToggleInfiniteGold(!infiniteGold) })
+        }
+        CheatId.OVERPREPARED -> {
+            val maxed = characterLevel >= 20
+            val label = remember(maxed) { if (maxed) "Already maxed" else "Apply" }
+            ActionButton(label = label, enabled = !maxed, onClick = onApplyOverprepared)
         }
     }
 }
