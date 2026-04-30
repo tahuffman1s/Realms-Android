@@ -22,6 +22,7 @@ import com.realmsoffate.game.data.ParsedReply
 import com.realmsoffate.game.data.PlayerPos
 import com.realmsoffate.game.data.PreferencesStore
 import com.realmsoffate.game.data.Prompts
+import com.realmsoffate.game.data.renderRecentPlayerChoicesBlock
 import com.realmsoffate.game.data.Quest
 import com.realmsoffate.game.data.GraveyardEntry
 import com.realmsoffate.game.data.DebugTurn
@@ -1293,6 +1294,10 @@ class GameViewModel(
             if (recentNarration.isNotBlank()) {
                 append("\n\nRECENT STORY (continue from here, do not reset or contradict):\n$recentNarration")
             }
+            val recentPlayerActions = s.history
+                .filter { it.role == "user" }
+                .map { it.content }
+            append(renderRecentPlayerChoicesBlock(recentPlayerActions))
             // CANONICAL FACTS block — ground-truth entities pinned by scene relevance
             // plus keyword matches from repo + in-memory state.
             val canonical = buildCanonicalFacts(s, entityHits, tokens)

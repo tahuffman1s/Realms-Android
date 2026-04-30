@@ -684,3 +684,42 @@ const val BUDGET_SCENE_SUMMARIES: Int = 2000
 const val BUDGET_KNOWN_NPCS: Int = 600
 const val BUDGET_CANONICAL_FACTS: Int = 800
 const val BUDGET_RECENT_TURNS: Int = 6000
+
+/**
+ * Phase 4 spike C — RECENT PLAYER CHOICES block.
+ *
+ * The user prompt has rich blocks for world state but nothing for what the
+ * player did recently. Player text is only in the raw chat history, which is
+ * windowed at 8000 tokens — ~3-5 full turns — and is dominated by assistant
+ * envelope JSON. This block surfaces the last 5 raw player inputs in a
+ * dedicated section, oldest first (chronological), each truncated to 200
+ * chars to keep the budget tight.
+ *
+ * Returns "" for an empty list so callers can unconditionally append.
+ */
+fun renderRecentPlayerChoicesBlock(actions: List<String>): String {
+    val recent = actions.takeLast(5)
+    if (recent.isEmpty()) return ""
+    return buildString {
+        append("\n\nRECENT PLAYER CHOICES (the player's actual recent decisions — honor them, callback to them):\n")
+        recent.forEach { a ->
+            val trimmed = if (a.length > 200) a.take(200) + "…" else a
+            append("- ").append(trimmed).append('\n')
+        }
+    }
+}
+
+/**
+ * Phase 4 spike D — RECENT STORY block resize (was takeLast(2) × 300 chars).
+ * Bumped to 4 narrations × 600 chars to widen recency anchoring without
+ * blowing the per-turn token budget.
+ *
+ * Returns "" for empty input. Joins narrations newest-last with a "---"
+ * separator so the model sees clear scene boundaries.
+ */
+fun renderRecentStoryBlock(narrations: List<String>): String {
+    val recent = narrations.takeLast(4)
+    if (recent.isEmpty()) return ""
+    val joined = recent.joinToString("\n---\n") { it.take(600) }
+    return "\n\nRECENT STORY (continue from here, do not reset or contradict):\n$joined"
+}
