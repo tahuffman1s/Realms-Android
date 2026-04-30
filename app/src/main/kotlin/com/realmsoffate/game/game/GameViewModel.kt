@@ -353,9 +353,13 @@ class GameViewModel(
     // @Serializable so it can be persisted in SaveData.debugLog.
     private val _debugLog = mutableListOf<DebugTurn>()
 
+    /** Phase 4 diagnostic: returns a copy of the current debug log for off-device capture. */
+    fun snapshotDebugLog(): List<com.realmsoffate.game.data.DebugTurn> = _debugLog.toList()
+
     private fun logDebugTurn(
         turn: Int, action: String, skill: String?, roll: Int,
-        prompt: String, raw: String, parsed: com.realmsoffate.game.data.ParsedReply
+        prompt: String, raw: String, parsed: com.realmsoffate.game.data.ParsedReply,
+        systemPrompt: String = ""
     ) {
         val tags = buildString {
             if (parsed.damage > 0) appendLine("DAMAGE:${parsed.damage}")
@@ -408,7 +412,8 @@ class GameViewModel(
                     is NarrationSegmentData.NpcDialog -> "NPC_DLG(${seg.name}): ${seg.text}"
                 }
             }.take(500),
-            parsedTags = tags
+            parsedTags = tags,
+            systemPromptSent = systemPrompt
         ))
         // Cap at 50 turns to avoid memory bloat
         if (_debugLog.size > 50) _debugLog.removeAt(0)
@@ -957,6 +962,7 @@ class GameViewModel(
             // pushing end-to-end reliability close to 100% on a healthy connection.
             var raw = ""
             var parsed: ParsedReply = TagParser.parse("", state.turns + 1)  // placeholder INVALID
+            var winningAttemptSys: String = sys  // captured for diagnostic
             val invalidHint = "\n\nPREVIOUS RESPONSE WAS INVALID JSON. Emit ONE valid JSON object with keys scene, segments, choices (exactly 4), metadata. Escape all internal double quotes as \\\". No nested objects inside array elements unless the schema specifies one. ASCII straight quotes only."
             for (attempt in 1..3) {
                 val attemptSys = if (attempt == 1) sys else sys + invalidHint
@@ -973,10 +979,14 @@ class GameViewModel(
                     return@launch
                 }
                 parsed = TagParser.parse(raw, state.turns + 1)
+                winningAttemptSys = attemptSys
                 if (parsed.source == ParseSource.JSON) break
                 android.util.Log.w("GameViewModel", "envelope parse failed on attempt $attempt/3; retrying with correction hint")
             }
-            logDebugTurn(state.turns + 1, action, skill, roll, userPrompt, raw, parsed)
+            val styleSample = state.sceneSummaries.firstOrNull()?.summary
+            val capturedSystem = com.realmsoffate.game.data.Prompts.DS_PREFIX + winningAttemptSys +
+                com.realmsoffate.game.data.StyleExemplar.block(styleSample)
+            logDebugTurn(state.turns + 1, action, skill, roll, userPrompt, raw, parsed, capturedSystem)
             // Both attempts produced an unparseable envelope (empty content, truncated
             // JSON, or off-schema prose). Don't commit a blank Narration bubble —
             // surface the failure and roll back the optimistic Player bubble so the
