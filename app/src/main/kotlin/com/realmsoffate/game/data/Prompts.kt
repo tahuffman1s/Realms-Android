@@ -245,6 +245,17 @@ RULES:
 - At least 1 prose segment, 2 aside segments per response. Player speech only when the player spoke.
 - Return ONLY the JSON object. No markdown fences like ```json. No text before or after.
 
+LORE-AFFECTING ACTIONS — record world changes the player causes:
+- metadata.lore_entries: emit ONE short past-tense sentence (≤120 chars, names + outcome) when the player:
+  * kills, spares, or dethrones a named NPC, faction leader, or boss
+  * discovers a new location, landmark, or hidden place
+  * learns a secret about a faction, NPC, or the world
+  * resolves or escalates a faction conflict
+  * completes a major quest milestone
+  Example: "Kaelis slew Lord Marcus in the Black Cathedral, ending the Black Order's ruling line."
+- metadata.faction_updates: emit when faction status, ruler, mood, or disposition shifts from player action. Use canonical slug.
+- If nothing lore-affecting happened, omit lore_entries / faction_updates entirely. Do NOT pad with flavor — only real, lasting changes.
+
 WORKED EXAMPLE (copy this shape exactly — notice everything is ONE JSON object):
 
 {
