@@ -10,6 +10,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -50,16 +51,32 @@ private enum class JournalFilter(val label: String, val match: (String) -> Boole
 
 @Composable
 internal fun JournalContent(state: GameUiState, focusNpc: String? = null) {
-    var filter by remember { mutableStateOf(JournalFilter.All) }
+    // Reset to All whenever a new focus arrives so the targeted NPC is visible.
+    // Otherwise preserve the user's filter choice across normal navigations.
+    var filter by remember(focusNpc) { mutableStateOf(JournalFilter.All) }
     var expandedNpcName by remember(focusNpc) { mutableStateOf(focusNpc) }
     val filtered = state.npcLog.filter { filter.match(it.relationship.lowercase()) }
+    val listState = rememberLazyListState()
     if (state.npcLog.isEmpty()) {
         EmptyState("\uD83D\uDCD6", "No NPCs met yet.")
         return
     }
 
+    // Scroll to the focused NPC when arriving via deep-link (right-swipe on a
+    // chat bubble). Skips silently if the NPC isn't in the rendered list.
+    LaunchedEffect(focusNpc, filtered) {
+        if (focusNpc != null) {
+            val targetIndex = filtered.indexOfFirst { it.name == focusNpc }
+            if (targetIndex >= 0) {
+                // +1 accounts for the leading "filters" item.
+                listState.animateScrollToItem(targetIndex + 1)
+            }
+        }
+    }
+
     LazyColumn(
-        Modifier.padding(horizontal = RealmsSpacing.l).fillMaxSize(),
+        state = listState,
+        modifier = Modifier.padding(horizontal = RealmsSpacing.l).fillMaxSize(),
         contentPadding = PaddingValues(top = RealmsSpacing.s, bottom = RealmsSpacing.m),
         verticalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
     ) {
