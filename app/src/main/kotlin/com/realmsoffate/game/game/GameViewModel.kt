@@ -22,6 +22,8 @@ import com.realmsoffate.game.data.ParsedReply
 import com.realmsoffate.game.data.PlayerPos
 import com.realmsoffate.game.data.PreferencesStore
 import com.realmsoffate.game.data.Prompts
+import com.realmsoffate.game.data.renderKeyDecisionsBlock
+import com.realmsoffate.game.data.renderRecentContradictionsBlock
 import com.realmsoffate.game.data.renderRecentPlayerChoicesBlock
 import com.realmsoffate.game.data.renderRecentStoryBlock
 import com.realmsoffate.game.data.Quest
@@ -1102,7 +1104,10 @@ class GameViewModel(
                 locationName = finalState.worldMap?.locations?.getOrNull(finalState.currentLoc)?.name ?: "",
                 inCombat = finalState.combat != null
             )
-            val boundary = SceneBoundaryDetector.detect(preSnapshot, postSnapshot)
+            val turnsSinceLastSummary = (turnsBeforeResponse - priorSummaryEndTurn).coerceAtLeast(0)
+            val boundary = SceneBoundaryDetector.detectWithFallback(
+                preSnapshot, postSnapshot, turnsSinceLastSummary
+            )
             if (boundary != null) {
                 val apiKey = _apiKey.value
                 val sceneName = preSnapshot.sceneTag.ifBlank { "default" }
@@ -1110,7 +1115,7 @@ class GameViewModel(
                 // Slice the history that belongs to the completed scene: from after
                 // the previous summary's end turn through this turn. Each turn is
                 // roughly 2 messages (user + assistant), so window by turn count.
-                val turnsCovered = (turnsBeforeResponse - priorSummaryEndTurn).coerceAtLeast(1)
+                val turnsCovered = turnsSinceLastSummary.coerceAtLeast(1)
                 val approxMessages = (turnsCovered * 2).coerceAtMost(finalState.history.size)
                 val sceneHistory = finalState.history.takeLast(approxMessages + 2) // +2 = current user+assistant
                 val turnStart = priorSummaryEndTurn + 1
@@ -1305,6 +1310,8 @@ class GameViewModel(
                 .filter { it.role == "user" }
                 .map { it.content }
             append(renderRecentPlayerChoicesBlock(recentPlayerActions))
+            append(renderKeyDecisionsBlock(s.worldLore?.history.orEmpty()))
+            append(renderRecentContradictionsBlock(ContradictionQueue.snapshot()))
             // CANONICAL FACTS block — ground-truth entities pinned by scene relevance
             // plus keyword matches from repo + in-memory state.
             val canonical = buildCanonicalFacts(s, entityHits, tokens)

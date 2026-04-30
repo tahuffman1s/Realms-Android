@@ -90,6 +90,12 @@ GOOD: Player says "I have a brother named Cael." → Cael exists. Weave him into
 BAD: Player writes 'I tell him: "I serve no king."' → You have the duke respond as if they pledged loyalty.
 GOOD: Player writes 'I tell him: "I serve no king."' → Those exact words leave their mouth. The duke reacts to THAT.
 
+More YES-AND examples — these are the spirit, not edge cases:
+- "I cast Fireball at the king." → THEY CAST IT. Roll consequences. Guards explode into action.
+- "I leap from the tower." → THEY LEAP. The fall is YOUR problem to narrate.
+- "There's a hidden compartment behind the bookshelf." → THERE IS. Even if you hadn't planned it. Reward the player's instinct.
+- "I drink the strange potion." → THEY DRINK IT. Find an outcome that's interesting, not safe.
+
 YES-AND, NEVER NO-BUT:
 - Impossible action? Set a brutal DC (20+, sometimes nat-20-only). Roll it. The ATTEMPT is always canon.
 - Player invents lore mid-turn? Treat it as TRUE unless it contradicts established facts.
@@ -97,11 +103,13 @@ YES-AND, NEVER NO-BUT:
 - The only "no" is a die roll. Bad ideas have COSTS, not refusals.
 
 LENGTH & PROSE RULES:
-- 200-400 words of narration + tags + choices per turn. 4-8 rich paragraphs, 2-5 sentences each.
-- Layer sensory details — sounds, smells, textures, light. TWO or THREE vivid details per scene.
-- NPC dialogue: 1-3 sentences. Verbal tics, dialect, trailing off. Personality in every line.
-- Combat: visceral and cinematic. The physics of the blow, the sound, the aftermath.
-- Environmental storytelling: a half-eaten meal, a child's toy near a bloodstain, footprints that stop at a wall.
+- 200-400 words of narration + tags + choices per turn. 4-8 RICH paragraphs, 2-5 sentences each.
+- Each paragraph: layer sensory details — sounds, smells, textures, light. TWO or THREE vivid details per scene. Make the world BREATHE.
+- OPENING PARAGRAPHS paint the scene: what the player sees, hears, feels. Don't just place them — surround them.
+- Concrete sensory example: "Blood on the altar, still warm. The incense has gone sour — a cloying sweetness that clings to the back of your throat. Something scratches behind the reliquary." That's the bar.
+- NPC dialogue: 1-3 sentences. Verbal tics, dialect, interruptions, trailing off. Personality in every line.
+- Combat: VISCERAL and CINEMATIC. The physics of the blow, the sound, the aftermath. One killer image.
+- Environmental storytelling: scattered items tell stories. A half-eaten meal. A child's toy near a bloodstain. Footprints that stop at a wall.
 
 TONE EXAMPLES (study these — this is your VOICE):
 SCENE-SETTING:
@@ -726,4 +734,52 @@ fun renderRecentStoryBlock(narrations: List<String>): String {
     if (recent.isEmpty()) return ""
     val joined = recent.joinToString("\n---\n") { it.take(600) }
     return "\n\nRECENT STORY (continue from here, do not reset or contradict):\n$joined"
+}
+
+/**
+ * Renders the RECENT CONTRADICTIONS user-prompt block from the
+ * ContradictionQueue snapshot.
+ *
+ * The queue records every time an arc summary mentioned a dead/cursed/doomed
+ * NPC without past-tense cues — i.e., the model hallucinated those NPCs as
+ * still active. Until now the queue was observe-only; surfacing the last 5
+ * entries in the user prompt forces the model to acknowledge and stop
+ * repeating each specific mistake.
+ *
+ * Each entry is already self-contained ("'Lord Marcus' marked dead but
+ * referenced as active in: ...") so we feed them in verbatim, just
+ * reformatted as a list. Returns "" for an empty queue.
+ */
+fun renderRecentContradictionsBlock(entries: List<String>): String {
+    val recent = entries.takeLast(5)
+    if (recent.isEmpty()) return ""
+    return buildString {
+        append("\n\nRECENT CONTRADICTIONS (prior hallucinations — DO NOT REPEAT these mistakes):\n")
+        recent.forEach { e -> append("- ").append(e).append('\n') }
+    }
+}
+
+/**
+ * Renders the KEY DECISIONS user-prompt block from [WorldLore.history].
+ *
+ * worldLore.history accumulates per-turn `lore_entries` from the LLM —
+ * player kills, discoveries, secrets learned, faction shifts, quest
+ * milestones, anything the model judged was a lasting consequence. Each
+ * entry lands as `HistoryEntry(era="recent", year=turnNumber, text=…)`.
+ * Pre-existing primordial/ancient/medieval entries from world-gen also live
+ * in the same list with non-"recent" era tags.
+ *
+ * This block surfaces the last 8 player-driven entries chronologically,
+ * pinned independently of the keyword-retrieval system, so long-running
+ * consequences (a king dethroned 30 turns ago, a faction destroyed 50 turns
+ * ago) stay in the model's working set even when the current action shares
+ * no keywords with them. Returns "" when no recent entries exist.
+ */
+fun renderKeyDecisionsBlock(history: List<HistoryEntry>): String {
+    val recent = history.filter { it.era == "recent" }.takeLast(8)
+    if (recent.isEmpty()) return ""
+    return buildString {
+        append("\n\nKEY DECISIONS (lasting consequences of the player's actions — reference these whenever relevant):\n")
+        recent.forEach { e -> append("- ").append(e.text).append('\n') }
+    }
 }

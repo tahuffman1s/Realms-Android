@@ -80,4 +80,32 @@ class SceneBoundaryDetectorTest {
             SceneBoundaryDetector.detect(prev, cur)
         )
     }
+
+    @Test
+    fun `fallback fires turn-limit reason when no topology boundary and limit reached`() {
+        val s = snap()
+        assertEquals(
+            SceneBoundaryDetector.Reason.TURN_LIMIT_REACHED,
+            SceneBoundaryDetector.detectWithFallback(s, s, SceneBoundaryDetector.MAX_TURNS_WITHOUT_SUMMARY)
+        )
+    }
+
+    @Test
+    fun `fallback returns null when no topology boundary and limit not yet reached`() {
+        val s = snap()
+        assertNull(
+            SceneBoundaryDetector.detectWithFallback(s, s, SceneBoundaryDetector.MAX_TURNS_WITHOUT_SUMMARY - 1)
+        )
+    }
+
+    @Test
+    fun `topology boundary takes precedence over turn-limit fallback`() {
+        val prev = snap(location = "Ashford")
+        val cur = snap(location = "Greymoor")
+        // Turn limit reached AND a real boundary fired — must report the topology reason.
+        assertEquals(
+            SceneBoundaryDetector.Reason.LOCATION_CHANGED,
+            SceneBoundaryDetector.detectWithFallback(prev, cur, SceneBoundaryDetector.MAX_TURNS_WITHOUT_SUMMARY * 2)
+        )
+    }
 }
