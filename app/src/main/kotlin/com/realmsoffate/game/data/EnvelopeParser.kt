@@ -70,7 +70,7 @@ object EnvelopeParser {
             narration = "",  // all narration is in segments; legacy field kept empty
             choices = envelope.choices
                 .filter { it.text.isNotBlank() }
-                .mapIndexed { i, c -> Choice(n = i + 1, text = c.text, skill = c.skill) },
+                .mapIndexed { i, c -> Choice(n = i + 1, text = c.text, skill = SkillCanon.canonicalize(c.skill)) },
             damage = meta.damage,
             heal = meta.heal,
             xp = meta.xp,

@@ -391,4 +391,24 @@ class EnvelopeParserTest {
         assertEquals(0, p.damage)
         assertEquals(0, p.xp)
     }
+
+    @Test
+    fun `choice skill canonicalizes freeform verb to canonical skill name`() {
+        val raw = """
+            {
+              "scene":{"type":"default","desc":""},
+              "segments":[{"kind":"prose","text":"You arrive."}],
+              "choices":[
+                {"text":"Look around","skill":"investigate"},
+                {"text":"Threaten the guard","skill":"threaten back"},
+                {"text":"Head to the inn","skill":"head to Hunter's Rest now"},
+                {"text":"Sneak past","skill":"Stealth"}
+              ],
+              "metadata":{"check":{"skill":"Perception","ability":"WIS","dc":10,"passed":true,"total":12}}
+            }
+        """.trimIndent()
+        val parsed = EnvelopeParser.parse(raw, currentTurn = 1)
+        val skills = parsed.choices.map { it.skill }
+        assertEquals(listOf("Investigation", "Intimidation", "", "Stealth"), skills)
+    }
 }
