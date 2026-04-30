@@ -786,7 +786,8 @@ class GameViewModel(
             a.startsWith("\"") || a.startsWith("\u201c") -> "Persuasion"
             // Default: if it sounds like an action, use Perception as catch-all
             a.contains("try") || a.contains("attempt") -> "Perception"
-            else -> "Perception"
+            else -> com.realmsoffate.game.data.SkillCanon.canonicalize(a)
+                .ifBlank { "Perception" }
         }
     }
 
