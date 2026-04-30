@@ -1102,7 +1102,10 @@ class GameViewModel(
                 locationName = finalState.worldMap?.locations?.getOrNull(finalState.currentLoc)?.name ?: "",
                 inCombat = finalState.combat != null
             )
-            val boundary = SceneBoundaryDetector.detect(preSnapshot, postSnapshot)
+            val turnsSinceLastSummary = (turnsBeforeResponse - priorSummaryEndTurn).coerceAtLeast(0)
+            val boundary = SceneBoundaryDetector.detectWithFallback(
+                preSnapshot, postSnapshot, turnsSinceLastSummary
+            )
             if (boundary != null) {
                 val apiKey = _apiKey.value
                 val sceneName = preSnapshot.sceneTag.ifBlank { "default" }
@@ -1110,7 +1113,7 @@ class GameViewModel(
                 // Slice the history that belongs to the completed scene: from after
                 // the previous summary's end turn through this turn. Each turn is
                 // roughly 2 messages (user + assistant), so window by turn count.
-                val turnsCovered = (turnsBeforeResponse - priorSummaryEndTurn).coerceAtLeast(1)
+                val turnsCovered = turnsSinceLastSummary.coerceAtLeast(1)
                 val approxMessages = (turnsCovered * 2).coerceAtMost(finalState.history.size)
                 val sceneHistory = finalState.history.takeLast(approxMessages + 2) // +2 = current user+assistant
                 val turnStart = priorSummaryEndTurn + 1
