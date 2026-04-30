@@ -88,7 +88,7 @@ internal fun ChatFeed(
                     TurnGap()
                 }
                 when (msg) {
-                    is DisplayMessage.Player -> PlayerBubble(msg.text, state.character?.name)
+                    is DisplayMessage.Player -> {}  // hidden from chat feed; still sent to LLM (#15)
                     is DisplayMessage.Narration -> {
                         // Look ahead: if the next message is a foldable check System,
                         // pass its text into this narration's stat strip.

@@ -11,7 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,8 +31,11 @@ import com.realmsoffate.game.data.CharacterAppearance
 import com.realmsoffate.game.game.Classes
 import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.game.Races
+import com.realmsoffate.game.game.defaultBonusIndices
 import com.realmsoffate.game.ui.components.SectionHeader
 import com.realmsoffate.game.ui.theme.RealmsSpacing
+
+private const val STATS_STEP_INDEX = 4
 
 /**
  * 6-step character creation wizard — mirrors the web source of truth:
@@ -58,11 +61,23 @@ fun CharacterCreationScreen(vm: GameViewModel) {
     var hairStyle by rememberSaveable { mutableStateOf(HAIR_STYLES.first()) }
     var build by rememberSaveable { mutableStateOf("Average") }
     var race by rememberSaveable { mutableStateOf(Races.list.first().name) }
+    // Default the +2 / +1 picks from the selected race's canonical bonuses.
+    // Player can still override on the Stats step.
+    // TODO(#17): Human gets +1 to all six stats — a two-slot selector cannot represent
+    // that fully. We default Human to (STR, DEX) as a representative pair and lose the
+    // other +1s. Long-term fix: model this as six independent bonus values.
+    val initialBonuses = remember(race) {
+        Races.find(race)?.defaultBonusIndices() ?: (0 to 1)
+    }
+    var primaryBonus by rememberSaveable(race) { mutableIntStateOf(initialBonuses.first) } // index 0..5
+    var secondaryBonus by rememberSaveable(race) { mutableIntStateOf(initialBonuses.second) }
     var cls by rememberSaveable { mutableStateOf(Classes.list.first().name) }
     val baseStats = rememberSaveable { mutableStateOf(intArrayOf(8, 8, 8, 8, 8, 8)) }
-    // Racial bonus allocation: +2 and +1 applied to two different stats (defaulting to race suggestions).
-    var primaryBonus by rememberSaveable { mutableIntStateOf(0) } // index 0..5
-    var secondaryBonus by rememberSaveable { mutableIntStateOf(1) }
+
+    val pointsRemaining by remember(baseStats.value) {
+        mutableIntStateOf(27 - pointCost(baseStats.value))
+    }
+    var showUnspentWarning by remember { mutableStateOf(false) }
 
     val totalSteps = 6
     val stepValid = remember(step, name, race, cls, baseStats.value, primaryBonus, secondaryBonus) {
@@ -71,10 +86,19 @@ fun CharacterCreationScreen(vm: GameViewModel) {
             1 -> true
             2 -> Races.find(race) != null
             3 -> Classes.find(cls) != null
-            4 -> pointCost(baseStats.value) <= 27 && primaryBonus != secondaryBonus
+            STATS_STEP_INDEX -> pointCost(baseStats.value) <= 27 && primaryBonus != secondaryBonus
             5 -> true
             else -> false
         }
+    }
+
+    val beginCharacter = {
+        val (final, ap) = finalizeCharacter(
+            name, race, cls, baseStats.value,
+            primaryBonus, secondaryBonus,
+            skinTone, hairColor, hairStyle, build, gender, ageBand
+        )
+        vm.startNewGame(final.apply { appearance = ap })
     }
 
     Scaffold(
@@ -131,12 +155,11 @@ fun CharacterCreationScreen(vm: GameViewModel) {
                         GradientBeginButton(
                             enabled = stepValid,
                             onClick = {
-                                val (final, ap) = finalizeCharacter(
-                                    name, race, cls, baseStats.value,
-                                    primaryBonus, secondaryBonus,
-                                    skinTone, hairColor, hairStyle, build, gender, ageBand
-                                )
-                                vm.startNewGame(final.apply { appearance = ap })
+                                if (pointsRemaining > 0) {
+                                    showUnspentWarning = true
+                                } else {
+                                    beginCharacter()
+                                }
                             },
                             modifier = Modifier.weight(1f).height(52.dp)
                         )
@@ -167,7 +190,7 @@ fun CharacterCreationScreen(vm: GameViewModel) {
                 )
                 2 -> RaceStep(race = race, onRace = { race = it })
                 3 -> ClassStep(cls = cls, onCls = { cls = it })
-                4 -> StatsStep(
+                STATS_STEP_INDEX -> StatsStep(
                     baseStats = baseStats.value,
                     onUpdate = { i, v ->
                         val arr = baseStats.value.copyOf()
@@ -196,6 +219,32 @@ fun CharacterCreationScreen(vm: GameViewModel) {
             // last bit of the confirm summary on short screens.
             Spacer(Modifier.height(120.dp))
         }
+    }
+
+    if (showUnspentWarning) {
+        AlertDialog(
+            onDismissRequest = { showUnspentWarning = false },
+            title = { Text("Unspent points") },
+            text = {
+                Text(
+                    "You still have $pointsRemaining ability " +
+                    "${if (pointsRemaining == 1) "point" else "points"} to spend. " +
+                    "Continue anyway?"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showUnspentWarning = false
+                    beginCharacter()
+                }) { Text("Begin anyway") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showUnspentWarning = false
+                    step = STATS_STEP_INDEX
+                }) { Text("Go back") }
+            }
+        )
     }
 }
 
@@ -395,7 +444,7 @@ private fun StatsStep(
         AssistChip(
             onClick = onRecommend,
             label = { Text("Recommended") },
-            leadingIcon = { Icon(Icons.Default.Casino, null, Modifier.size(18.dp)) }
+            leadingIcon = { Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp)) }
         )
     }
     labels.forEachIndexed { i, label ->

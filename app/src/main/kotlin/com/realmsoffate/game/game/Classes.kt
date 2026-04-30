@@ -36,7 +36,8 @@ object Classes {
                 Item("Longsword", "+1d8 slashing", "weapon", "common", equipped = true, damage = "1d8"),
                 Item("Chain Mail", "AC 16", "armor", "common", equipped = true, ac = 16),
                 Item("Shield", "+2 AC", "shield", "common", equipped = true),
-                Item("Healing Potion", "Restore 2d4+2 HP", "consumable", "common", qty = 2)
+                Item("Healing Potion", "Restore 2d4+2 HP", "consumable", "common", qty = 2),
+                Item("Traveler's Clothes", "Sturdy travel garments", "clothes", "common", equipped = true)
             ),
             isCaster = false,
             recommended = intArrayOf(15, 14, 14, 8, 12, 8) // Fighter
@@ -49,7 +50,8 @@ object Classes {
                 Item("Quarterstaff", "+1d6 bludgeoning", "weapon", "common", equipped = true, damage = "1d6"),
                 Item("Spellbook", "Contains your known spells", "book", "uncommon"),
                 Item("Component Pouch", "For spellcasting", "pouch", "common"),
-                Item("Scroll of Shield", "Reaction, +5 AC", "scroll", "common")
+                Item("Scroll of Shield", "Reaction, +5 AC", "scroll", "common"),
+                Item("Traveler's Clothes", "Sturdy travel garments", "clothes", "common", equipped = true)
             ),
             isCaster = true, spellAbility = "INT",
             recommended = intArrayOf(8, 14, 14, 15, 12, 8) // Wizard
@@ -63,7 +65,8 @@ object Classes {
                 Item("Shortbow", "+1d6 piercing ranged", "weapon", "common", damage = "1d6"),
                 Item("Leather Armor", "AC 11+DEX", "armor", "common", equipped = true, ac = 11),
                 Item("Thieves' Tools", "Pick locks, disable traps", "tool", "common"),
-                Item("Daggers", "+1d4 piercing", "weapon", "common", qty = 3)
+                Item("Daggers", "+1d4 piercing", "weapon", "common", qty = 3),
+                Item("Traveler's Clothes", "Sturdy travel garments", "clothes", "common", equipped = true)
             ),
             isCaster = false,
             recommended = intArrayOf(8, 15, 14, 14, 12, 8) // Rogue
@@ -76,7 +79,8 @@ object Classes {
                 Item("Mace", "+1d6 bludgeoning", "weapon", "common", equipped = true, damage = "1d6"),
                 Item("Scale Mail", "AC 14+DEX", "armor", "common", equipped = true, ac = 14),
                 Item("Holy Symbol", "For divine spells", "focus", "common"),
-                Item("Shield", "+2 AC", "shield", "common", equipped = true)
+                Item("Shield", "+2 AC", "shield", "common", equipped = true),
+                Item("Traveler's Clothes", "Sturdy travel garments", "clothes", "common", equipped = true)
             ),
             isCaster = true, spellAbility = "WIS",
             recommended = intArrayOf(14, 8, 14, 8, 15, 12) // Cleric
@@ -89,7 +93,8 @@ object Classes {
                 Item("Longbow", "+1d8 piercing ranged", "weapon", "common", equipped = true, damage = "1d8"),
                 Item("Shortsword", "+1d6 piercing", "weapon", "common", equipped = true, damage = "1d6"),
                 Item("Leather Armor", "AC 11+DEX", "armor", "common", equipped = true, ac = 11),
-                Item("Quiver", "20 arrows", "gear", "common")
+                Item("Quiver", "20 arrows", "gear", "common"),
+                Item("Traveler's Clothes", "Sturdy travel garments", "clothes", "common", equipped = true)
             ),
             isCaster = true, spellAbility = "WIS",
             recommended = intArrayOf(8, 15, 14, 12, 14, 8) // Ranger
@@ -101,7 +106,8 @@ object Classes {
             startingItems = listOf(
                 Item("Greataxe", "+1d12 slashing", "weapon", "common", equipped = true, damage = "1d12"),
                 Item("Handaxes", "+1d6 slashing", "weapon", "common", qty = 2),
-                Item("Hide Armor", "AC 12+DEX", "armor", "common", equipped = true, ac = 12)
+                Item("Hide Armor", "AC 12+DEX", "armor", "common", equipped = true, ac = 12),
+                Item("Traveler's Clothes", "Sturdy travel garments", "clothes", "common", equipped = true)
             ),
             isCaster = false,
             recommended = intArrayOf(15, 14, 14, 8, 12, 8) // Barbarian
@@ -113,7 +119,8 @@ object Classes {
             startingItems = listOf(
                 Item("Rapier", "+1d8 piercing", "weapon", "common", equipped = true, damage = "1d8"),
                 Item("Lute", "Performance focus", "instrument", "common"),
-                Item("Leather Armor", "AC 11+DEX", "armor", "common", equipped = true, ac = 11)
+                Item("Leather Armor", "AC 11+DEX", "armor", "common", equipped = true, ac = 11),
+                Item("Traveler's Clothes", "Sturdy travel garments", "clothes", "common", equipped = true)
             ),
             isCaster = true, spellAbility = "CHA",
             recommended = intArrayOf(8, 14, 14, 8, 12, 15) // Bard
@@ -126,7 +133,8 @@ object Classes {
                 Item("Warhammer", "+1d8 bludgeoning", "weapon", "common", equipped = true, damage = "1d8"),
                 Item("Chain Mail", "AC 16", "armor", "common", equipped = true, ac = 16),
                 Item("Shield", "+2 AC", "shield", "common", equipped = true),
-                Item("Holy Symbol", "For divine spells", "focus", "common")
+                Item("Holy Symbol", "For divine spells", "focus", "common"),
+                Item("Traveler's Clothes", "Sturdy travel garments", "clothes", "common", equipped = true)
             ),
             isCaster = true, spellAbility = "CHA",
             recommended = intArrayOf(15, 8, 14, 8, 12, 14) // Paladin
@@ -138,7 +146,8 @@ object Classes {
             startingItems = listOf(
                 Item("Dagger", "+1d4 piercing", "weapon", "common", equipped = true, damage = "1d4"),
                 Item("Arcane Focus", "Crystal orb", "focus", "common"),
-                Item("Component Pouch", "For spellcasting", "pouch", "common")
+                Item("Component Pouch", "For spellcasting", "pouch", "common"),
+                Item("Traveler's Clothes", "Sturdy travel garments", "clothes", "common", equipped = true)
             ),
             isCaster = true, spellAbility = "CHA",
             recommended = intArrayOf(8, 14, 14, 8, 12, 15) // Sorcerer
@@ -150,7 +159,8 @@ object Classes {
             startingItems = listOf(
                 Item("Light Crossbow", "+1d8 piercing ranged", "weapon", "common", equipped = true, damage = "1d8"),
                 Item("Leather Armor", "AC 11+DEX", "armor", "common", equipped = true, ac = 11),
-                Item("Pact Weapon Focus", "Arcane channel", "focus", "uncommon")
+                Item("Pact Weapon Focus", "Arcane channel", "focus", "uncommon"),
+                Item("Traveler's Clothes", "Sturdy travel garments", "clothes", "common", equipped = true)
             ),
             isCaster = true, spellAbility = "CHA",
             recommended = intArrayOf(8, 14, 14, 8, 12, 15) // Warlock
@@ -162,7 +172,8 @@ object Classes {
             startingItems = listOf(
                 Item("Quarterstaff", "+1d6 bludgeoning", "weapon", "common", equipped = true, damage = "1d6"),
                 Item("Darts", "+1d4 piercing", "weapon", "common", qty = 10),
-                Item("Monk's Robes", "AC 10+DEX+WIS", "armor", "common", equipped = true)
+                Item("Monk's Robes", "AC 10+DEX+WIS", "armor", "common", equipped = true),
+                Item("Traveler's Clothes", "Sturdy travel garments", "clothes", "common", equipped = true)
             ),
             isCaster = false,
             recommended = intArrayOf(8, 15, 14, 8, 14, 12) // Monk
@@ -175,7 +186,8 @@ object Classes {
                 Item("Scimitar", "+1d6 slashing", "weapon", "common", equipped = true, damage = "1d6"),
                 Item("Wooden Shield", "+2 AC", "shield", "common", equipped = true),
                 Item("Druidic Focus", "Carved staff", "focus", "common"),
-                Item("Healing Berries", "+1d4 HP", "consumable", "common", qty = 3)
+                Item("Healing Berries", "+1d4 HP", "consumable", "common", qty = 3),
+                Item("Traveler's Clothes", "Sturdy travel garments", "clothes", "common", equipped = true)
             ),
             isCaster = true, spellAbility = "WIS",
             recommended = intArrayOf(8, 14, 14, 12, 15, 8) // Druid

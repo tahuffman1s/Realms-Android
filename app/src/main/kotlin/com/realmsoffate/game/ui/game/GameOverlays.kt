@@ -156,11 +156,13 @@ internal fun SettingsPanel(
                     label = "Export Save",
                     onClick = { onExportSave(); onClose() }
                 )
-                ActionIcon(
-                    icon = Icons.Filled.BugReport,
-                    label = "Debug Dump",
-                    onClick = { onDebugDump(); onClose() }
-                )
+                if (BuildConfig.DEBUG) {
+                    ActionIcon(
+                        icon = Icons.Filled.BugReport,
+                        label = "Debug Dump",
+                        onClick = { onDebugDump(); onClose() }
+                    )
+                }
                 ActionIcon(
                     icon = Icons.AutoMirrored.Filled.Logout,
                     label = "Return to Title",

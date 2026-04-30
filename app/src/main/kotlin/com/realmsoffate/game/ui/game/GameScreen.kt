@@ -40,6 +40,14 @@ fun GameScreen(vm: GameViewModel) {
     var panel by remember { mutableStateOf(Panel.None) }
     var journalFocusNpc by remember { mutableStateOf<String?>(null) }
     var tab by remember { mutableStateOf(GameTab.Chat) }
+
+    // Clear deep-link focus whenever the user leaves the Journal tab so that
+    // returning to it via the bottom-nav doesn't re-expand a stale NPC.
+    LaunchedEffect(tab) {
+        if (tab != GameTab.Journal) {
+            journalFocusNpc = null
+        }
+    }
     var choicesOpen by remember { mutableStateOf(false) }
     var spellPickerOpen by remember { mutableStateOf(false) }
     var input by remember { mutableStateOf("") }

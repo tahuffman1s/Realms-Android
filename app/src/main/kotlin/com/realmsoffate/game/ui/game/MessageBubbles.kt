@@ -84,8 +84,7 @@ internal fun formatSignedRoll(n: Int) = if (n >= 0) "+$n" else n.toString()
 /**
  * Shared bubble frame used by player + NPC dialogue. Renders a Surface with
  * tail-corner treatment. No avatar, no label — ownership is signaled by
- * alignment (player right, NPC left) and, for NPCs, a leading accent dot
- * rendered outside the frame by the caller.
+ * alignment (player right, NPC left).
  */
 @Composable
 internal fun BubbleFrame(
@@ -305,23 +304,15 @@ internal fun NpcDialogueBubble(
     } else inlineQuote
     Row(
         Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.Start
     ) {
-        Box(
-            Modifier
-                .padding(top = 8.dp)
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(accent)
-        )
         BubbleFrame(
             accent = accent,
             bgColor = bgTint.copy(alpha = 0.28f),
             avatarOnRight = false,
             tailOnTop = true,
             onClick = if (isInteractive) onTap else null,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.fillMaxWidth(0.85f)
         ) {
             Text(text = rendered, style = quoteStyle)
         }
