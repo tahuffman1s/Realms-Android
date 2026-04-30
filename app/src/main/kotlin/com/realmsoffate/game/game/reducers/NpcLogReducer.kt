@@ -38,6 +38,66 @@ data class NpcLogApplyResult(
  * equivalent to the pre-extraction applyParsed lines 1417–1618.
  */
 object NpcLogReducer {
+
+    /**
+     * Descriptor-style first words — adjectives or colour/condition modifiers
+     * that almost never appear in real personal names.
+     */
+    private val DESCRIPTOR_FIRST_WORDS = setOf(
+        "Hooded", "Cloaked", "Masked", "Grey", "Gray", "Old", "Young", "Tall",
+        "Short", "Pale", "Dark", "Bright", "Silent", "Bearded", "Drunk",
+        "One-Eyed", "Scarred", "Wounded"
+    )
+
+    /**
+     * Descriptor-style last words — generic roles or attire that the narrator
+     * uses before revealing a name. Voss starts as a "Grey Cloak Hunter"; after
+     * the reveal the journal should show "Voss Ironhand" with the old name in
+     * aliases.
+     */
+    private val DESCRIPTOR_ROLE_WORDS = setOf(
+        "Hunter", "Stranger", "Traveler", "Traveller", "Guard", "Soldier",
+        "Knight", "Cloak", "Mercenary", "Beggar", "Child", "Woman", "Man",
+        "Drifter", "Wanderer", "Merchant", "Captain", "Sergeant", "Peasant",
+        "Priest", "Monk", "Rogue", "Hooded", "Figure", "Acolyte"
+    )
+
+    private const val RENAME_RECENT_TURN_GAP = 3
+
+    /**
+     * Heuristic — does [name] look like a placeholder descriptor rather than
+     * a personal name? True when first word is a known descriptor-prefix OR
+     * last word is a generic role/attire word.
+     */
+    private fun isDescriptorLikeName(name: String): Boolean {
+        val parts = name.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (parts.size < 2) return false
+        val first = parts.first()
+        val last = parts.last()
+        return first in DESCRIPTOR_FIRST_WORDS || last in DESCRIPTOR_ROLE_WORDS
+    }
+
+    /**
+     * Find an existing same-location, recently-seen, descriptor-named entry
+     * that the incoming [incomingName] should rename rather than duplicate.
+     * Returns -1 if no plausible match.
+     */
+    private fun findRenameTarget(
+        workingLog: List<LogNpc>,
+        incomingName: String,
+        currentTurn: Int,
+        currentLocName: String
+    ): Int {
+        if (incomingName.isBlank() || currentLocName.isBlank()) return -1
+        if (isDescriptorLikeName(incomingName)) return -1
+        return workingLog.indexOfFirst { existing ->
+            existing.name.isNotBlank() &&
+                isDescriptorLikeName(existing.name) &&
+                existing.lastLocation.equals(currentLocName, ignoreCase = true) &&
+                (currentTurn - existing.lastSeenTurn) <= RENAME_RECENT_TURN_GAP
+        }
+    }
+
     fun apply(
         npcLog: List<LogNpc>,
         combat: CombatState?,
@@ -90,13 +150,34 @@ object NpcLogReducer {
                         lastLocation = currentLocName.ifBlank { old.lastLocation }
                     )
                 } else {
-                    val safeId = if (n.id !in existingNpcIds) {
-                        n.id
+                    val renameIdx = findRenameTarget(workingLog, cleanName, currentTurn, currentLocName)
+                    if (renameIdx >= 0) {
+                        val old = workingLog[renameIdx]
+                        val newAliases = (old.aliases + listOf(old.name, old.id))
+                            .filter { it.isNotBlank() && it != cleanName }
+                            .distinct()
+                        workingLog[renameIdx] = old.copy(
+                            name = cleanName,
+                            race = n.race.ifBlank { old.race },
+                            role = n.role.ifBlank { old.role },
+                            age = n.age.ifBlank { old.age },
+                            relationship = n.relationship.ifBlank { old.relationship },
+                            appearance = n.appearance.ifBlank { old.appearance },
+                            personality = n.personality.ifBlank { old.personality },
+                            thoughts = n.thoughts.ifBlank { old.thoughts },
+                            aliases = newAliases,
+                            lastSeenTurn = currentTurn,
+                            lastLocation = currentLocName.ifBlank { old.lastLocation }
+                        )
                     } else {
-                        IdGen.forName(cleanName, existingNpcIds)
+                        val safeId = if (n.id !in existingNpcIds) {
+                            n.id
+                        } else {
+                            IdGen.forName(cleanName, existingNpcIds)
+                        }
+                        existingNpcIds.add(safeId)
+                        workingLog.add(n.copy(id = safeId, name = cleanName, lastLocation = currentLocName))
                     }
-                    existingNpcIds.add(safeId)
-                    workingLog.add(n.copy(id = safeId, name = cleanName, lastLocation = currentLocName))
                 }
             } else {
                 // Legacy format — match by name-key so separator variants dedupe.
@@ -111,9 +192,25 @@ object NpcLogReducer {
                         lastLocation = currentLocName.ifBlank { old.lastLocation }
                     )
                 } else {
-                    val newId = IdGen.forName(cleanName, existingNpcIds)
-                    existingNpcIds.add(newId)
-                    workingLog.add(n.copy(id = newId, name = cleanName, lastLocation = currentLocName))
+                    val renameIdx = findRenameTarget(workingLog, cleanName, currentTurn, currentLocName)
+                    if (renameIdx >= 0) {
+                        val old = workingLog[renameIdx]
+                        val newAliases = (old.aliases + listOf(old.name, old.id))
+                            .filter { it.isNotBlank() && it != cleanName }
+                            .distinct()
+                        workingLog[renameIdx] = old.copy(
+                            name = cleanName,
+                            race = n.race.ifBlank { old.race },
+                            relationship = n.relationship.ifBlank { old.relationship },
+                            aliases = newAliases,
+                            lastSeenTurn = currentTurn,
+                            lastLocation = currentLocName.ifBlank { old.lastLocation }
+                        )
+                    } else {
+                        val newId = IdGen.forName(cleanName, existingNpcIds)
+                        existingNpcIds.add(newId)
+                        workingLog.add(n.copy(id = newId, name = cleanName, lastLocation = currentLocName))
+                    }
                 }
             }
         }
