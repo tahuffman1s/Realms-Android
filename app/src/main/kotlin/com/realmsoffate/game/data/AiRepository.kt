@@ -24,7 +24,10 @@ import java.util.concurrent.TimeUnit
  *
  * DeepSeek is tuned specifically here:
  *   - temperature 1.0, top_p 0.95 (DeepSeek creative-writing sweet spot)
- *   - frequency_penalty 0.3, presence_penalty 0.1 (cuts repetition)
+ *   - frequency_penalty 0.1, presence_penalty 0.1 (light repetition pressure;
+ *     dropped from 0.3 because the BG3-narrator voice depends on recurring
+ *     vocabulary like "Between you and me…" / "I've seen this before". Higher
+ *     penalty was flattening the very fingerprints we want to keep.)
  *   - max_tokens 1800
  *   - DS_PREFIX + SYS as a stable system message — DeepSeek auto-caches
  *     identical prefixes so this pays off across turns.
@@ -44,6 +47,11 @@ class AiRepository(
     companion object {
         /** Default history budget in tokens — leaves headroom for system + scene summaries + per-turn context. */
         const val HISTORY_TOKEN_BUDGET: Int = 8000
+
+        /** Light repetition pressure. Was 0.3 (DeepSeek's documented creative-writing
+         *  default), but the BG3-narrator voice depends on recurring stylistic
+         *  fingerprints — lowered to 0.1 so those survive a long session. */
+        const val FREQUENCY_PENALTY: Double = 0.1
 
         /** Shared lenient parser — reused by [parseBalance] and [parseSummaryResponse] so we
          *  don't allocate a configuration object on every parse. */
@@ -152,7 +160,7 @@ class AiRepository(
             put("max_tokens", 1800)
             put("temperature", 1.0)
             put("top_p", 0.95)
-            put("frequency_penalty", 0.3)
+            put("frequency_penalty", FREQUENCY_PENALTY)
             put("presence_penalty", 0.1)
             put("messages", messages)
             put("response_format", buildJsonObject { put("type", "json_object") })
