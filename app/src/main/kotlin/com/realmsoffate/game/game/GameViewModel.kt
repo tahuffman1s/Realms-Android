@@ -786,7 +786,8 @@ class GameViewModel(
             a.startsWith("\"") || a.startsWith("\u201c") -> "Persuasion"
             // Default: if it sounds like an action, use Perception as catch-all
             a.contains("try") || a.contains("attempt") -> "Perception"
-            else -> "Perception"
+            else -> com.realmsoffate.game.data.SkillCanon.canonicalize(a)
+                .ifBlank { "Perception" }
         }
     }
 
@@ -802,20 +803,27 @@ class GameViewModel(
             return
         }
 
+        // Sanitize incoming skill — any free-text verb leftover from old saves
+        // or debug macros gets canonicalized; unknown verbs become null and
+        // fall through the classifier path below (rather than the tagged path).
+        val normalizedSkill: String? = skill
+            ?.let { com.realmsoffate.game.data.SkillCanon.canonicalize(it) }
+            ?.takeIf { it.isNotBlank() }
+
         val state = tryClaimSubmit() ?: return
         val char = state.character ?: return  // re-checked for the type checker
 
         // Seed turn (opening narration) — skip the pre-roll preview entirely.
         if (seed) {
             _ui.value = _ui.value.copy(isGenerating = false)
-            dispatchToAi(action, skill, seed = true, preRolled = Dice.d20())
+            dispatchToAi(action, normalizedSkill, seed = true, preRolled = Dice.d20())
             return
         }
 
         // No skill specified — fire a lightweight classifier to determine whether
         // this freeform action warrants a skill check. The user sees "thinking"
         // dots during the ~200ms call since isGenerating stays true.
-        if (skill == null) {
+        if (normalizedSkill == null) {
             // Fire a lightweight classifier to determine if this action warrants a check.
             // Falls back to local keyword matching if the API call fails.
             viewModelScope.launch {
@@ -856,15 +864,15 @@ class GameViewModel(
         // Skill-tagged action: roll d20 + show preview. The actual AI call
         // is deferred until the player taps Send It on the dice breakdown.
         val roll = Dice.d20()
-        val ability = skillToAbility(skill)
+        val ability = skillToAbility(normalizedSkill)
         val mod = EquipmentEffects.effectiveAbilities(char).modByName(ability)
-        val prof = if (classProficient(char.cls, skill)) char.proficiency else 0
+        val prof = if (classProficient(char.cls, normalizedSkill)) char.proficiency else 0
         val total = roll + mod + prof
         _ui.value = _ui.value.copy(
             isGenerating = false,  // release the claim; preRoll is the new gate
             preRoll = PreRollDisplay(
                 action = action,
-                skill = skill,
+                skill = normalizedSkill,
                 ability = ability,
                 roll = roll,
                 mod = mod,

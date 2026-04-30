@@ -27,6 +27,26 @@ object AutoTagUnknownNpcs {
         "shuriken", "kunai", "javelin", "trident", "halberd", "glaive", "naginata"
     )
 
+    /** If the candidate's *last* word is a geography/structure word, it's a place, not an NPC. */
+    private val LOCATION_TAIL_WORDS = setOf(
+        "tower", "forge", "gate", "bridge", "road", "hill", "mountain", "river",
+        "valley", "fort", "fortress", "castle", "manor", "hall", "temple", "shrine",
+        "market", "tavern", "inn", "village", "city", "town", "keep", "watch",
+        "spire", "vault", "den", "cave", "caverns", "cavern", "marsh", "swamp",
+        "lake", "sea", "bay", "harbor", "harbour", "port", "ridge", "peak", "pass",
+        "wood", "woods", "forest", "grove", "field", "fields", "plains", "moor",
+        "wastes", "barrow", "barrows", "ruin", "ruins", "tomb", "crypt", "abbey",
+        "monastery", "chapel", "garden", "gardens", "yard", "court", "courtyard"
+    )
+
+    /** Last word is a generic role/attire descriptor — treat as unnamed character. */
+    private val DESCRIPTOR_TAIL_WORDS = setOf(
+        "stranger", "traveler", "traveller", "guard", "soldier", "knight",
+        "mercenary", "beggar", "child", "woman", "man", "drifter", "wanderer",
+        "merchant", "captain", "sergeant", "peasant", "priest", "monk", "rogue",
+        "figure", "acolyte", "hunter", "cloak", "hood", "hooded"
+    )
+
     /** Two or three capitalized words, each >= 3 letters. */
     private val PROPER_NOUN = Regex("\\b([A-Z][a-z]{2,}(?: [A-Z][a-z]{2,}){1,2})\\b")
 
@@ -56,8 +76,13 @@ object AutoTagUnknownNpcs {
         val seenKeys = mutableSetOf<String>()
         for (m in PROPER_NOUN.findAll(narrationText)) {
             val name = m.groupValues[1]
+            val lastWord = name.substringAfterLast(' ').lowercase()
             if (name.substringBefore(' ') in COMMON) continue
-            if (name.substringAfterLast(' ').lowercase() in ITEM_TAIL_WORDS) continue
+            if (lastWord in ITEM_TAIL_WORDS) continue
+            if (lastWord in LOCATION_TAIL_WORDS) continue
+            // Pure descriptor tail (e.g. "Hooded Stranger", "Old Beggar") — skip.
+            // Real surnames like "Ironhand", "Saltblood", "Cole" don't appear in this set.
+            if (lastWord in DESCRIPTOR_TAIL_WORDS) continue
             val key = IdGen.nameKey(name)
             if (key in existingKeys || key in seenKeys) continue
             if (key in itemKeys || key in spellKeys) continue

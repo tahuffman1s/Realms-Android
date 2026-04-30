@@ -4,6 +4,7 @@ import com.realmsoffate.game.data.LogNpc
 import com.realmsoffate.game.data.ParsedReply
 import com.realmsoffate.game.game.ParsedReplyBuilder
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -136,5 +137,93 @@ class NpcLogReducerTest {
 
         assertEquals(1, result.npcLog.size)
         assertEquals("Mira Cole", result.npcLog[0].name)
+    }
+
+    @Test
+    fun `npcsMet rename promotes a recent descriptor-style NPC instead of duplicating`() {
+        val existing = npc(id = "grey-cloak-hunter", name = "Grey Cloak Hunter")
+            .copy(
+                lastLocation = "Nightbriar",
+                lastSeenTurn = 5,
+                dialogueHistory = mutableListOf(
+                    "T2: \"Name's Voss. I've been tracking your double for three months.\"",
+                    "T5: \"Name's Voss, by the way — Voss Ironhand.\""
+                )
+            )
+        val parsed = ParsedReplyBuilder()
+            .addNpcMet(npc(name = "Voss Ironhand", race = "Human"))
+            .build()
+
+        val result = applyWith(npcLog = listOf(existing), parsed = parsed, turn = 5, loc = "Nightbriar")
+
+        assertEquals("Should rename in place, not duplicate", 1, result.npcLog.size)
+        val merged = result.npcLog[0]
+        assertEquals("Voss Ironhand", merged.name)
+        assertEquals("grey-cloak-hunter", merged.id)
+        assertEquals("Human", merged.race)
+        assertEquals(2, merged.dialogueHistory.size)
+        assertTrue("Old slug should be preserved as alias", "grey-cloak-hunter" in merged.aliases)
+        assertTrue(
+            "Old name should be preserved as alias",
+            merged.aliases.any { it.equals("Grey Cloak Hunter", true) }
+        )
+    }
+
+    @Test
+    fun `npcsMet does not rename when no descriptor-style entry is present`() {
+        val existing = npc(id = "mira-cole", name = "Mira Cole", race = "Human")
+            .copy(lastLocation = "Hightower", lastSeenTurn = 5)
+        val parsed = ParsedReplyBuilder()
+            .addNpcMet(npc(name = "Voss Ironhand", race = "Human"))
+            .build()
+
+        val result = applyWith(npcLog = listOf(existing), parsed = parsed, turn = 5, loc = "Hightower")
+
+        assertEquals("Mira Cole is not a descriptor and should remain", 2, result.npcLog.size)
+        assertTrue(result.npcLog.any { it.name == "Mira Cole" })
+        assertTrue(result.npcLog.any { it.name == "Voss Ironhand" })
+    }
+
+    @Test
+    fun `npcsMet does not rename when descriptor entry is in a different location`() {
+        val existing = npc(id = "grey-cloak-hunter", name = "Grey Cloak Hunter")
+            .copy(lastLocation = "Whispering Marsh", lastSeenTurn = 5)
+        val parsed = ParsedReplyBuilder()
+            .addNpcMet(npc(name = "Voss Ironhand", race = "Human"))
+            .build()
+
+        val result = applyWith(npcLog = listOf(existing), parsed = parsed, turn = 5, loc = "Nightbriar")
+
+        assertEquals("Different location => no rename", 2, result.npcLog.size)
+    }
+
+    @Test
+    fun `npcsMet does not rename when descriptor entry is too old`() {
+        val existing = npc(id = "grey-cloak-hunter", name = "Grey Cloak Hunter")
+            .copy(lastLocation = "Nightbriar", lastSeenTurn = 1) // current=5, gap=4 > 3
+        val parsed = ParsedReplyBuilder()
+            .addNpcMet(npc(name = "Voss Ironhand", race = "Human"))
+            .build()
+
+        val result = applyWith(npcLog = listOf(existing), parsed = parsed, turn = 5, loc = "Nightbriar")
+
+        assertEquals("Stale descriptor => no rename", 2, result.npcLog.size)
+    }
+
+    @Test
+    fun `resolveNpcIdx matches an alias`() {
+        val npcs = listOf(
+            LogNpc(
+                id = "voss-ironhand",
+                name = "Voss Ironhand",
+                aliases = listOf("grey-cloak-hunter", "Grey Cloak Hunter"),
+                metTurn = 1,
+                lastSeenTurn = 5
+            )
+        )
+        val byOldSlug = NpcLogReducer.resolveNpcIdx("grey-cloak-hunter", npcs)
+        val byOldName = NpcLogReducer.resolveNpcIdx("Grey Cloak Hunter", npcs)
+        assertEquals(0, byOldSlug)
+        assertEquals(0, byOldName)
     }
 }

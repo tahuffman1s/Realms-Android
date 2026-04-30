@@ -124,6 +124,45 @@ class AutoTagUnknownNpcsTest {
     }
 
     @Test
+    fun `skips location-style names ending in geography word`() {
+        val parsed = parsedWithSegments(
+            NarrationSegmentData.Prose(
+                "You climb Iron Forge and survey the Whispering Marsh. The Old Tower looms. Mira Cole waves."
+            )
+        )
+        val specs = AutoTagUnknownNpcs.scan(
+            parsed = parsed,
+            existingNpcs = emptyList(),
+            currentLoc = "Hightower",
+            turn = 5
+        )
+        val names = specs.map { it.name }
+        assertTrue("Iron Forge is a location: $names", "Iron Forge" !in names)
+        assertTrue("Whispering Marsh is a location: $names", "Whispering Marsh" !in names)
+        assertTrue("Old Tower is a location: $names", "Old Tower" !in names)
+        assertTrue("Mira Cole should still be detected: $names", "Mira Cole" in names)
+    }
+
+    @Test
+    fun `skips descriptor-only character names that have no personal name`() {
+        val parsed = parsedWithSegments(
+            NarrationSegmentData.Prose(
+                "A Hooded Stranger watches from the corner. The Old Beggar shuffles past. Voss Ironhand approaches."
+            )
+        )
+        val specs = AutoTagUnknownNpcs.scan(
+            parsed = parsed,
+            existingNpcs = emptyList(),
+            currentLoc = "Nightbriar",
+            turn = 5
+        )
+        val names = specs.map { it.name }
+        assertTrue("Hooded Stranger is descriptor-only: $names", "Hooded Stranger" !in names)
+        assertTrue("Old Beggar is descriptor-only: $names", "Old Beggar" !in names)
+        assertTrue("Voss Ironhand should be detected: $names", "Voss Ironhand" in names)
+    }
+
+    @Test
     fun `returns empty when all segments are blank`() {
         val parsed = parsedWithSegments(
             NarrationSegmentData.Prose("   "),

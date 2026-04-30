@@ -213,7 +213,7 @@ Every response MUST be exactly ONE valid JSON object. No markdown, no prose befo
     {"kind":"npc_dialog", "name":"stable-slug-id", "text":"NPC speech. No quote marks."}
   ],
   "choices": [
-    {"text":"Short action", "skill":"Insight|Persuasion|Stealth|Perception|Investigation|Athletics|Acrobatics|Arcana|History|Nature|Religion|Animal Handling|Insight|Medicine|Survival|Deception|Intimidation|Performance|Sleight of Hand|Attack"}
+    {"text":"Short action", "skill":"Insight|Persuasion|Stealth|Perception|Investigation|Athletics|Acrobatics|Arcana|History|Nature|Religion|Animal Handling|Medicine|Survival|Deception|Intimidation|Performance|Sleight of Hand|Attack|"}
   ],
   "metadata": {
     "damage": 0, "heal": 0, "xp": 0,
@@ -301,6 +301,13 @@ Player learns "Hooded Figure" is actually "Veran Nightwhisper":
   "npc_updates": [{"id": "hooded-figure", "field": "name", "value": "Veran Nightwhisper"}]
 The id stays "hooded-figure" forever. NEVER re-add with npcs_met — that creates a duplicate.
 
+This applies to ALL descriptor-style names that get a real name reveal:
+"Grey Cloak Hunter" → "Voss Ironhand", "Hooded Stranger" → "Mira Cole",
+"The Old Beggar" → "Tomas Reed". Whenever a previously anonymous NPC
+reveals their real name in dialogue or narration, emit ONLY an
+npc_updates entry with the existing slug. The journal merges history;
+the player must never see two entries for the same character.
+
 NPC QUOTES — SPARINGLY:
 "npc_quotes" only for lines that truly land — threats, confessions, prophecies. At most 1-2 per turn.
 
@@ -337,8 +344,14 @@ choices array (REQUIRED — exactly 4 entries every response):
   {"text":"Action under 10 words","skill":"Persuasion"},
   {"text":"Different approach","skill":"Deception"},
   {"text":"Exploration or environmental option","skill":"Perception"},
-  {"text":"Creative, risky, or unexpected option","skill":"Athletics"}
+  {"text":"Head to the inn","skill":""}
 ]
+
+skill MUST be one of the canonical 5e skill names listed in the schema, OR an
+empty string "". Use empty for pure travel/movement/transition choices ("head
+to X", "go back", "leave", "wait", "speak to X first" with no manipulation).
+NEVER invent verbs like "investigate", "threaten back", "speak to Jiro" — map
+those to canonical skills (Investigation, Intimidation, Persuasion) or use "".
 
 Make choice text SHORT — each 1 line max. Mix combat/social/stealth. Include one bad idea.
 
@@ -476,7 +489,7 @@ CRITICAL OUTPUT RULES — FOLLOW EXACTLY OR THE GAME BREAKS:
 
 3. "segments" array — at least 1 prose, 2 asides. Player speech only when the player spoke. Every NPC uses stable slug id in "name". No dialogue outside npc_dialog/player_dialog segments.
 
-4. Exactly 4 entries in "choices". Each: {"text":"...","skill":"SkillName"}.
+4. Exactly 4 entries in "choices". Each: {"text":"...","skill":"SkillName-or-empty"}. Empty is for travel/transition only — never a substitute for a real check.
 
 5. "metadata" field — REQUIRED, all mechanical effects. See the schema in narrator instructions. Snake_case keys. Empty/omitted keys mean "no effect this turn". ZERO NUMBERS IN PROSE — all numbers live in metadata fields.
 
