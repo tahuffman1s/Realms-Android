@@ -76,4 +76,31 @@ class PromptUserBlocksTest {
         assertTrue("entry_3 should appear", out.contains("entry_3"))
         assertTrue("entry_7 should appear", out.contains("entry_7"))
     }
+
+    @Test
+    fun `key decisions block returns empty for empty history`() {
+        assertEquals("", renderKeyDecisionsBlock(emptyList()))
+    }
+
+    @Test
+    fun `key decisions block filters to recent era and keeps last 8`() {
+        val seedLore = listOf(
+            HistoryEntry(era = "primordial", year = -2000, text = "PRIMORDIAL_X"),
+            HistoryEntry(era = "ancient", year = -800, text = "ANCIENT_X"),
+            HistoryEntry(era = "medieval", year = -400, text = "MEDIEVAL_X"),
+        )
+        val playerEntries = (1..10).map {
+            HistoryEntry(era = "recent", year = it, text = "decision_$it")
+        }
+        val out = renderKeyDecisionsBlock(seedLore + playerEntries)
+        assertTrue(out.contains("KEY DECISIONS"))
+        // Pre-existing era entries are filtered out — only player-driven decisions surface.
+        assertTrue("primordial seed should be filtered", !out.contains("PRIMORDIAL_X"))
+        assertTrue("ancient seed should be filtered", !out.contains("ANCIENT_X"))
+        assertTrue("medieval seed should be filtered", !out.contains("MEDIEVAL_X"))
+        // Last 8 of decision_1..decision_10 = decision_3..decision_10
+        assertTrue("decision_2 should be dropped (cap is 8)", !out.contains("decision_2"))
+        assertTrue("decision_3 should appear", out.contains("decision_3"))
+        assertTrue("decision_10 should appear", out.contains("decision_10"))
+    }
 }

@@ -750,3 +750,28 @@ fun renderRecentContradictionsBlock(entries: List<String>): String {
         recent.forEach { e -> append("- ").append(e).append('\n') }
     }
 }
+
+/**
+ * Renders the KEY DECISIONS user-prompt block from [WorldLore.history].
+ *
+ * worldLore.history accumulates per-turn `lore_entries` from the LLM —
+ * player kills, discoveries, secrets learned, faction shifts, quest
+ * milestones, anything the model judged was a lasting consequence. Each
+ * entry lands as `HistoryEntry(era="recent", year=turnNumber, text=…)`.
+ * Pre-existing primordial/ancient/medieval entries from world-gen also live
+ * in the same list with non-"recent" era tags.
+ *
+ * This block surfaces the last 8 player-driven entries chronologically,
+ * pinned independently of the keyword-retrieval system, so long-running
+ * consequences (a king dethroned 30 turns ago, a faction destroyed 50 turns
+ * ago) stay in the model's working set even when the current action shares
+ * no keywords with them. Returns "" when no recent entries exist.
+ */
+fun renderKeyDecisionsBlock(history: List<HistoryEntry>): String {
+    val recent = history.filter { it.era == "recent" }.takeLast(8)
+    if (recent.isEmpty()) return ""
+    return buildString {
+        append("\n\nKEY DECISIONS (lasting consequences of the player's actions — reference these whenever relevant):\n")
+        recent.forEach { e -> append("- ").append(e.text).append('\n') }
+    }
+}

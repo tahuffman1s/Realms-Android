@@ -22,6 +22,7 @@ import com.realmsoffate.game.data.ParsedReply
 import com.realmsoffate.game.data.PlayerPos
 import com.realmsoffate.game.data.PreferencesStore
 import com.realmsoffate.game.data.Prompts
+import com.realmsoffate.game.data.renderKeyDecisionsBlock
 import com.realmsoffate.game.data.renderRecentContradictionsBlock
 import com.realmsoffate.game.data.renderRecentPlayerChoicesBlock
 import com.realmsoffate.game.data.renderRecentStoryBlock
@@ -1309,6 +1310,7 @@ class GameViewModel(
                 .filter { it.role == "user" }
                 .map { it.content }
             append(renderRecentPlayerChoicesBlock(recentPlayerActions))
+            append(renderKeyDecisionsBlock(s.worldLore?.history.orEmpty()))
             append(renderRecentContradictionsBlock(ContradictionQueue.snapshot()))
             // CANONICAL FACTS block — ground-truth entities pinned by scene relevance
             // plus keyword matches from repo + in-memory state.
