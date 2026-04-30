@@ -1,12 +1,14 @@
 package com.realmsoffate.game.data
 
 /**
- * Phase 4 diagnostic — Spike A.
+ * Hand-curated style anchor pinned at the front of every turn's system message.
  *
- * Replaces the scene-summary-derived [StyleExemplar] sample (which was
- * historian-voice past-tense) with a hand-curated exemplar in the actual
- * narrator voice that [Prompts.SYS] asks the model to embody:
- * second-person, present-tense, sardonic, BG3-narrator.
+ * Earlier the same slot was filled by the earliest scene summary, which is
+ * past-tense historian voice (see [Prompts.SCENE_SUMMARY_SYS]) — the opposite
+ * of the second-person, present-tense, sardonic narrator voice [Prompts.SYS]
+ * asks the model to embody. The mismatch dragged generated prose toward bland
+ * reportage; replacing the anchor with a hand-curated exemplar in the right
+ * voice fixes it.
  *
  * The string is fed verbatim through [StyleExemplar.render], which keeps the
  * first 3 sentence-terminated sentences. Keep this 3-4 sentences, voice-rich.

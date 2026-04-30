@@ -988,3 +988,26 @@ EOF
 - **Type consistency:** `renderRecentPlayerChoicesBlock(List<String>)` and `renderRecentStoryBlock(List<String>)` are declared in Prompts.kt (Task 5.3), tested in `PromptUserBlocksTest` (Task 5.1), and called from `GameViewModel.buildUserPrompt` (Tasks 5.5 and 6.1). `StyleExemplarConstants.NARRATOR_VOICE` is declared in Task 3.3, tested in 3.1, used in 3.5. `DebugTurn.systemPromptSent` is added in Task 1.1, populated in Task 1.2, exposed in Task 1.3 via `vm.snapshotDebugLog()`.
 - **Frequent commits:** 1 (instrumentation) + 4 (one per spike) + ≤3 (revert commits) + 1 (combined winner) + 1 (final squash) + 1 (Phase 5 plan) ≈ 7-11 commits across 8 tasks. Each spike is independently revertable.
 - **Risk:** the biggest risk is *running* the replay protocol — DeepSeek API costs scale with the number of runs. 10 turns × 3 runs × 6 variants (baseline + 4 spikes + combined) = 180 API calls + ~50 baseline-validation manual turns. At ~2k prompt tokens + ~1k completion tokens per turn, total cost is well under $1 USD on DeepSeek pricing — manageable but worth doing in one focused session rather than spread over weeks.
+
+---
+
+## Decisions
+
+The empirical replay protocol (Tasks 2 / 3.8-3.9 / 4.5-4.6 / 5.9-5.10 / 6.5-6.6 / 7) was **skipped by user decision**. Spikes were approved on diagnostic confidence rather than three-run eyeball pattern matching.
+
+### Approved (bundled into the same PR as instrumentation)
+
+- **Spike A — narrator-voice `StyleExemplarConstants.NARRATOR_VOICE`.** Mechanically wrong: the slot labeled "match this voice" was being filled with a past-tense historian compression, the opposite of the second-person present-tense narrator the SYS prompt asks for. Promoted from "diagnostic spike" to permanent code; doc comments rewritten to drop the experiment framing.
+- **Spike C — `RECENT PLAYER CHOICES` user-prompt block.** Structural gap: rich blocks existed for world state, NPCs, factions, lore — none for player decisions. Player text was buried in raw chat history dominated by assistant envelope JSON. Adding an explicit ledger of the last 5 player inputs is a well-understood prompt-engineering pattern with low risk.
+- **Spike D — `RECENT STORY` 2×300 → 4×600.** Recency anchor was ~100 words for a long-form RPG. Widening costs ~1.8KB of user-prompt tokens per turn — well within budget — and pairs naturally with Spike C (decisions ledger + recent narrative both anchored at the front of the action context).
+
+### Deferred — Spike B (frequency_penalty 0.3 → 0.1)
+
+DeepSeek's documented creative-writing sweet spot is `frequency_penalty=0.3, presence_penalty=0.1` (referenced in `AiRepository.kt:25-30`). Lowering the frequency penalty has a real risk of *increasing* repetition, not decreasing it — and repetition is itself a prose-quality regression. Without empirical A/B data, the change could move the needle in either direction. Re-enter this experiment if Spikes A/C/D land and prose still feels flat — at that point the `phase4-spike-b` branch is still available to cherry-pick and run a focused replay against.
+
+### Out of scope, parked for follow-up phases
+
+- **ContradictionQueue → prompt feedback.** `ContradictionQueue.checkArc(...)` already detects when arc summaries reference dead/cursed NPCs without past-tense cues, but the queue is observe-only — never fed back into the user prompt. Adding a "RECENT CONTRADICTIONS" guard block is a natural Phase 5 candidate.
+- **Time-based scene-summary fallback.** `SceneBoundaryDetector` only fires on location/combat/scene-tag change. Long single-scene exchanges silently lose oldest history past the 8000-token cap. A turn-count fallback (e.g. force a summary after every 8 turns regardless of boundary) would close this gap.
+- **`Prompts.SYS` prose-vs-rules rebalance.** Commit `f2baef8` traded ~22% of the prompt's words from voice exemplars to BAD/GOOD constraint pairs ("Phase 4: few-shot prompt polish — trade prose for BAD/GOOD pairs"). Subsequent commits added more rules without restoring voice content. A targeted rebalance — moving some BAD/GOOD pairs into a tighter checklist while restoring voice exemplars — is its own multi-iteration project. Not Phase 5 material; needs its own brainstorm.
+- **Arc-summary retrieval expansion.** Currently `BUDGET_ARC_SUMMARIES = 1500` chars and arcs are surfaced via keyword match + newest-fill, capping at ~2-3 arcs per turn. A pinned "key decisions ever made" block (independent of keyword retrieval) would surface long-running consequences that share no keywords with the current action.

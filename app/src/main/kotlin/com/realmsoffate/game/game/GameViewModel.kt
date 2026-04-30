@@ -1244,13 +1244,13 @@ class GameViewModel(
             }
         } else ""
 
-        // Phase 4 spike D — split the narration window:
-        // - recentNarrationForKeywords: kept at 2×300 chars (used for retrieval token
-        //   extraction; widening it would change retrieval scoring and confound the
-        //   experiment with a separate variable).
-        // - narrationsForPrompt: full Narration message list, fed through
-        //   renderRecentStoryBlock which applies the 4×600 window for the user-prompt
-        //   RECENT STORY section.
+        // The narration window is split intentionally:
+        // - recentNarrationForKeywords drives retrieval-token extraction below.
+        //   Kept narrow (2×300 chars) because that's what the keyword scorer was
+        //   tuned against — widening it would change retrieval ranking.
+        // - narrationsForPrompt feeds renderRecentStoryBlock for the user-prompt
+        //   RECENT STORY section, which applies its own 4×600 window for the
+        //   model's recency anchor.
         val recentNarrationForKeywords = s.messages
             .filterIsInstance<DisplayMessage.Narration>()
             .takeLast(2)

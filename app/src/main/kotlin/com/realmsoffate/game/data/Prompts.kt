@@ -686,12 +686,13 @@ const val BUDGET_CANONICAL_FACTS: Int = 800
 const val BUDGET_RECENT_TURNS: Int = 6000
 
 /**
- * Phase 4 spike C — RECENT PLAYER CHOICES block.
+ * Renders the RECENT PLAYER CHOICES user-prompt block.
  *
  * The user prompt has rich blocks for world state but nothing for what the
- * player did recently. Player text is only in the raw chat history, which is
- * windowed at 8000 tokens — ~3-5 full turns — and is dominated by assistant
- * envelope JSON. This block surfaces the last 5 raw player inputs in a
+ * player did recently. Player text otherwise lives only in the raw chat
+ * history, which is windowed at 8000 tokens — ~3-5 full turns — and is
+ * dominated by assistant envelope JSON, so the model has to dig for the
+ * actual decisions. This block surfaces the last 5 raw player inputs in a
  * dedicated section, oldest first (chronological), each truncated to 200
  * chars to keep the budget tight.
  *
@@ -710,12 +711,15 @@ fun renderRecentPlayerChoicesBlock(actions: List<String>): String {
 }
 
 /**
- * Phase 4 spike D — RECENT STORY block resize (was takeLast(2) × 300 chars).
- * Bumped to 4 narrations × 600 chars to widen recency anchoring without
- * blowing the per-turn token budget.
+ * Renders the RECENT STORY user-prompt block — the last 4 narration messages,
+ * each truncated to 600 chars, joined newest-last with a "---" separator.
  *
- * Returns "" for empty input. Joins narrations newest-last with a "---"
- * separator so the model sees clear scene boundaries.
+ * Earlier this was 2 narrations × 300 chars assembled inline. ~100 words of
+ * recency anchor was too thin for a long-form RPG; widening to 4×600 gives
+ * the model meaningful continuity context without blowing the per-turn
+ * token budget.
+ *
+ * Returns "" for empty input.
  */
 fun renderRecentStoryBlock(narrations: List<String>): String {
     val recent = narrations.takeLast(4)
