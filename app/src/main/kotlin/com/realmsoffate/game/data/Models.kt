@@ -336,7 +336,10 @@ data class DebugTurn(
     val parsedScene: String,
     val parsedNarration: String,
     val parsedTags: String,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    /** Phase 4 diagnostic: full assembled system message (DS_PREFIX + sys + style block).
+     *  Default "" so v1/v2/v3 saves keep deserializing — old DebugTurns don't have this. */
+    val systemPromptSent: String = ""
 )
 
 @Serializable

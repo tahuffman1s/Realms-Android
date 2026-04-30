@@ -684,3 +684,46 @@ const val BUDGET_SCENE_SUMMARIES: Int = 2000
 const val BUDGET_KNOWN_NPCS: Int = 600
 const val BUDGET_CANONICAL_FACTS: Int = 800
 const val BUDGET_RECENT_TURNS: Int = 6000
+
+/**
+ * Renders the RECENT PLAYER CHOICES user-prompt block.
+ *
+ * The user prompt has rich blocks for world state but nothing for what the
+ * player did recently. Player text otherwise lives only in the raw chat
+ * history, which is windowed at 8000 tokens — ~3-5 full turns — and is
+ * dominated by assistant envelope JSON, so the model has to dig for the
+ * actual decisions. This block surfaces the last 5 raw player inputs in a
+ * dedicated section, oldest first (chronological), each truncated to 200
+ * chars to keep the budget tight.
+ *
+ * Returns "" for an empty list so callers can unconditionally append.
+ */
+fun renderRecentPlayerChoicesBlock(actions: List<String>): String {
+    val recent = actions.takeLast(5)
+    if (recent.isEmpty()) return ""
+    return buildString {
+        append("\n\nRECENT PLAYER CHOICES (the player's actual recent decisions — honor them, callback to them):\n")
+        recent.forEach { a ->
+            val trimmed = if (a.length > 200) a.take(200) + "…" else a
+            append("- ").append(trimmed).append('\n')
+        }
+    }
+}
+
+/**
+ * Renders the RECENT STORY user-prompt block — the last 4 narration messages,
+ * each truncated to 600 chars, joined newest-last with a "---" separator.
+ *
+ * Earlier this was 2 narrations × 300 chars assembled inline. ~100 words of
+ * recency anchor was too thin for a long-form RPG; widening to 4×600 gives
+ * the model meaningful continuity context without blowing the per-turn
+ * token budget.
+ *
+ * Returns "" for empty input.
+ */
+fun renderRecentStoryBlock(narrations: List<String>): String {
+    val recent = narrations.takeLast(4)
+    if (recent.isEmpty()) return ""
+    val joined = recent.joinToString("\n---\n") { it.take(600) }
+    return "\n\nRECENT STORY (continue from here, do not reset or contradict):\n$joined"
+}

@@ -22,6 +22,8 @@ import com.realmsoffate.game.data.ParsedReply
 import com.realmsoffate.game.data.PlayerPos
 import com.realmsoffate.game.data.PreferencesStore
 import com.realmsoffate.game.data.Prompts
+import com.realmsoffate.game.data.renderRecentPlayerChoicesBlock
+import com.realmsoffate.game.data.renderRecentStoryBlock
 import com.realmsoffate.game.data.Quest
 import com.realmsoffate.game.data.GraveyardEntry
 import com.realmsoffate.game.data.DebugTurn
@@ -29,6 +31,8 @@ import com.realmsoffate.game.data.DormantCallback
 import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
 import com.realmsoffate.game.data.SceneSummary
+import com.realmsoffate.game.data.StyleExemplar
+import com.realmsoffate.game.data.StyleExemplarConstants
 import com.realmsoffate.game.data.NarrationSegmentData
 import com.realmsoffate.game.data.TagParser
 import com.realmsoffate.game.data.TimelineEntry
@@ -353,9 +357,13 @@ class GameViewModel(
     // @Serializable so it can be persisted in SaveData.debugLog.
     private val _debugLog = mutableListOf<DebugTurn>()
 
+    /** Phase 4 diagnostic: returns a copy of the current debug log for off-device capture. */
+    fun snapshotDebugLog(): List<DebugTurn> = _debugLog.toList()
+
     private fun logDebugTurn(
         turn: Int, action: String, skill: String?, roll: Int,
-        prompt: String, raw: String, parsed: com.realmsoffate.game.data.ParsedReply
+        prompt: String, raw: String, parsed: com.realmsoffate.game.data.ParsedReply,
+        systemPrompt: String = ""
     ) {
         val tags = buildString {
             if (parsed.damage > 0) appendLine("DAMAGE:${parsed.damage}")
@@ -408,7 +416,8 @@ class GameViewModel(
                     is NarrationSegmentData.NpcDialog -> "NPC_DLG(${seg.name}): ${seg.text}"
                 }
             }.take(500),
-            parsedTags = tags
+            parsedTags = tags,
+            systemPromptSent = systemPrompt
         ))
         // Cap at 50 turns to avoid memory bloat
         if (_debugLog.size > 50) _debugLog.removeAt(0)
@@ -955,8 +964,10 @@ class GameViewModel(
             // residual cases where DeepSeek emits something too broken even to salvage, we
             // round-trip with a correction hint. Three attempts cap the token cost while
             // pushing end-to-end reliability close to 100% on a healthy connection.
+            val styleSample = StyleExemplarConstants.NARRATOR_VOICE
             var raw = ""
             var parsed: ParsedReply = TagParser.parse("", state.turns + 1)  // placeholder INVALID
+            var winningAttemptSys: String = sys  // captured for diagnostic
             val invalidHint = "\n\nPREVIOUS RESPONSE WAS INVALID JSON. Emit ONE valid JSON object with keys scene, segments, choices (exactly 4), metadata. Escape all internal double quotes as \\\". No nested objects inside array elements unless the schema specifies one. ASCII straight quotes only."
             for (attempt in 1..3) {
                 val attemptSys = if (attempt == 1) sys else sys + invalidHint
@@ -966,17 +977,23 @@ class GameViewModel(
                         apiKey = _apiKey.value,
                         systemPrompt = attemptSys,
                         history = nh,
-                        styleSample = state.sceneSummaries.firstOrNull()?.summary
+                        styleSample = styleSample
                     )
                 } catch (t: Throwable) {
                     _ui.value = _ui.value.copy(isGenerating = false, error = "Network error: ${t.message}")
                     return@launch
                 }
                 parsed = TagParser.parse(raw, state.turns + 1)
+                winningAttemptSys = attemptSys
                 if (parsed.source == ParseSource.JSON) break
                 android.util.Log.w("GameViewModel", "envelope parse failed on attempt $attempt/3; retrying with correction hint")
             }
-            logDebugTurn(state.turns + 1, action, skill, roll, userPrompt, raw, parsed)
+            // MIRRORS AiRepository.callDeepSeek line ~141. If you change the assembled
+            // system message there, update this reconstruction or the /ai/debug-log
+            // payload will silently drift from the wire prompt.
+            val capturedSystem = Prompts.DS_PREFIX + winningAttemptSys +
+                StyleExemplar.block(styleSample)
+            logDebugTurn(state.turns + 1, action, skill, roll, userPrompt, raw, parsed, capturedSystem)
             // Both attempts produced an unparseable envelope (empty content, truncated
             // JSON, or off-schema prose). Don't commit a blank Narration bubble —
             // surface the failure and roll back the optimistic Player bubble so the
@@ -1227,17 +1244,25 @@ class GameViewModel(
             }
         } else ""
 
-        // Recent narration — used both in the prompt body and to compute keyword
-        // tokens for retrieval. Extract once.
-        val recentNarration = s.messages
+        // The narration window is split intentionally:
+        // - recentNarrationForKeywords drives retrieval-token extraction below.
+        //   Kept narrow (2×300 chars) because that's what the keyword scorer was
+        //   tuned against — widening it would change retrieval ranking.
+        // - narrationsForPrompt feeds renderRecentStoryBlock for the user-prompt
+        //   RECENT STORY section, which applies its own 4×600 window for the
+        //   model's recency anchor.
+        val recentNarrationForKeywords = s.messages
             .filterIsInstance<DisplayMessage.Narration>()
             .takeLast(2)
             .joinToString("\n---\n") { it.text.take(300) }
+        val narrationsForPrompt = s.messages
+            .filterIsInstance<DisplayMessage.Narration>()
+            .map { it.text }
 
         // Compute retrieval tokens and run both summary + entity keyword queries
         // concurrently so long-term memory is relevance-ranked, not recency-ranked.
         val tokens = (com.realmsoffate.game.util.PromptKeywords.extract(action) +
-            com.realmsoffate.game.util.PromptKeywords.extract(recentNarration)).distinct()
+            com.realmsoffate.game.util.PromptKeywords.extract(recentNarrationForKeywords)).distinct()
         val entityHits = if (tokens.isEmpty()) com.realmsoffate.game.data.KeywordHits.EMPTY
             else runCatching { repo.keywordMatchedEntities(tokens, limit = 8) }
                 .getOrDefault(com.realmsoffate.game.data.KeywordHits.EMPTY)
@@ -1275,9 +1300,11 @@ class GameViewModel(
             }
             append(renderSceneSummariesBlock(s.sceneSummaries))
             append(renderMatchedPastScenesBlock(summaryHits.scenes, alreadyShown = s.sceneSummaries))
-            if (recentNarration.isNotBlank()) {
-                append("\n\nRECENT STORY (continue from here, do not reset or contradict):\n$recentNarration")
-            }
+            append(renderRecentStoryBlock(narrationsForPrompt))
+            val recentPlayerActions = s.history
+                .filter { it.role == "user" }
+                .map { it.content }
+            append(renderRecentPlayerChoicesBlock(recentPlayerActions))
             // CANONICAL FACTS block — ground-truth entities pinned by scene relevance
             // plus keyword matches from repo + in-memory state.
             val canonical = buildCanonicalFacts(s, entityHits, tokens)

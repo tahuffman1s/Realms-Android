@@ -72,3 +72,11 @@ app/src/debug/kotlin/com/realmsoffate/game/debug/SourceIndex.kt
 /screenshots/
 # Stray debug dumps that landed in the repo root from manual exports
 debug_*.txt
+
+# Worktrees host directory (used by superpowers:using-git-worktrees skill)
+.worktrees/
+
+# Phase 4 diagnostic run captures — large JSON dumps, not for repo
+docs/superpowers/plans/phase4-evidence/*.json
+docs/superpowers/plans/phase4-evidence/**/*.json
+docs/superpowers/plans/phase4-evidence/*-notes.md
