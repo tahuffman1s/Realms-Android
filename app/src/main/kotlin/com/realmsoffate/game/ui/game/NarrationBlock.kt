@@ -103,21 +103,7 @@ internal fun NarrationBlock(
                     is NarrationSegmentData.PlayerAction -> {
                         PlayerActionLine(text = seg.text)
                     }
-                    is NarrationSegmentData.PlayerDialog -> {
-                        SwipeableMessage(
-                            onSwipeLeft = {},
-                            onSwipeRight = { onOpenStats() },
-                            leftLabel = null,
-                            rightLabel = "Stats",
-                            leftIcon = null,
-                            rightIcon = Icons.Filled.QueryStats
-                        ) {
-                            PlayerBubble(
-                                text = seg.text,
-                                characterName = characterName
-                            )
-                        }
-                    }
+                    is NarrationSegmentData.PlayerDialog -> {}
                 }
             }
             // Stat change strip (with optional inline check chip) at the end — dimmed with the turn
@@ -163,21 +149,7 @@ internal fun NarrationBlock(
                             )
                         }
                     }
-                    is NarrationSegment.PlayerDialogue -> {
-                        SwipeableMessage(
-                            onSwipeLeft = {},
-                            onSwipeRight = { onOpenStats() },
-                            leftLabel = null,
-                            rightLabel = "Stats",
-                            leftIcon = null,
-                            rightIcon = Icons.Filled.QueryStats
-                        ) {
-                            PlayerBubble(
-                                text = seg.quote,
-                                characterName = seg.name
-                            )
-                        }
-                    }
+                    is NarrationSegment.PlayerDialogue -> {}
                     is NarrationSegment.Action -> Dim(dimAlpha) {
                         NarratorAsideLine(text = seg.text)
                     }
