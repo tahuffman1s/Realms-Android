@@ -29,6 +29,7 @@ import com.realmsoffate.game.data.DormantCallback
 import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
 import com.realmsoffate.game.data.SceneSummary
+import com.realmsoffate.game.data.StyleExemplar
 import com.realmsoffate.game.data.NarrationSegmentData
 import com.realmsoffate.game.data.TagParser
 import com.realmsoffate.game.data.TimelineEntry
@@ -354,7 +355,7 @@ class GameViewModel(
     private val _debugLog = mutableListOf<DebugTurn>()
 
     /** Phase 4 diagnostic: returns a copy of the current debug log for off-device capture. */
-    fun snapshotDebugLog(): List<com.realmsoffate.game.data.DebugTurn> = _debugLog.toList()
+    fun snapshotDebugLog(): List<DebugTurn> = _debugLog.toList()
 
     private fun logDebugTurn(
         turn: Int, action: String, skill: String?, roll: Int,
@@ -960,6 +961,7 @@ class GameViewModel(
             // residual cases where DeepSeek emits something too broken even to salvage, we
             // round-trip with a correction hint. Three attempts cap the token cost while
             // pushing end-to-end reliability close to 100% on a healthy connection.
+            val styleSample = state.sceneSummaries.firstOrNull()?.summary
             var raw = ""
             var parsed: ParsedReply = TagParser.parse("", state.turns + 1)  // placeholder INVALID
             var winningAttemptSys: String = sys  // captured for diagnostic
@@ -972,7 +974,7 @@ class GameViewModel(
                         apiKey = _apiKey.value,
                         systemPrompt = attemptSys,
                         history = nh,
-                        styleSample = state.sceneSummaries.firstOrNull()?.summary
+                        styleSample = styleSample
                     )
                 } catch (t: Throwable) {
                     _ui.value = _ui.value.copy(isGenerating = false, error = "Network error: ${t.message}")
@@ -983,9 +985,11 @@ class GameViewModel(
                 if (parsed.source == ParseSource.JSON) break
                 android.util.Log.w("GameViewModel", "envelope parse failed on attempt $attempt/3; retrying with correction hint")
             }
-            val styleSample = state.sceneSummaries.firstOrNull()?.summary
-            val capturedSystem = com.realmsoffate.game.data.Prompts.DS_PREFIX + winningAttemptSys +
-                com.realmsoffate.game.data.StyleExemplar.block(styleSample)
+            // MIRRORS AiRepository.callDeepSeek line ~141. If you change the assembled
+            // system message there, update this reconstruction or the /ai/debug-log
+            // payload will silently drift from the wire prompt.
+            val capturedSystem = Prompts.DS_PREFIX + winningAttemptSys +
+                StyleExemplar.block(styleSample)
             logDebugTurn(state.turns + 1, action, skill, roll, userPrompt, raw, parsed, capturedSystem)
             // Both attempts produced an unparseable envelope (empty content, truncated
             // JSON, or off-schema prose). Don't commit a blank Narration bubble —
