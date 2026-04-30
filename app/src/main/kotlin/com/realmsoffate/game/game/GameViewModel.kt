@@ -23,6 +23,7 @@ import com.realmsoffate.game.data.PlayerPos
 import com.realmsoffate.game.data.PreferencesStore
 import com.realmsoffate.game.data.Prompts
 import com.realmsoffate.game.data.renderRecentPlayerChoicesBlock
+import com.realmsoffate.game.data.renderRecentStoryBlock
 import com.realmsoffate.game.data.Quest
 import com.realmsoffate.game.data.GraveyardEntry
 import com.realmsoffate.game.data.DebugTurn
@@ -1243,17 +1244,25 @@ class GameViewModel(
             }
         } else ""
 
-        // Recent narration — used both in the prompt body and to compute keyword
-        // tokens for retrieval. Extract once.
-        val recentNarration = s.messages
+        // Phase 4 spike D — split the narration window:
+        // - recentNarrationForKeywords: kept at 2×300 chars (used for retrieval token
+        //   extraction; widening it would change retrieval scoring and confound the
+        //   experiment with a separate variable).
+        // - narrationsForPrompt: full Narration message list, fed through
+        //   renderRecentStoryBlock which applies the 4×600 window for the user-prompt
+        //   RECENT STORY section.
+        val recentNarrationForKeywords = s.messages
             .filterIsInstance<DisplayMessage.Narration>()
             .takeLast(2)
             .joinToString("\n---\n") { it.text.take(300) }
+        val narrationsForPrompt = s.messages
+            .filterIsInstance<DisplayMessage.Narration>()
+            .map { it.text }
 
         // Compute retrieval tokens and run both summary + entity keyword queries
         // concurrently so long-term memory is relevance-ranked, not recency-ranked.
         val tokens = (com.realmsoffate.game.util.PromptKeywords.extract(action) +
-            com.realmsoffate.game.util.PromptKeywords.extract(recentNarration)).distinct()
+            com.realmsoffate.game.util.PromptKeywords.extract(recentNarrationForKeywords)).distinct()
         val entityHits = if (tokens.isEmpty()) com.realmsoffate.game.data.KeywordHits.EMPTY
             else runCatching { repo.keywordMatchedEntities(tokens, limit = 8) }
                 .getOrDefault(com.realmsoffate.game.data.KeywordHits.EMPTY)
@@ -1291,9 +1300,7 @@ class GameViewModel(
             }
             append(renderSceneSummariesBlock(s.sceneSummaries))
             append(renderMatchedPastScenesBlock(summaryHits.scenes, alreadyShown = s.sceneSummaries))
-            if (recentNarration.isNotBlank()) {
-                append("\n\nRECENT STORY (continue from here, do not reset or contradict):\n$recentNarration")
-            }
+            append(renderRecentStoryBlock(narrationsForPrompt))
             val recentPlayerActions = s.history
                 .filter { it.role == "user" }
                 .map { it.content }
