@@ -65,3 +65,17 @@ object Races {
     )
     fun find(name: String) = list.firstOrNull { it.name.equals(name, true) }
 }
+
+/**
+ * Default (primary, secondary) ability indices (0=STR, 1=DEX, 2=CON, 3=INT, 4=WIS, 5=CHA)
+ * derived from a race's per-stat bonuses. Used by character creation to pre-fill the
+ * +2 / +1 selector with the race's canonical 5e bonus layout.
+ *
+ * Human (+1 to all six) cannot be fully represented by a two-slot selector — we return
+ * (STR, DEX) as a representative pair. See issue #17 for the long-term fix.
+ */
+fun RaceDef.defaultBonusIndices(): Pair<Int, Int> {
+    val bonuses = intArrayOf(strBonus, dexBonus, conBonus, intBonus, wisBonus, chaBonus)
+    val sortedIdx = bonuses.indices.sortedByDescending { bonuses[it] }
+    return sortedIdx[0] to sortedIdx[1]
+}

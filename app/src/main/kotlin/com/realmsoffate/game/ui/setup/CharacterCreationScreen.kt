@@ -31,6 +31,7 @@ import com.realmsoffate.game.data.CharacterAppearance
 import com.realmsoffate.game.game.Classes
 import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.game.Races
+import com.realmsoffate.game.game.defaultBonusIndices
 import com.realmsoffate.game.ui.components.SectionHeader
 import com.realmsoffate.game.ui.theme.RealmsSpacing
 
@@ -58,11 +59,18 @@ fun CharacterCreationScreen(vm: GameViewModel) {
     var hairStyle by rememberSaveable { mutableStateOf(HAIR_STYLES.first()) }
     var build by rememberSaveable { mutableStateOf("Average") }
     var race by rememberSaveable { mutableStateOf(Races.list.first().name) }
+    // Default the +2 / +1 picks from the selected race's canonical bonuses.
+    // Player can still override on the Stats step.
+    // TODO(#17): Human gets +1 to all six stats — a two-slot selector cannot represent
+    // that fully. We default Human to (STR, DEX) as a representative pair and lose the
+    // other +1s. Long-term fix: model this as six independent bonus values.
+    val initialBonuses = remember(race) {
+        Races.find(race)?.defaultBonusIndices() ?: (0 to 1)
+    }
+    var primaryBonus by rememberSaveable(race) { mutableIntStateOf(initialBonuses.first) } // index 0..5
+    var secondaryBonus by rememberSaveable(race) { mutableIntStateOf(initialBonuses.second) }
     var cls by rememberSaveable { mutableStateOf(Classes.list.first().name) }
     val baseStats = rememberSaveable { mutableStateOf(intArrayOf(8, 8, 8, 8, 8, 8)) }
-    // Racial bonus allocation: +2 and +1 applied to two different stats (defaulting to race suggestions).
-    var primaryBonus by rememberSaveable { mutableIntStateOf(0) } // index 0..5
-    var secondaryBonus by rememberSaveable { mutableIntStateOf(1) }
 
     val totalSteps = 6
     val stepValid = remember(step, name, race, cls, baseStats.value, primaryBonus, secondaryBonus) {
