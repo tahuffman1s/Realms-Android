@@ -30,6 +30,7 @@ import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.data.SaveStore
 import com.realmsoffate.game.data.SceneSummary
 import com.realmsoffate.game.data.StyleExemplar
+import com.realmsoffate.game.data.StyleExemplarConstants
 import com.realmsoffate.game.data.NarrationSegmentData
 import com.realmsoffate.game.data.TagParser
 import com.realmsoffate.game.data.TimelineEntry
@@ -961,7 +962,7 @@ class GameViewModel(
             // residual cases where DeepSeek emits something too broken even to salvage, we
             // round-trip with a correction hint. Three attempts cap the token cost while
             // pushing end-to-end reliability close to 100% on a healthy connection.
-            val styleSample = state.sceneSummaries.firstOrNull()?.summary
+            val styleSample = StyleExemplarConstants.NARRATOR_VOICE
             var raw = ""
             var parsed: ParsedReply = TagParser.parse("", state.turns + 1)  // placeholder INVALID
             var winningAttemptSys: String = sys  // captured for diagnostic
