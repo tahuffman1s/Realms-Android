@@ -727,3 +727,26 @@ fun renderRecentStoryBlock(narrations: List<String>): String {
     val joined = recent.joinToString("\n---\n") { it.take(600) }
     return "\n\nRECENT STORY (continue from here, do not reset or contradict):\n$joined"
 }
+
+/**
+ * Renders the RECENT CONTRADICTIONS user-prompt block from the
+ * ContradictionQueue snapshot.
+ *
+ * The queue records every time an arc summary mentioned a dead/cursed/doomed
+ * NPC without past-tense cues — i.e., the model hallucinated those NPCs as
+ * still active. Until now the queue was observe-only; surfacing the last 5
+ * entries in the user prompt forces the model to acknowledge and stop
+ * repeating each specific mistake.
+ *
+ * Each entry is already self-contained ("'Lord Marcus' marked dead but
+ * referenced as active in: ...") so we feed them in verbatim, just
+ * reformatted as a list. Returns "" for an empty queue.
+ */
+fun renderRecentContradictionsBlock(entries: List<String>): String {
+    val recent = entries.takeLast(5)
+    if (recent.isEmpty()) return ""
+    return buildString {
+        append("\n\nRECENT CONTRADICTIONS (prior hallucinations — DO NOT REPEAT these mistakes):\n")
+        recent.forEach { e -> append("- ").append(e).append('\n') }
+    }
+}

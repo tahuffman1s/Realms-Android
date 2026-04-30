@@ -59,4 +59,21 @@ class PromptUserBlocksTest {
         val bRun = "b".repeat(599)
         assertTrue("m2 should be truncated to 600 chars (599 b's max)", !out.contains(bRun))
     }
+
+    @Test
+    fun `recent contradictions block returns empty for empty queue`() {
+        assertEquals("", renderRecentContradictionsBlock(emptyList()))
+    }
+
+    @Test
+    fun `recent contradictions block surfaces last 5 entries with do-not-repeat header`() {
+        val entries = (1..7).map { "entry_$it" }
+        val out = renderRecentContradictionsBlock(entries)
+        assertTrue(out.contains("RECENT CONTRADICTIONS"))
+        assertTrue(out.contains("DO NOT REPEAT"))
+        // Last 5 kept: entry_3..entry_7
+        assertTrue("entry_2 should be dropped", !out.contains("entry_2"))
+        assertTrue("entry_3 should appear", out.contains("entry_3"))
+        assertTrue("entry_7 should appear", out.contains("entry_7"))
+    }
 }
