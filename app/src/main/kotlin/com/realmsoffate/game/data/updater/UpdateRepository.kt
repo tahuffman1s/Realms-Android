@@ -147,8 +147,42 @@ class UpdateRepository(
         }
     }
 
+    /** UI-friendly: pass-throughs for the prefs flows. */
+    fun observableChannel(): kotlinx.coroutines.flow.Flow<UpdateChannel> = prefs.channel
+    fun observableLastCheckedAt(): kotlinx.coroutines.flow.Flow<Long?> = prefs.lastCheckedAt
+
     companion object {
         /** 6 hours. */
         const val DEFAULT_CACHE_TTL_MS: Long = 6L * 60L * 60L * 1000L
     }
+}
+
+/**
+ * Process-level holder so MainActivity / Compose can grab the repository
+ * without DI. Mirrors RealmsDbHolder / ContentRepository conventions.
+ */
+object UpdateRepositoryHolder {
+    @Volatile private var repo: UpdateRepository? = null
+
+    fun init(
+        context: android.content.Context,
+        currentVersionName: String,
+    ) {
+        if (repo != null) return
+        val httpClient = GitHubReleasesClient.defaultHttpClient()
+        val client = GitHubReleasesSource(
+            GitHubReleasesClient(httpClient = httpClient, userAgent = "Realms/$currentVersionName")
+        )
+        val prefs = UpdatePrefs(context.applicationContext)
+        val downloader = ApkDownloader(httpClient, java.io.File(context.cacheDir, "updates"))
+        repo = UpdateRepository(
+            currentVersionName = currentVersionName,
+            client = client,
+            prefs = prefs,
+            downloader = downloader
+        )
+    }
+
+    val instance: UpdateRepository
+        get() = repo ?: error("UpdateRepositoryHolder not initialized")
 }

@@ -7,6 +7,7 @@ import com.realmsoffate.game.BuildConfig
 import com.realmsoffate.game.data.SaveStore
 import com.realmsoffate.game.data.content.ContentRepository
 import com.realmsoffate.game.data.db.RealmsDbHolder
+import com.realmsoffate.game.data.updater.UpdateRepositoryHolder
 import java.util.concurrent.Executors
 
 class RealmsApp : Application() {
@@ -17,6 +18,8 @@ class RealmsApp : Application() {
         EmojiCompat.init(BundledEmojiCompatConfig(this, Executors.newSingleThreadExecutor()))
         SaveStore.init(this)
         RealmsDbHolder.init(this)
+        UpdateRepositoryHolder.init(this, BuildConfig.VERSION_NAME)
+        UpdateRepositoryHolder.instance.check(force = false)
         if (BuildConfig.DEBUG) {
             try {
                 val bridge = Class.forName("com.realmsoffate.game.debug.DebugBridge")
