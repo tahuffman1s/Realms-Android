@@ -24,6 +24,7 @@ internal object ContentLoader {
         val races: RacesDto,
         val classes: ClassesDto,
         val feats: FeatsDto,
+        val spells: SpellsDto,
     )
 
     fun loadAndValidate(open: (String) -> InputStream): Bundle {
@@ -42,6 +43,7 @@ internal object ContentLoader {
             races = parse("content/characters/races.json", open),
             classes = parse("content/characters/classes.json", open),
             feats = parse("content/characters/feats.json", open),
+            spells = parse("content/spells/spells.json", open),
         )
     }
 
