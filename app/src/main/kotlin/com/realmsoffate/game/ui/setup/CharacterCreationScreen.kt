@@ -12,7 +12,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -287,20 +289,25 @@ private fun IdentityStep(
         modifier = Modifier.fillMaxWidth()
     )
     Spacer(Modifier.height(RealmsSpacing.xs))
-    OutlinedButton(
-        onClick = onRandom,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(RealmsSpacing.s)
     ) {
-        Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
-        Text("Randomize Everything")
+        Text(
+            "Roll a complete character: name, look, race, class, stats, all randomized. Lands on the final review.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        FilledIconButton(onClick = onRandom) {
+            Icon(
+                Icons.Default.Casino,
+                contentDescription = "Randomize everything",
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
-    Text(
-        "Roll a complete character: name, look, race, class, stats, all randomized. Lands on the final review.",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
     SectionHeader("GENDER")
     ChipRow(
         options = listOf("Male", "Female", "Non-binary", "Unspecified"),
@@ -476,11 +483,13 @@ private fun StatsStep(
                 color = if (remaining < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        AssistChip(
-            onClick = onRecommend,
-            label = { Text("Recommended") },
-            leadingIcon = { Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp)) }
-        )
+        FilledIconButton(onClick = onRecommend) {
+            Icon(
+                Icons.Default.Star,
+                contentDescription = "Recommended stats",
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
     labels.forEachIndexed { i, label ->
         val bonus = when (i) {
