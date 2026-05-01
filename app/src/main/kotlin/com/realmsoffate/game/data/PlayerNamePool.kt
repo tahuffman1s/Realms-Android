@@ -1,12 +1,7 @@
 package com.realmsoffate.game.data
 
+import com.realmsoffate.game.data.content.ContentRepository
+
 internal object PlayerNamePool {
-    val NAMES: List<String> = listOf(
-        "Aric", "Bryn", "Cael", "Daria", "Eira", "Faelan", "Gareth", "Hilde",
-        "Ivara", "Jorah", "Kael", "Lyra", "Mirek", "Nyssa", "Orin", "Pyra",
-        "Quinn", "Rhea", "Soren", "Talya", "Ulric", "Vex", "Wynn", "Xara",
-        "Yorick", "Zenna", "Brann", "Calla", "Dorian", "Elowen", "Fenris",
-        "Greta", "Halric", "Isolde", "Joran", "Kira", "Loras", "Marin",
-        "Niko", "Ophir", "Perrin", "Rowan", "Saela", "Theron", "Vanya"
-    )
+    val NAMES: List<String> get() = ContentRepository.playerNames
 }

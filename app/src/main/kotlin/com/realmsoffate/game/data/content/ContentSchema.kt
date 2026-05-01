@@ -1,0 +1,74 @@
+package com.realmsoffate.game.data.content
+
+import kotlinx.serialization.Serializable
+
+internal const val CONTENT_SCHEMA_VERSION = 1
+
+@Serializable
+internal data class SchemaVersionDto(val version: Int)
+
+@Serializable
+internal data class FactionsDto(
+    val types: List<String>,
+    val adjectives: List<String>,
+    val nouns: List<String>,
+)
+
+@Serializable
+internal data class NpcNamesDto(
+    val firsts: List<String>,
+    val titles: List<String>,
+    val roles: List<String>,
+)
+
+@Serializable
+internal data class WorldLoreDto(
+    val eraLabels: List<String>,
+    val rumors: List<String>,
+)
+
+@Serializable
+data class EconState(val level: String, val description: String, val wealth: Int)
+
+@Serializable
+internal data class DescriptorsDto(
+    val economyStates: List<EconState>,
+    val exports: List<String>,
+    val imports: List<String>,
+    val governmentForms: List<String>,
+    val successionTypes: List<String>,
+    val rulerTraits: List<String>,
+    val moods: List<String>,
+    val goals: List<String>,
+    val dispositions: List<String>,
+)
+
+@Serializable
+data class EnemyArchetype(val title: String, val motive: String)
+
+@Serializable
+data class LostItem(val item: String, val why: String)
+
+@Serializable
+data class FlawPair(val flaw: String, val trigger: String)
+
+@Serializable
+internal data class BackstoryDto(
+    val origins: List<String>,
+    val motivations: List<String>,
+    val darkSecrets: List<String>,
+    val enemyArchetypes: List<EnemyArchetype>,
+    val lostItems: List<LostItem>,
+    val bonds: List<String>,
+    val flaws: List<FlawPair>,
+    val prophecies: List<String?>,
+)
+
+@Serializable
+data class LocTemplate(val type: String, val icon: String, val names: List<String>)
+
+@Serializable
+internal data class LocationTemplatesDto(val templates: List<LocTemplate>)
+
+@Serializable
+internal data class PlayerNamesDto(val names: List<String>)

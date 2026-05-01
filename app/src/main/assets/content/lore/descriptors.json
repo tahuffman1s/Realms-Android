@@ -1,0 +1,62 @@
+{
+  "economyStates": [
+    { "level": "Thriving", "description": "Trade booms, coffers overflow, the people eat well", "wealth": 5 },
+    { "level": "Prosperous", "description": "Steady growth, a rising merchant class", "wealth": 4 },
+    { "level": "Stable", "description": "Neither rich nor poor — the economy holds", "wealth": 3 },
+    { "level": "Strained", "description": "Resources stretched thin, taxes rising", "wealth": 2 },
+    { "level": "Impoverished", "description": "Famine lurks, beggars line the streets", "wealth": 1 },
+    { "level": "Collapsed", "description": "Currency worthless, barter economy, desperation", "wealth": 0 },
+    { "level": "Hoarded", "description": "Vast wealth held by the few, mass poverty below", "wealth": 2 },
+    { "level": "War Economy", "description": "Everything funneled into the military effort", "wealth": 2 },
+    { "level": "Black Market", "description": "Official trade dead, underground networks thrive", "wealth": 1 },
+    { "level": "Boom & Bust", "description": "Wild swings between fortune and ruin", "wealth": 3 }
+  ],
+  "exports": [
+    "grain", "iron ore", "timber", "wool", "salt", "silver", "wine", "copper",
+    "leather", "cut stone", "furs", "fish", "honey", "spices", "silk",
+    "enchanted trinkets", "weapon-steel", "arcane reagents", "mythril", "parchment"
+  ],
+  "imports": [
+    "foreign silks", "exotic spices", "ironwood", "southern fruits", "pepper",
+    "dyes", "alchemical reagents", "glass", "ivory", "warhorses", "books",
+    "cotton", "porcelain", "preserved fish", "tea", "cedar planks", "brass"
+  ],
+  "governmentForms": [
+    "monarchy", "theocracy", "oligarchy", "merchant republic", "tribal council",
+    "inquisition", "magocracy", "dictatorship", "federation", "matriarchy",
+    "patriarchy", "warband", "commune", "dynasty"
+  ],
+  "successionTypes": [
+    "primogeniture", "divine election", "trial by combat", "merchant vote",
+    "assassination", "popular acclamation", "ritual selection", "hereditary"
+  ],
+  "rulerTraits": [
+    "paranoid", "just", "cruel", "scholarly", "warlike", "pious", "cunning",
+    "benevolent", "reclusive", "feasted", "tyrannical", "weak", "charismatic",
+    "tormented", "zealous"
+  ],
+  "moods": [
+    "restless", "content", "fearful", "defiant", "oppressed", "prosperous",
+    "despairing", "fanatical", "apathetic", "hopeful"
+  ],
+  "goals": [
+    "expand territory", "defend the realm", "uncover an ancient truth",
+    "enrich the treasury", "purge heretics", "seize the throne",
+    "restore the old ways", "preserve the peace", "hunt a single enemy",
+    "outlast their rivals",
+    "broker peace between warring neighbors", "recover a stolen relic of immense power",
+    "open trade with a forbidden nation", "build a weapon of mass destruction",
+    "find a cure for a spreading plague", "assassinate a rival faction's leader",
+    "explore uncharted territory", "forge an alliance against a greater threat",
+    "overthrow their own corrupt leadership", "summon or bind a powerful entity"
+  ],
+  "dispositions": [
+    "guarded to strangers", "hospitable to travellers", "openly hostile to outsiders",
+    "suspicious of all magic", "welcoming of kindred souls",
+    "pragmatic and trade-focused", "fiercely independent", "bound by ancient oaths",
+    "fractured by internal politics", "united under a false prophet",
+    "haunted by a past atrocity", "secretly plotting expansion",
+    "zealously isolationist", "ruled by fear of the unknown",
+    "torn between tradition and progress"
+  ]
+}

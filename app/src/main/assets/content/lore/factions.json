@@ -1,0 +1,26 @@
+{
+  "types": [
+    "kingdom", "guild", "cult", "order", "tribe", "council", "coven", "cartel",
+    "syndicate", "brotherhood", "sisterhood", "legion", "consortium", "cabal",
+    "covenant", "conclave", "inquisition", "rebellion", "empire", "federation",
+    "commune", "circle", "lodge", "sept", "house", "dynasty", "horde",
+    "theocracy", "merchant republic"
+  ],
+  "adjectives": [
+    "Iron", "Shadow", "Golden", "Crimson", "Silver", "Obsidian", "Azure", "Jade",
+    "Ashen", "Radiant", "Hollow", "Dread", "Frost", "Storm", "Blood", "Moonlit",
+    "Scarlet", "Ivory", "Emerald", "Onyx", "Amber", "Cobalt", "Violet", "Bone",
+    "Rust", "Veiled", "Silent", "Burning", "Frozen", "Shattered", "Eternal",
+    "Gilded", "Thorned", "Starless", "Pale", "Verdant", "Sable", "Weeping",
+    "Prismatic", "Arcane", "Hallowed", "Profane", "Twilight", "Spectral",
+    "Molten", "Abyssal"
+  ],
+  "nouns": [
+    "Crown", "Fang", "Flame", "Pact", "Hand", "Veil", "Throne", "Circle", "Blade",
+    "Rose", "Serpent", "Shield", "Eye", "Tower", "Chalice", "Oath", "Raven",
+    "Wolf", "Lion", "Dragon", "Talon", "Hammer", "Thorn", "Mask", "Chain",
+    "Scale", "Key", "Gate", "Arrow", "Skull", "Phoenix", "Lotus", "Gryphon",
+    "Hydra", "Sphinx", "Tide", "Root", "Star", "Compass", "Herald", "Whisper",
+    "Eclipse", "Abyss", "Mantis", "Wyvern"
+  ]
+}
