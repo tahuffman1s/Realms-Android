@@ -1,6 +1,6 @@
 package com.realmsoffate.game.game
 
-import com.realmsoffate.game.data.PlayerNamePool
+import com.realmsoffate.game.data.content.ContentRepository
 import kotlin.random.Random
 
 internal data class RandomizedCharacter(
@@ -63,8 +63,8 @@ internal object RandomCharacter {
     private val BUILDS = listOf("Lean", "Average", "Muscular", "Stocky", "Hulking")
 
     fun generate(rng: Random = Random.Default): RandomizedCharacter {
-        val race = Races.list.random(rng)
-        val cls = Classes.list.random(rng)
+        val race = ContentRepository.races.random(rng)
+        val cls = ContentRepository.classes.random(rng)
         val (primary, secondary) = race.defaultBonusIndices()
         val safeSecondary = if (primary == secondary) {
             (0..5).filter { it != primary }.random(rng)
@@ -72,7 +72,7 @@ internal object RandomCharacter {
             secondary
         }
         return RandomizedCharacter(
-            name = PlayerNamePool.NAMES.random(rng),
+            name = ContentRepository.playerNames.random(rng),
             gender = GENDERS.random(rng),
             ageBand = AGE_BANDS.random(rng),
             skinTone = SKIN_TONES.random(rng),

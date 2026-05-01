@@ -1,6 +1,6 @@
 package com.realmsoffate.game.game
 
-import com.realmsoffate.game.data.PlayerNamePool
+import com.realmsoffate.game.data.content.ContentRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -16,7 +16,7 @@ class RandomCharacterTest {
     fun `generate produces non-blank name from pool`() {
         val r = RandomCharacter.generate(Random(1))
         assertTrue(r.name.isNotBlank())
-        assertTrue("name '${r.name}' should come from pool", r.name in PlayerNamePool.NAMES)
+        assertTrue("name '${r.name}' should come from pool", r.name in ContentRepository.playerNames)
     }
 
     @Test
