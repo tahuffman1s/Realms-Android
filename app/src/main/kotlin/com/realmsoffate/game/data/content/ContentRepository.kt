@@ -57,4 +57,6 @@ object ContentRepository {
     val spells: List<Spell> get() = bundle.spells.list
     val mutations: List<Mutation> get() = bundle.mutations.list
     val scenarioMetas: List<ScenarioMeta> get() = bundle.scenarios.list
+    val worldEventTemplates: List<WorldEventTemplateDto> get() = bundle.worldEvents.list
+    val historicalEvents: HistoricalEvents get() = bundle.historicalEvents
 }

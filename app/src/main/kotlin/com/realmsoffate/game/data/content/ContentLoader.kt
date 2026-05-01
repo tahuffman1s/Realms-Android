@@ -27,6 +27,8 @@ internal object ContentLoader {
         val spells: SpellsDto,
         val mutations: MutationsDto,
         val scenarios: ScenariosDto,
+        val worldEvents: WorldEventsDto,
+        val historicalEvents: HistoricalEvents,
     )
 
     fun loadAndValidate(open: (String) -> InputStream): Bundle {
@@ -48,6 +50,8 @@ internal object ContentLoader {
             spells = parse("content/spells/spells.json", open),
             mutations = parse("content/world/mutations.json", open),
             scenarios = parse("content/world/scenarios.json", open),
+            worldEvents = parse("content/world/world-events.json", open),
+            historicalEvents = parse("content/world/historical-events.json", open),
         )
     }
 

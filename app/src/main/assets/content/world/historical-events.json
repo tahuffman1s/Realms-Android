@@ -1,0 +1,56 @@
+{
+  "primordial": [
+    "The gods shaped the land around **{loc}**. The earth still hums with their residual power.",
+    "A primordial titan fell near **{loc}**, its bones forming the bedrock. Its blood became the rivers.",
+    "The first elves emerged from the Feywild near **{loc}**, weeping at the beauty of the mortal sky.",
+    "Dragons claimed dominion over the region around **{loc}**. Their rule would last centuries.",
+    "The Weave of magic was woven across **{loc}** by unknown hands. Ley lines converge here still.",
+    "An ancient tree of immense power took root near **{loc}**. Druids would later name it the Worldheart."
+  ],
+  "ancient": [
+    "The **{f}** was founded by {n} after a divine vision at **{loc}**. Its tenets still shape the region.",
+    "A dwarven kingdom was carved beneath **{loc}**. Its forges burned for a century before falling silent.",
+    "{n} united the warring tribes near **{loc}** under the banner of the **{f}**, forging the first alliance.",
+    "The **Great Library of {loc}** was built, housing knowledge from across the realm. The **{f}** served as its guardians.",
+    "An elven city rose near **{loc}**, its towers touching the clouds. It would stand for five hundred years.",
+    "{n} discovered the first deposits of mythril beneath **{loc}**, sparking a rush that transformed the region.",
+    "A celestial being descended near **{loc}** and spoke a prophecy: *\"When the {f} falters, the darkness wakes.\"*",
+    "The **{f}** constructed a fortress at **{loc}** to guard the border. Its walls were said to be impenetrable."
+  ],
+  "medieval": [
+    "{n} crowned themselves ruler of **{loc}** after assassinating the previous monarch. The **{f}** backed the coup.",
+    "The **War of Three Banners** raged for twelve years. **{loc}** changed hands four times. The **{f}** emerged victorious — barely.",
+    "A trade route was established through **{loc}**, bringing wealth and trouble in equal measure. The **{f}** taxed it heavily.",
+    "{n} discovered that the ruling family of **{loc}** were secretly lycanthropes. The purge that followed was... thorough.",
+    "A tournament at **{loc}** ended in bloodshed when {n} accused the **{f}** of cheating. The grudge persists to this day.",
+    "The **{f}** built a cathedral at **{loc}** — ostensibly to worship, actually to conceal what lies beneath.",
+    "{n} negotiated the **Treaty of {loc}**, ending the border wars. Not everyone agreed with the terms. Some never forgave.",
+    "A band of adventurers destroyed a dragon's hoard near **{loc}**. The economic chaos that followed nearly toppled the **{f}**.",
+    "{n} was publicly executed at **{loc}** for heresy against the **{f}**. Their followers went underground — and multiplied.",
+    "The mines beneath **{loc}** broke through into something ancient. The **{f}** sealed them. {n} wants them reopened."
+  ],
+  "darkAge": [
+    "The **Shattering** — a magical cataclysm — devastated **{loc}**. The **{f}** was nearly wiped out. {n} led the survivors.",
+    "An undead army rose from the catacombs of **{loc}**. The siege lasted seven years. {n} held the gate alone on the final night.",
+    "A lich known as {n} established a domain of terror around **{loc}**. The **{f}** was formed specifically to oppose them.",
+    "Famine gripped the land for a decade. Near **{loc}**, the **{f}** hoarded grain while {n} distributed it to the starving — creating a schism.",
+    "The sun went dark for a month. Creatures of shadow poured from rifts near **{loc}**. {n} sealed the largest rift at the cost of their sight.",
+    "A demon lord was summoned at **{loc}** by a desperate cult. {n} and the **{f}** barely contained it. The scars on the land remain.",
+    "The **Red Winter** killed thousands near **{loc}**. Snow fell crimson for reasons no one could explain. The **{f}** blamed foreign sorcery.",
+    "All arcane magic failed for a year near **{loc}**. The **{f}** exploited the chaos while {n} searched for the cause."
+  ],
+  "recent": [
+    "{n} overthrew the old ruler of **{loc}**, establishing the **{f}** through blood and betrayal.",
+    "A great plague swept through **{loc}**. The **{f}** rose from the ashes, promising salvation — for a price.",
+    "An ancient artifact was unearthed near **{loc}**. The **{f}** claimed it, and {n} was changed by its power.",
+    "{n} was exiled from **{loc}** and founded the **{f}** in the wilderness, swearing vengeance.",
+    "The great fire of **{loc}** destroyed half the settlement. The **{f}** controls the reconstruction — and the debt.",
+    "A portal to the Shadowfell opened near **{loc}**. The **{f}** formed to guard it. {n} has not been the same since.",
+    "{n} discovered forbidden magic beneath **{loc}** and formed the **{f}** to study — or exploit — it.",
+    "The harvest failed for three years near **{loc}**. The **{f}** controls the food supply. {n} decides who eats.",
+    "A dragon attacked **{loc}**. {n} slew it — or so the stories say. The **{f}** was built on that legend.",
+    "{n} vanished from **{loc}** three months ago. The **{f}** is searching — some say to rescue, others say to silence.",
+    "Strange earthquakes have been shaking **{loc}**. The **{f}** blames {n}'s experiments. {n} blames something deeper.",
+    "A child was born at **{loc}** bearing the mark of an ancient prophecy. The **{f}** and {n} both want to control the child's fate."
+  ]
+}

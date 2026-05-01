@@ -6,7 +6,7 @@ import com.realmsoffate.game.game.RaceDef
 import com.realmsoffate.game.game.Spell
 import kotlinx.serialization.Serializable
 
-internal const val CONTENT_SCHEMA_VERSION = 4
+internal const val CONTENT_SCHEMA_VERSION = 5
 
 @Serializable
 internal data class SchemaVersionDto(val version: Int)
@@ -106,3 +106,26 @@ data class ScenarioMeta(
 
 @Serializable
 internal data class ScenariosDto(val list: List<ScenarioMeta>)
+
+@Serializable
+data class WorldEventTemplateDto(
+    val id: String,
+    val weight: Int,
+    val needs: String,
+    val context: String,
+    val icon: String,
+    val title: String,
+    val prompt: String,
+)
+
+@Serializable
+internal data class WorldEventsDto(val list: List<WorldEventTemplateDto>)
+
+@Serializable
+data class HistoricalEvents(
+    val primordial: List<String>,
+    val ancient: List<String>,
+    val medieval: List<String>,
+    val darkAge: List<String>,
+    val recent: List<String>,
+)

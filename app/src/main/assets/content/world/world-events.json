@@ -1,0 +1,79 @@
+{
+  "list": [
+    { "id": "faction_mobilizes", "weight": 3, "needs": "factions:>=2", "context": "faction-with-loc-discovered-pref",
+      "icon": "⚔️", "title": "{f.name} Mobilizes",
+      "prompt": "BREAKING: {f.name} is mobilizing troops near {loc.name}. NPC reactions should reflect fear, opportunity, or allegiance. Soldiers and supply wagons visible." },
+
+    { "id": "unexpected_alliance", "weight": 3, "needs": "factions:>=2", "context": "faction-pair",
+      "icon": "🤝", "title": "Unexpected Alliance",
+      "prompt": "BREAKING: {f1.name} and {f2.name} have declared a truce. NPCs are suspicious. Alliances shift power dynamics." },
+
+    { "id": "ruler_assassinated", "weight": 2, "needs": "factions:>=1", "context": "faction",
+      "icon": "💀", "title": "Ruler Assassinated",
+      "prompt": "BREAKING: The ruler of {f.name} is dead — assassinated. Power vacuum. Factions scramble. NPCs react with shock, fear, or ambition. THIS CHANGES EVERYTHING: faction prices double, guards are distracted (easier stealth), and a power-grab quest emerges." },
+
+    { "id": "demands_tribute", "weight": 2, "needs": "factions:>=1", "context": "faction",
+      "icon": "🏴", "title": "{f.name} Demands Tribute",
+      "prompt": "BREAKING: {f.name} is demanding tribute from settlements. Merchants complain. Guards enforce. Resistance is brewing. GAMEPLAY EFFECT: all NPC vendors now charge a 25% surcharge on goods. Refusing to pay the tribute collector triggers combat. A resistance contact quietly offers a quest to sabotage the collection effort." },
+
+    { "id": "border_clash", "weight": 2, "needs": "factions:>=2", "context": "faction-pair-with-typed-town-city",
+      "icon": "🔥", "title": "Border Clash near {loc.name}",
+      "prompt": "BREAKING: {f1.name} and {f2.name} fought a skirmish near {loc.name}. Refugees and wounded fill the roads. Pick a side or walk between. GAMEPLAY EFFECT: travel to {loc.name} costs double in supplies. Wounded soldiers offer equipment at a discount. Siding with either faction locks out that faction's rival merchants for 6 turns." },
+
+    { "id": "issues_edict", "weight": 2, "needs": "factions:>=1", "context": "faction-with-typed-town-city",
+      "icon": "📜", "title": "{f.name} Issues Edict",
+      "prompt": "BREAKING: {f.name} has issued a sweeping new edict affecting {loc.name}. NPCs whisper. Some obey. Some prepare to resist." },
+
+    { "id": "heretic_burning", "weight": 2, "needs": "factions:>=1", "context": "faction",
+      "icon": "🕯️", "title": "Heretic Burning",
+      "prompt": "BREAKING: {f.name} has burned a heretic in the public square. The smoke still rises. Sympathizers gather in shadows." },
+
+    { "id": "npc_vanished", "weight": 2, "needs": "npcs:>=1", "context": "npc",
+      "icon": "👤", "title": "{n.name} Has Vanished",
+      "prompt": "BREAKING: {n.name} the {n.role} vanished without a trace. Their quarters show signs of a struggle. Rumors fly. GAMEPLAY EFFECT: any quest tied to {n.name} is now blocked until they are found. A new investigation quest opens immediately. Their contacts offer a reward — and someone clearly doesn't want them found." },
+
+    { "id": "npc_speaks_out", "weight": 2, "needs": "npcs:>=1", "context": "npc",
+      "icon": "🗣️", "title": "{n.name} Speaks Out",
+      "prompt": "BREAKING: {n.name} the {n.role} has publicly denounced {n.faction}. Consequences are coming. Pick a side." },
+
+    { "id": "npc_betrothal", "weight": 2, "needs": "npcs:>=1", "context": "npc",
+      "icon": "💍", "title": "{n.name}'s Betrothal",
+      "prompt": "BREAKING: {n.name} the {n.role} has been betrothed. The alliance it seals shifts politics. Gifts and knives both travel fast." },
+
+    { "id": "npc_dead", "weight": 2, "needs": "npcs:>=1", "context": "npc",
+      "icon": "⚰️", "title": "{n.name} Is Dead",
+      "prompt": "BREAKING: {n.name} the {n.role} has died — cause disputed. Mourners gather. Suspects flee. Inheritance or revenge drives new quests." },
+
+    { "id": "fire_in_loc", "weight": 2, "needs": "loc:>=1", "context": "loc",
+      "icon": "🔥", "title": "Fire in {loc.name}",
+      "prompt": "BREAKING: Fire has swept part of {loc.name}. Smoke on the horizon. Refugees move along the roads. Arson is suspected. GAMEPLAY EFFECT: damaged buildings mean fewer merchants, displaced NPCs offer desperate quests, and fire damage lingers in scene descriptions for 5+ turns." },
+
+    { "id": "festival", "weight": 1, "needs": "loc:>=1", "context": "loc",
+      "icon": "🎪", "title": "Festival in {loc.name}",
+      "prompt": "BREAKING: A festival has begun in {loc.name}. Crowds, music, merchants, pickpockets. Rare goods and strangers in the streets." },
+
+    { "id": "monsters_spill", "weight": 2, "needs": "loc:typed-cave-dungeon-ruins", "context": "loc-typed-cave-dungeon-ruins",
+      "icon": "👹", "title": "Monsters Spill From {loc.name}",
+      "prompt": "BREAKING: Creatures have been sighted pouring from {loc.name}. Hunters are gathering. Bounties rise. Something deeper stirred. GAMEPLAY EFFECT: roads near {loc.name} trigger random encounters for the next 5 turns. Hunter NPCs pay premium for monster parts. A bounty board quest to clear the source is now active." },
+
+    { "id": "bounty_posted", "weight": 2, "needs": "loc:>=1", "context": "loc",
+      "icon": "📜", "title": "Bounty Posted at {loc.name}",
+      "prompt": "BREAKING: A substantial bounty has been posted at {loc.name}. Hunters and opportunists move in. The target knows they are prey." },
+
+    { "id": "storm", "weight": 1, "needs": "always", "context": "none",
+      "icon": "🌪️", "title": "Storm Sweeps the Land",
+      "prompt": "BREAKING: A freak storm is battering the countryside. Roads flood. Lightning strikes. Travel is treacherous." },
+
+    { "id": "unnatural_darkness", "weight": 1, "needs": "always", "context": "none",
+      "icon": "🌑", "title": "Unnatural Darkness",
+      "prompt": "BREAKING: For three hours at noon, the sky went dark. Priests pray. Astrologers argue. Something beyond the Veil took notice." },
+
+    { "id": "planar_rift", "weight": 1, "needs": "loc:>=1", "context": "loc",
+      "icon": "🌀", "title": "Planar Rift at {loc.name}",
+      "prompt": "BREAKING: A tear in reality has opened near {loc.name}. Things slip through — most shouldn't. Mages rush to study or seal it." },
+
+    { "id": "trade_route", "weight": 2, "needs": "always", "context": "none",
+      "icon": "💰", "title": "Trade Route Collapsed",
+      "prompt": "BREAKING: A key trade route has failed — raiders, rockslide, or political fiat. Prices spike. Merchants weep. Smugglers profit. GAMEPLAY EFFECT: all shop prices increase by 50% until resolved. New smuggler NPCs appear with black-market goods. A quest to reopen the route becomes available." }
+  ]
+}

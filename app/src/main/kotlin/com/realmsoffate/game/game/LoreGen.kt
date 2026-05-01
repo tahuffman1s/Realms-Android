@@ -10,6 +10,7 @@ import com.realmsoffate.game.data.WorldLore
 import com.realmsoffate.game.data.WorldMap
 import com.realmsoffate.game.data.content.ContentRepository
 import com.realmsoffate.game.data.content.EconState
+import com.realmsoffate.game.util.Templates
 import kotlin.random.Random
 
 private val FACTION_TYPES: List<String> get() = ContentRepository.factionTypes
@@ -35,69 +36,17 @@ private val WORLD_NAME_PATTERNS: List<(Random) -> String> = listOf(
 
 private val ERA_LABELS: List<String> get() = ContentRepository.eraLabels
 
-// ---- Primordial (6, as before) ----
-private val PRIMORDIAL_EVENTS: List<(String) -> String> = listOf(
-    { l -> "The gods shaped the land around **$l**. The earth still hums with their residual power." },
-    { l -> "A primordial titan fell near **$l**, its bones forming the bedrock. Its blood became the rivers." },
-    { l -> "The first elves emerged from the Feywild near **$l**, weeping at the beauty of the mortal sky." },
-    { l -> "Dragons claimed dominion over the region around **$l**. Their rule would last centuries." },
-    { l -> "The Weave of magic was woven across **$l** by unknown hands. Ley lines converge here still." },
-    { l -> "An ancient tree of immense power took root near **$l**. Druids would later name it the Worldheart." }
-)
+private val PRIMORDIAL_EVENTS: List<String> get() = ContentRepository.historicalEvents.primordial
+private val ANCIENT_EVENTS: List<String> get() = ContentRepository.historicalEvents.ancient
+private val MEDIEVAL_EVENTS: List<String> get() = ContentRepository.historicalEvents.medieval
+private val DARK_AGE_EVENTS: List<String> get() = ContentRepository.historicalEvents.darkAge
+private val RECENT_EVENTS: List<String> get() = ContentRepository.historicalEvents.recent
 
-// ---- Ancient (8) ----
-private val ANCIENT_EVENTS: List<(String, String, String) -> String> = listOf(
-    { f, n, loc -> "The **$f** was founded by $n after a divine vision at **$loc**. Its tenets still shape the region." },
-    { f, n, loc -> "A dwarven kingdom was carved beneath **$loc**. Its forges burned for a century before falling silent." },
-    { f, n, loc -> "$n united the warring tribes near **$loc** under the banner of the **$f**, forging the first alliance." },
-    { f, n, loc -> "The **Great Library of $loc** was built, housing knowledge from across the realm. The **$f** served as its guardians." },
-    { f, n, loc -> "An elven city rose near **$loc**, its towers touching the clouds. It would stand for five hundred years." },
-    { f, n, loc -> "$n discovered the first deposits of mythril beneath **$loc**, sparking a rush that transformed the region." },
-    { f, n, loc -> "A celestial being descended near **$loc** and spoke a prophecy: *\"When the $f falters, the darkness wakes.\"*" },
-    { f, n, loc -> "The **$f** constructed a fortress at **$loc** to guard the border. Its walls were said to be impenetrable." }
-)
+private fun renderPrimordial(template: String, loc: String): String =
+    Templates.interpolate(template, mapOf("loc" to loc))
 
-// ---- Medieval (10) ----
-private val MEDIEVAL_EVENTS: List<(String, String, String) -> String> = listOf(
-    { f, n, loc -> "$n crowned themselves ruler of **$loc** after assassinating the previous monarch. The **$f** backed the coup." },
-    { f, n, loc -> "The **War of Three Banners** raged for twelve years. **$loc** changed hands four times. The **$f** emerged victorious — barely." },
-    { f, n, loc -> "A trade route was established through **$loc**, bringing wealth and trouble in equal measure. The **$f** taxed it heavily." },
-    { f, n, loc -> "$n discovered that the ruling family of **$loc** were secretly lycanthropes. The purge that followed was... thorough." },
-    { f, n, loc -> "A tournament at **$loc** ended in bloodshed when $n accused the **$f** of cheating. The grudge persists to this day." },
-    { f, n, loc -> "The **$f** built a cathedral at **$loc** — ostensibly to worship, actually to conceal what lies beneath." },
-    { f, n, loc -> "$n negotiated the **Treaty of $loc**, ending the border wars. Not everyone agreed with the terms. Some never forgave." },
-    { f, n, loc -> "A band of adventurers destroyed a dragon's hoard near **$loc**. The economic chaos that followed nearly toppled the **$f**." },
-    { f, n, loc -> "$n was publicly executed at **$loc** for heresy against the **$f**. Their followers went underground — and multiplied." },
-    { f, n, loc -> "The mines beneath **$loc** broke through into something ancient. The **$f** sealed them. $n wants them reopened." }
-)
-
-// ---- Dark Age (8) ----
-private val DARK_AGE_EVENTS: List<(String, String, String) -> String> = listOf(
-    { f, n, loc -> "The **Shattering** — a magical cataclysm — devastated **$loc**. The **$f** was nearly wiped out. $n led the survivors." },
-    { f, n, loc -> "An undead army rose from the catacombs of **$loc**. The siege lasted seven years. $n held the gate alone on the final night." },
-    { f, n, loc -> "A lich known as $n established a domain of terror around **$loc**. The **$f** was formed specifically to oppose them." },
-    { f, n, loc -> "Famine gripped the land for a decade. Near **$loc**, the **$f** hoarded grain while $n distributed it to the starving — creating a schism." },
-    { f, n, loc -> "The sun went dark for a month. Creatures of shadow poured from rifts near **$loc**. $n sealed the largest rift at the cost of their sight." },
-    { f, n, loc -> "A demon lord was summoned at **$loc** by a desperate cult. $n and the **$f** barely contained it. The scars on the land remain." },
-    { f, n, loc -> "The **Red Winter** killed thousands near **$loc**. Snow fell crimson for reasons no one could explain. The **$f** blamed foreign sorcery." },
-    { f, n, loc -> "All arcane magic failed for a year near **$loc**. The **$f** exploited the chaos while $n searched for the cause." }
-)
-
-// ---- Recent (12) ----
-private val RECENT_EVENTS: List<(String, String, String) -> String> = listOf(
-    { f, n, loc -> "$n overthrew the old ruler of **$loc**, establishing the **$f** through blood and betrayal." },
-    { f, n, loc -> "A great plague swept through **$loc**. The **$f** rose from the ashes, promising salvation — for a price." },
-    { f, n, loc -> "An ancient artifact was unearthed near **$loc**. The **$f** claimed it, and $n was changed by its power." },
-    { f, n, loc -> "$n was exiled from **$loc** and founded the **$f** in the wilderness, swearing vengeance." },
-    { f, n, loc -> "The great fire of **$loc** destroyed half the settlement. The **$f** controls the reconstruction — and the debt." },
-    { f, n, loc -> "A portal to the Shadowfell opened near **$loc**. The **$f** formed to guard it. $n has not been the same since." },
-    { f, n, loc -> "$n discovered forbidden magic beneath **$loc** and formed the **$f** to study — or exploit — it." },
-    { f, n, loc -> "The harvest failed for three years near **$loc**. The **$f** controls the food supply. $n decides who eats." },
-    { f, n, loc -> "A dragon attacked **$loc**. $n slew it — or so the stories say. The **$f** was built on that legend." },
-    { f, n, loc -> "$n vanished from **$loc** three months ago. The **$f** is searching — some say to rescue, others say to silence." },
-    { f, n, loc -> "Strange earthquakes have been shaking **$loc**. The **$f** blames $n's experiments. $n blames something deeper." },
-    { f, n, loc -> "A child was born at **$loc** bearing the mark of an ancient prophecy. The **$f** and $n both want to control the child's fate." }
-)
+private fun renderEra(template: String, f: String, n: String, loc: String): String =
+    Templates.interpolate(template, mapOf("f" to f, "n" to n, "loc" to loc))
 
 private val RUMORS: List<String> get() = ContentRepository.rumors
 private val ECON_STATES: List<EconState> get() = ContentRepository.economyStates
@@ -227,7 +176,9 @@ object LoreGen {
         }
 
         // Primordial + era events
-        val primordial = PRIMORDIAL_EVENTS.shuffled(rand).take(3).map { it(worldMap.locations.first().name) }
+        val primordial = PRIMORDIAL_EVENTS.shuffled(rand).take(3).map {
+            renderPrimordial(it, worldMap.locations.first().name)
+        }
 
         val history = buildList {
             primordial.forEachIndexed { i, text ->
@@ -238,14 +189,14 @@ object LoreGen {
                 val f = factions.random(rand)
                 val n = NPC_FIRSTS.random(rand) + " " + NPC_TITLES.random(rand)
                 val loc = worldMap.locations.random(rand).name
-                add(HistoryEntry("ancient", -800 + it * 120 + rand.nextInt(40), ANCIENT_EVENTS.random(rand)(f.name, n, loc)))
+                add(HistoryEntry("ancient", -800 + it * 120 + rand.nextInt(40), renderEra(ANCIENT_EVENTS.random(rand), f.name, n, loc)))
             }
             repeat(4) {
                 if (factions.isEmpty()) return@repeat
                 val f = factions.random(rand)
                 val n = NPC_FIRSTS.random(rand) + " " + NPC_TITLES.random(rand)
                 val loc = worldMap.locations.random(rand).name
-                add(HistoryEntry("medieval", -400 + it * 80 + rand.nextInt(20), MEDIEVAL_EVENTS.random(rand)(f.name, n, loc)))
+                add(HistoryEntry("medieval", -400 + it * 80 + rand.nextInt(20), renderEra(MEDIEVAL_EVENTS.random(rand), f.name, n, loc)))
             }
             if (rand.nextFloat() < 0.7f) {
                 repeat(2) {
@@ -253,7 +204,7 @@ object LoreGen {
                     val f = factions.random(rand)
                     val n = NPC_FIRSTS.random(rand) + " " + NPC_TITLES.random(rand)
                     val loc = worldMap.locations.random(rand).name
-                    add(HistoryEntry("dark_age", -150 + it * 40 + rand.nextInt(10), DARK_AGE_EVENTS.random(rand)(f.name, n, loc)))
+                    add(HistoryEntry("dark_age", -150 + it * 40 + rand.nextInt(10), renderEra(DARK_AGE_EVENTS.random(rand), f.name, n, loc)))
                 }
             }
             repeat(3) {
@@ -261,7 +212,7 @@ object LoreGen {
                 val f = factions.random(rand)
                 val n = NPC_FIRSTS.random(rand) + " " + NPC_TITLES.random(rand)
                 val loc = worldMap.locations.random(rand).name
-                add(HistoryEntry("recent", -20 + it * 8 + rand.nextInt(4), RECENT_EVENTS.random(rand)(f.name, n, loc)))
+                add(HistoryEntry("recent", -20 + it * 8 + rand.nextInt(4), renderEra(RECENT_EVENTS.random(rand), f.name, n, loc)))
             }
         }.sortedBy { it.year }
 
