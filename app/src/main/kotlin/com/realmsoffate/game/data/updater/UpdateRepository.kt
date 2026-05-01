@@ -99,12 +99,11 @@ class UpdateRepository(
         scope.launch { prefs.dismissVersion(tag) }
     }
 
-    fun setChannel(channel: UpdateChannel) {
+    fun setChannel(channel: UpdateChannel): Job =
         scope.launch {
             prefs.setChannel(channel)
-            check(force = true)
+            check(force = true).join()
         }
-    }
 
     companion object {
         /** 6 hours. */

@@ -106,4 +106,100 @@ class UpdateRepositoryTest {
         repo.check(force = false).join()
         assertEquals(nowMs, prefs.lastCheckedAt.first())
     }
+
+    @Test fun `STABLE_ONLY excludes prereleases`() = runTest {
+        val repo = newRepo()
+        prefs.setChannel(UpdateChannel.STABLE_ONLY)
+        client.nextResult = GitHubReleasesClient.Result.Ok(listOf(
+            release("v0.2.0-alpha.1", prerelease = true)
+        ))
+        repo.check(force = true).join()
+        assertEquals(UpdateState.UpToDate, repo.state.value)
+    }
+
+    @Test fun `INCLUDE_PRERELEASES surfaces alpha`() = runTest {
+        val repo = newRepo()
+        prefs.setChannel(UpdateChannel.INCLUDE_PRERELEASES)
+        client.nextResult = GitHubReleasesClient.Result.Ok(listOf(
+            release("v0.2.0-alpha.1", prerelease = true, assetName = "realms-v0.2.0-alpha.1-release.apk")
+        ))
+        repo.check(force = true).join()
+        assertTrue(repo.state.value is UpdateState.Available)
+    }
+
+    @Test fun `dismissed version still becomes Available state`() = runTest {
+        val repo = newRepo()
+        client.nextResult = GitHubReleasesClient.Result.Ok(listOf(
+            release("v0.2.0", assetName = "realms-v0.2.0-release.apk")
+        ))
+        prefs.dismissVersion("v0.2.0")
+        repo.check(force = true).join()
+        val state = repo.state.value
+        assertTrue(state is UpdateState.Available)
+        assertEquals(false, repo.bannerVisibleFor((state as UpdateState.Available).release))
+    }
+
+    @Test fun `non-dismissed version banner visible`() = runTest {
+        val repo = newRepo()
+        client.nextResult = GitHubReleasesClient.Result.Ok(listOf(
+            release("v0.2.0", assetName = "realms-v0.2.0-release.apk")
+        ))
+        repo.check(force = true).join()
+        val state = repo.state.value as UpdateState.Available
+        assertEquals(true, repo.bannerVisibleFor(state.release))
+    }
+
+    @Test fun `network error becomes recoverable Error`() = runTest {
+        val repo = newRepo()
+        client.nextResult = GitHubReleasesClient.Result.NetworkError("no route")
+        repo.check(force = true).join()
+        val state = repo.state.value
+        assertTrue(state is UpdateState.Error)
+        assertTrue((state as UpdateState.Error).recoverable)
+    }
+
+    @Test fun `parse error is non-recoverable`() = runTest {
+        val repo = newRepo()
+        client.nextResult = GitHubReleasesClient.Result.ParseError("bad json")
+        repo.check(force = true).join()
+        val state = repo.state.value as UpdateState.Error
+        assertEquals(false, state.recoverable)
+    }
+
+    @Test fun `rate limited is recoverable`() = runTest {
+        val repo = newRepo()
+        client.nextResult = GitHubReleasesClient.Result.RateLimited(null)
+        repo.check(force = true).join()
+        val state = repo.state.value as UpdateState.Error
+        assertTrue(state.recoverable)
+    }
+
+    @Test fun `picks highest semver when multiple newer`() = runTest {
+        val repo = newRepo()
+        client.nextResult = GitHubReleasesClient.Result.Ok(listOf(
+            release("v0.2.0-alpha.1", prerelease = true, assetName = "realms-v0.2.0-alpha.1-release.apk"),
+            release("v0.2.0-alpha.10", prerelease = true, assetName = "realms-v0.2.0-alpha.10-release.apk"),
+            release("v0.1.5", assetName = "realms-v0.1.5-release.apk")
+        ))
+        repo.check(force = true).join()
+        val state = repo.state.value as UpdateState.Available
+        assertEquals("v0.2.0-alpha.10", state.release.tag)
+    }
+
+    @Test fun `lastKnownReleaseTag persists across checks`() = runTest {
+        val repo = newRepo()
+        client.nextResult = GitHubReleasesClient.Result.Ok(listOf(
+            release("v0.2.0", assetName = "realms-v0.2.0-release.apk")
+        ))
+        repo.check(force = true).join()
+        assertEquals("v0.2.0", prefs.lastKnownReleaseTag.first())
+    }
+
+    @Test fun `setChannel triggers re-check`() = runTest {
+        val repo = newRepo()
+        client.nextResult = GitHubReleasesClient.Result.Ok(emptyList())
+        repo.setChannel(UpdateChannel.STABLE_ONLY).join()
+        assertEquals(UpdateChannel.STABLE_ONLY, prefs.channel.first())
+        assertEquals(1, client.calls)
+    }
 }
