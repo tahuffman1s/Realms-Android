@@ -7,6 +7,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -35,6 +36,7 @@ class UpdateRepository(
     private val clock: () -> Long = System::currentTimeMillis,
     private val cacheTtlMs: Long = DEFAULT_CACHE_TTL_MS,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val downloader: ApkDownloaderLike? = null,
 ) {
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state: StateFlow<UpdateState> = _state.asStateFlow()
@@ -104,6 +106,46 @@ class UpdateRepository(
             prefs.setChannel(channel)
             check(force = true).join()
         }
+
+    private var downloadJob: Job? = null
+
+    fun startDownload(release: ReleaseInfo): Job {
+        val dl = downloader
+        if (dl == null) {
+            _state.value = UpdateState.Error("No downloader wired", recoverable = false)
+            return scope.launch { /* no-op */ }
+        }
+        val asset = release.realmsApkAsset()
+        if (asset == null) {
+            _state.value = UpdateState.Error("Release missing APK", recoverable = false)
+            return scope.launch { /* no-op */ }
+        }
+        downloadJob?.cancel()
+        val job = scope.launch {
+            _state.value = UpdateState.Downloading(release, progress = 0)
+            dl.download(asset.downloadUrl, "realms-${release.tag.removePrefix("v")}.apk", asset.size)
+                .collect { p ->
+                    when (p) {
+                        is ApkDownloader.Progress.Streaming ->
+                            _state.value = UpdateState.Downloading(release, progress = p.percent)
+                        is ApkDownloader.Progress.Done ->
+                            _state.value = UpdateState.ReadyToInstall(release, p.file)
+                        is ApkDownloader.Progress.Failed ->
+                            _state.value = UpdateState.Available(release)
+                    }
+                }
+        }
+        downloadJob = job
+        return job
+    }
+
+    fun cancelDownload() {
+        val current = _state.value
+        downloadJob?.cancel()
+        if (current is UpdateState.Downloading) {
+            _state.value = UpdateState.Available(current.release)
+        }
+    }
 
     companion object {
         /** 6 hours. */

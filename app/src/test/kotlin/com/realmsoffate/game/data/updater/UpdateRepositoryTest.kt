@@ -42,13 +42,17 @@ class UpdateRepositoryTest {
     private var nowMs = 1_700_000_000_000L
     private val clock = { nowMs }
 
-    private fun newRepo(versionName: String = "0.1.0-alpha.1"): UpdateRepository =
+    private fun newRepo(
+        versionName: String = "0.1.0-alpha.1",
+        downloader: ApkDownloaderLike? = null
+    ): UpdateRepository =
         UpdateRepository(
             currentVersionName = versionName,
             client = client,
             prefs = prefs,
             clock = clock,
-            cacheTtlMs = UpdateRepository.DEFAULT_CACHE_TTL_MS
+            cacheTtlMs = UpdateRepository.DEFAULT_CACHE_TTL_MS,
+            downloader = downloader
         )
 
     @After fun tearDown() = runTest { prefs.clearForTest() }
@@ -202,4 +206,53 @@ class UpdateRepositoryTest {
         assertEquals(UpdateChannel.STABLE_ONLY, prefs.channel.first())
         assertEquals(1, client.calls)
     }
+
+    @Test fun `startDownload transitions to ReadyToInstall on success`() = runTest {
+        val rel = release("v0.2.0", assetName = "realms-v0.2.0-release.apk")
+        val tempFile = java.io.File.createTempFile("fake-apk", ".apk").apply { writeBytes(ByteArray(8)) }
+        val fakeDownloader = FakeDownloader().apply {
+            scriptedProgress = listOf(
+                ApkDownloader.Progress.Streaming(4, 8, 50),
+                ApkDownloader.Progress.Done(tempFile)
+            )
+        }
+        val repo = newRepo(downloader = fakeDownloader)
+        client.nextResult = GitHubReleasesClient.Result.Ok(listOf(rel))
+        repo.check(force = true).join()
+
+        repo.startDownload((repo.state.value as UpdateState.Available).release).join()
+        val terminal = repo.state.value
+        assertTrue("expected ReadyToInstall, was $terminal", terminal is UpdateState.ReadyToInstall)
+    }
+
+    @Test fun `download Failed reverts to Available`() = runTest {
+        val rel = release("v0.2.0", assetName = "realms-v0.2.0-release.apk")
+        val fakeDownloader = FakeDownloader().apply {
+            scriptedProgress = listOf(ApkDownloader.Progress.Failed("Network: no route"))
+        }
+        val repo = newRepo(downloader = fakeDownloader)
+        client.nextResult = GitHubReleasesClient.Result.Ok(listOf(rel))
+        repo.check(force = true).join()
+
+        repo.startDownload(rel).join()
+        val state = repo.state.value
+        assertTrue("expected Available after failure, was $state", state is UpdateState.Available)
+    }
+
+    @Test fun `download with no realms apk asset emits Error`() = runTest {
+        val rel = release("v0.2.0") // no asset
+        val repo = newRepo(downloader = FakeDownloader())
+        client.nextResult = GitHubReleasesClient.Result.Ok(listOf(rel))
+        repo.check(force = true).join()
+
+        repo.startDownload(rel).join()
+        val state = repo.state.value as UpdateState.Error
+        assertEquals(false, state.recoverable)
+    }
+}
+
+private class FakeDownloader : ApkDownloaderLike {
+    var scriptedProgress: List<ApkDownloader.Progress> = emptyList()
+    override fun download(downloadUrl: String, filename: String, expectedSize: Long) =
+        kotlinx.coroutines.flow.flow { scriptedProgress.forEach { emit(it) } }
 }
