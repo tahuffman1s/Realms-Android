@@ -73,7 +73,7 @@ internal fun NarrationBlock(
                             onSwipeLeft = if (isLatestTurn) { { onAttackNpc(displayName) } } else { {} },
                             onSwipeRight = { onOpenJournal(displayName) },
                             leftLabel = if (isLatestTurn) "Attack" else null,
-                            rightLabel = "Journal",
+                            rightLabel = "NPC Log",
                             leftIcon = if (isLatestTurn) Icons.Filled.GpsFixed else null,
                             rightIcon = Icons.Filled.Book
                         ) {
@@ -137,7 +137,7 @@ internal fun NarrationBlock(
                             onSwipeLeft = if (isLatestTurn) { { onAttackNpc(seg.name) } } else { {} },
                             onSwipeRight = { onOpenJournal(seg.name) },
                             leftLabel = if (isLatestTurn) "Attack" else null,
-                            rightLabel = "Journal",
+                            rightLabel = "NPC Log",
                             leftIcon = if (isLatestTurn) Icons.Filled.Bolt else null,
                             rightIcon = Icons.Filled.Book
                         ) {

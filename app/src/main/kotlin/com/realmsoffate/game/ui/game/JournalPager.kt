@@ -40,6 +40,17 @@ internal fun JournalPager(
         }
     }
 
+    // When a swipe-right on an NPC bubble brings us here with a focused NPC,
+    // jump to the NPCs sub-tab — that's the "NPC log" the user expects.
+    LaunchedEffect(focusNpc) {
+        if (focusNpc != null) {
+            val target = tabs.indexOf(JournalTab.Npcs)
+            if (target >= 0 && pagerState.currentPage != target) {
+                pagerState.animateScrollToPage(target)
+            }
+        }
+    }
+
     Column(Modifier.fillMaxSize()) {
         PanelTabRow(
             tabs = tabs.map { t ->
