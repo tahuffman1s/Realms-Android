@@ -98,7 +98,8 @@ object CommandEndpoints {
                 "charactercreation" -> Screen.CharacterCreation
                 "game" -> Screen.Game
                 "death" -> Screen.Death
-                else -> return@route HttpResponse.error(400, "Unknown screen '$screenName'. Valid values: apiSetup, title, characterCreation, game, death")
+                "settings" -> Screen.Settings
+                else -> return@route HttpResponse.error(400, "Unknown screen '$screenName'. Valid values: apiSetup, title, characterCreation, game, death, settings")
             }
 
             val vm = DebugBridge.requireVm()

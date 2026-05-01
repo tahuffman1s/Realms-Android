@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.data.GraveyardEntry
 import com.realmsoffate.game.data.SaveSlotMeta
 import com.realmsoffate.game.game.GameViewModel
+import com.realmsoffate.game.ui.components.UpdateBanner
 import com.realmsoffate.game.ui.theme.RealmsSpacing
 
 /**
@@ -103,7 +104,9 @@ fun TitleScreen(vm: GameViewModel) {
                 style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 3.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(16.dp))
+            UpdateBanner()
+            Spacer(Modifier.height(24.dp))
 
             val latest = slots.firstOrNull()
 
@@ -169,6 +172,13 @@ fun TitleScreen(vm: GameViewModel) {
                     label = "API Setup",
                     enabled = true,
                     onClick = { vm.backToApiSetup() },
+                    modifier = Modifier.weight(1f)
+                )
+                SecondaryTile(
+                    icon = Icons.Default.Settings,
+                    label = "Settings",
+                    enabled = true,
+                    onClick = { vm.openSettings() },
                     modifier = Modifier.weight(1f)
                 )
             }
