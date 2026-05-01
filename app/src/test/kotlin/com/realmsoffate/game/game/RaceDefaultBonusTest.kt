@@ -1,10 +1,14 @@
 package com.realmsoffate.game.game
 
+import com.realmsoffate.game.data.content.TestContentInit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 class RaceDefaultBonusTest {
+    @Before fun init() = TestContentInit.ensureLoaded()
+
     @Test fun `elf defaults to DEX primary and INT secondary`() {
         val (p, s) = Races.find("Elf")!!.defaultBonusIndices()
         assertEquals(1, p) // DEX

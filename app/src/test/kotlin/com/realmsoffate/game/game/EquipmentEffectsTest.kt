@@ -4,11 +4,15 @@ import com.realmsoffate.game.data.Abilities
 import com.realmsoffate.game.data.Character
 import com.realmsoffate.game.data.Item
 import com.realmsoffate.game.data.ItemEffect
+import com.realmsoffate.game.data.content.TestContentInit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 class EquipmentEffectsTest {
+
+    @Before fun init() = TestContentInit.ensureLoaded()
 
     private fun char(vararg items: Item, abilities: Abilities = Abilities()): Character =
         Character(name = "T", race = "Human", cls = "Fighter", abilities = abilities,

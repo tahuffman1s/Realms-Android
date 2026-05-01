@@ -1,9 +1,13 @@
 package com.realmsoffate.game.game
 
+import com.realmsoffate.game.data.content.TestContentInit
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 class ClassStartingClothesTest {
+    @Before fun init() = TestContentInit.ensureLoaded()
+
     @Test fun `every class has a clothes item in starting gear`() {
         val clothesType = "clothes"
         val missing = Classes.list.filter { cls ->

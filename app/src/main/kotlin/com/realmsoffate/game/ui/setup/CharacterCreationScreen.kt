@@ -222,7 +222,7 @@ fun CharacterCreationScreen(vm: GameViewModel) {
                         // Use the verbatim per-class recommended array from the source-of-truth
                         // CLASSES table so each class actually gets its own preset.
                         val def = Classes.find(cls)
-                        baseStats.value = (def?.recommended ?: intArrayOf(13, 13, 13, 13, 13, 13)).copyOf()
+                        baseStats.value = (def?.recommended ?: listOf(13, 13, 13, 13, 13, 13)).toIntArray()
                     }
                 )
                 5 -> ConfirmStep(

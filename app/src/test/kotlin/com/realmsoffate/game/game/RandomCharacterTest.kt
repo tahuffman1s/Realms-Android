@@ -5,8 +5,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import kotlin.random.Random
 
+@RunWith(RobolectricTestRunner::class)
 class RandomCharacterTest {
 
     @Test
@@ -27,7 +30,7 @@ class RandomCharacterTest {
     fun `generate uses class recommended preset for stats`() {
         val r = RandomCharacter.generate(Random(3))
         val def = Classes.find(r.cls)!!
-        assertTrue(r.baseStats.contentEquals(def.recommended))
+        assertTrue(r.baseStats.toList() == def.recommended)
     }
 
     @Test

@@ -1,0 +1,200 @@
+{
+  "list": [
+    {
+      "name": "Fighter",
+      "hitDie": 10,
+      "primary": "STR",
+      "savingThrows": ["STR", "CON"],
+      "proficiencies": ["Athletics", "Intimidation"],
+      "startingItems": [
+        { "name": "Longsword", "desc": "+1d8 slashing", "type": "weapon", "rarity": "common", "equipped": true, "damage": "1d8" },
+        { "name": "Chain Mail", "desc": "AC 16", "type": "armor", "rarity": "common", "equipped": true, "ac": 16 },
+        { "name": "Shield", "desc": "+2 AC", "type": "shield", "rarity": "common", "equipped": true },
+        { "name": "Healing Potion", "desc": "Restore 2d4+2 HP", "type": "consumable", "rarity": "common", "qty": 2 },
+        { "name": "Traveler's Clothes", "desc": "Sturdy travel garments", "type": "clothes", "rarity": "common", "equipped": true }
+      ],
+      "isCaster": false,
+      "recommended": [15, 14, 14, 8, 12, 8]
+    },
+    {
+      "name": "Wizard",
+      "hitDie": 6,
+      "primary": "INT",
+      "savingThrows": ["INT", "WIS"],
+      "proficiencies": ["Arcana", "Investigation"],
+      "startingItems": [
+        { "name": "Quarterstaff", "desc": "+1d6 bludgeoning", "type": "weapon", "rarity": "common", "equipped": true, "damage": "1d6" },
+        { "name": "Spellbook", "desc": "Contains your known spells", "type": "book", "rarity": "uncommon" },
+        { "name": "Component Pouch", "desc": "For spellcasting", "type": "pouch", "rarity": "common" },
+        { "name": "Scroll of Shield", "desc": "Reaction, +5 AC", "type": "scroll", "rarity": "common" },
+        { "name": "Traveler's Clothes", "desc": "Sturdy travel garments", "type": "clothes", "rarity": "common", "equipped": true }
+      ],
+      "isCaster": true,
+      "spellAbility": "INT",
+      "recommended": [8, 14, 14, 15, 12, 8]
+    },
+    {
+      "name": "Rogue",
+      "hitDie": 8,
+      "primary": "DEX",
+      "savingThrows": ["DEX", "INT"],
+      "proficiencies": ["Stealth", "Sleight of Hand", "Perception", "Deception"],
+      "startingItems": [
+        { "name": "Shortsword", "desc": "+1d6 piercing", "type": "weapon", "rarity": "common", "equipped": true, "damage": "1d6" },
+        { "name": "Shortbow", "desc": "+1d6 piercing ranged", "type": "weapon", "rarity": "common", "damage": "1d6" },
+        { "name": "Leather Armor", "desc": "AC 11+DEX", "type": "armor", "rarity": "common", "equipped": true, "ac": 11 },
+        { "name": "Thieves' Tools", "desc": "Pick locks, disable traps", "type": "tool", "rarity": "common" },
+        { "name": "Daggers", "desc": "+1d4 piercing", "type": "weapon", "rarity": "common", "qty": 3 },
+        { "name": "Traveler's Clothes", "desc": "Sturdy travel garments", "type": "clothes", "rarity": "common", "equipped": true }
+      ],
+      "isCaster": false,
+      "recommended": [8, 15, 14, 14, 12, 8]
+    },
+    {
+      "name": "Cleric",
+      "hitDie": 8,
+      "primary": "WIS",
+      "savingThrows": ["WIS", "CHA"],
+      "proficiencies": ["Medicine", "Religion", "Insight"],
+      "startingItems": [
+        { "name": "Mace", "desc": "+1d6 bludgeoning", "type": "weapon", "rarity": "common", "equipped": true, "damage": "1d6" },
+        { "name": "Scale Mail", "desc": "AC 14+DEX", "type": "armor", "rarity": "common", "equipped": true, "ac": 14 },
+        { "name": "Holy Symbol", "desc": "For divine spells", "type": "focus", "rarity": "common" },
+        { "name": "Shield", "desc": "+2 AC", "type": "shield", "rarity": "common", "equipped": true },
+        { "name": "Traveler's Clothes", "desc": "Sturdy travel garments", "type": "clothes", "rarity": "common", "equipped": true }
+      ],
+      "isCaster": true,
+      "spellAbility": "WIS",
+      "recommended": [14, 8, 14, 8, 15, 12]
+    },
+    {
+      "name": "Ranger",
+      "hitDie": 10,
+      "primary": "DEX",
+      "savingThrows": ["STR", "DEX"],
+      "proficiencies": ["Survival", "Nature", "Perception", "Stealth"],
+      "startingItems": [
+        { "name": "Longbow", "desc": "+1d8 piercing ranged", "type": "weapon", "rarity": "common", "equipped": true, "damage": "1d8" },
+        { "name": "Shortsword", "desc": "+1d6 piercing", "type": "weapon", "rarity": "common", "equipped": true, "damage": "1d6" },
+        { "name": "Leather Armor", "desc": "AC 11+DEX", "type": "armor", "rarity": "common", "equipped": true, "ac": 11 },
+        { "name": "Quiver", "desc": "20 arrows", "type": "gear", "rarity": "common" },
+        { "name": "Traveler's Clothes", "desc": "Sturdy travel garments", "type": "clothes", "rarity": "common", "equipped": true }
+      ],
+      "isCaster": true,
+      "spellAbility": "WIS",
+      "recommended": [8, 15, 14, 12, 14, 8]
+    },
+    {
+      "name": "Barbarian",
+      "hitDie": 12,
+      "primary": "STR",
+      "savingThrows": ["STR", "CON"],
+      "proficiencies": ["Athletics", "Survival", "Intimidation"],
+      "startingItems": [
+        { "name": "Greataxe", "desc": "+1d12 slashing", "type": "weapon", "rarity": "common", "equipped": true, "damage": "1d12" },
+        { "name": "Handaxes", "desc": "+1d6 slashing", "type": "weapon", "rarity": "common", "qty": 2 },
+        { "name": "Hide Armor", "desc": "AC 12+DEX", "type": "armor", "rarity": "common", "equipped": true, "ac": 12 },
+        { "name": "Traveler's Clothes", "desc": "Sturdy travel garments", "type": "clothes", "rarity": "common", "equipped": true }
+      ],
+      "isCaster": false,
+      "recommended": [15, 14, 14, 8, 12, 8]
+    },
+    {
+      "name": "Bard",
+      "hitDie": 8,
+      "primary": "CHA",
+      "savingThrows": ["DEX", "CHA"],
+      "proficiencies": ["Performance", "Persuasion", "Deception", "Insight"],
+      "startingItems": [
+        { "name": "Rapier", "desc": "+1d8 piercing", "type": "weapon", "rarity": "common", "equipped": true, "damage": "1d8" },
+        { "name": "Lute", "desc": "Performance focus", "type": "instrument", "rarity": "common" },
+        { "name": "Leather Armor", "desc": "AC 11+DEX", "type": "armor", "rarity": "common", "equipped": true, "ac": 11 },
+        { "name": "Traveler's Clothes", "desc": "Sturdy travel garments", "type": "clothes", "rarity": "common", "equipped": true }
+      ],
+      "isCaster": true,
+      "spellAbility": "CHA",
+      "recommended": [8, 14, 14, 8, 12, 15]
+    },
+    {
+      "name": "Paladin",
+      "hitDie": 10,
+      "primary": "STR",
+      "savingThrows": ["WIS", "CHA"],
+      "proficiencies": ["Athletics", "Religion", "Persuasion"],
+      "startingItems": [
+        { "name": "Warhammer", "desc": "+1d8 bludgeoning", "type": "weapon", "rarity": "common", "equipped": true, "damage": "1d8" },
+        { "name": "Chain Mail", "desc": "AC 16", "type": "armor", "rarity": "common", "equipped": true, "ac": 16 },
+        { "name": "Shield", "desc": "+2 AC", "type": "shield", "rarity": "common", "equipped": true },
+        { "name": "Holy Symbol", "desc": "For divine spells", "type": "focus", "rarity": "common" },
+        { "name": "Traveler's Clothes", "desc": "Sturdy travel garments", "type": "clothes", "rarity": "common", "equipped": true }
+      ],
+      "isCaster": true,
+      "spellAbility": "CHA",
+      "recommended": [15, 8, 14, 8, 12, 14]
+    },
+    {
+      "name": "Sorcerer",
+      "hitDie": 6,
+      "primary": "CHA",
+      "savingThrows": ["CON", "CHA"],
+      "proficiencies": ["Arcana", "Persuasion"],
+      "startingItems": [
+        { "name": "Dagger", "desc": "+1d4 piercing", "type": "weapon", "rarity": "common", "equipped": true, "damage": "1d4" },
+        { "name": "Arcane Focus", "desc": "Crystal orb", "type": "focus", "rarity": "common" },
+        { "name": "Component Pouch", "desc": "For spellcasting", "type": "pouch", "rarity": "common" },
+        { "name": "Traveler's Clothes", "desc": "Sturdy travel garments", "type": "clothes", "rarity": "common", "equipped": true }
+      ],
+      "isCaster": true,
+      "spellAbility": "CHA",
+      "recommended": [8, 14, 14, 8, 12, 15]
+    },
+    {
+      "name": "Warlock",
+      "hitDie": 8,
+      "primary": "CHA",
+      "savingThrows": ["WIS", "CHA"],
+      "proficiencies": ["Arcana", "Deception", "Intimidation"],
+      "startingItems": [
+        { "name": "Light Crossbow", "desc": "+1d8 piercing ranged", "type": "weapon", "rarity": "common", "equipped": true, "damage": "1d8" },
+        { "name": "Leather Armor", "desc": "AC 11+DEX", "type": "armor", "rarity": "common", "equipped": true, "ac": 11 },
+        { "name": "Pact Weapon Focus", "desc": "Arcane channel", "type": "focus", "rarity": "uncommon" },
+        { "name": "Traveler's Clothes", "desc": "Sturdy travel garments", "type": "clothes", "rarity": "common", "equipped": true }
+      ],
+      "isCaster": true,
+      "spellAbility": "CHA",
+      "recommended": [8, 14, 14, 8, 12, 15]
+    },
+    {
+      "name": "Monk",
+      "hitDie": 8,
+      "primary": "DEX",
+      "savingThrows": ["STR", "DEX"],
+      "proficiencies": ["Acrobatics", "Stealth", "Athletics"],
+      "startingItems": [
+        { "name": "Quarterstaff", "desc": "+1d6 bludgeoning", "type": "weapon", "rarity": "common", "equipped": true, "damage": "1d6" },
+        { "name": "Darts", "desc": "+1d4 piercing", "type": "weapon", "rarity": "common", "qty": 10 },
+        { "name": "Monk's Robes", "desc": "AC 10+DEX+WIS", "type": "armor", "rarity": "common", "equipped": true },
+        { "name": "Traveler's Clothes", "desc": "Sturdy travel garments", "type": "clothes", "rarity": "common", "equipped": true }
+      ],
+      "isCaster": false,
+      "recommended": [8, 15, 14, 8, 14, 12]
+    },
+    {
+      "name": "Druid",
+      "hitDie": 8,
+      "primary": "WIS",
+      "savingThrows": ["INT", "WIS"],
+      "proficiencies": ["Nature", "Animal Handling", "Survival"],
+      "startingItems": [
+        { "name": "Scimitar", "desc": "+1d6 slashing", "type": "weapon", "rarity": "common", "equipped": true, "damage": "1d6" },
+        { "name": "Wooden Shield", "desc": "+2 AC", "type": "shield", "rarity": "common", "equipped": true },
+        { "name": "Druidic Focus", "desc": "Carved staff", "type": "focus", "rarity": "common" },
+        { "name": "Healing Berries", "desc": "+1d4 HP", "type": "consumable", "rarity": "common", "qty": 3 },
+        { "name": "Traveler's Clothes", "desc": "Sturdy travel garments", "type": "clothes", "rarity": "common", "equipped": true }
+      ],
+      "isCaster": true,
+      "spellAbility": "WIS",
+      "recommended": [8, 14, 14, 12, 15, 8]
+    }
+  ]
+}

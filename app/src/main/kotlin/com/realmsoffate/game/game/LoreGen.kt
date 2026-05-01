@@ -8,124 +8,17 @@ import com.realmsoffate.game.data.LoreNpc
 import com.realmsoffate.game.data.PastRuler
 import com.realmsoffate.game.data.WorldLore
 import com.realmsoffate.game.data.WorldMap
+import com.realmsoffate.game.data.content.ContentRepository
+import com.realmsoffate.game.data.content.EconState
 import kotlin.random.Random
 
-private val FACTION_TYPES = listOf(
-    "kingdom", "guild", "cult", "order", "tribe", "council", "coven", "cartel",
-    "syndicate", "brotherhood", "sisterhood", "legion", "consortium", "cabal",
-    "covenant", "conclave", "inquisition", "rebellion", "empire", "federation",
-    "commune", "circle", "lodge", "sept", "house", "dynasty", "horde",
-    "theocracy", "merchant republic"
-)
-private val FACTION_ADJS = listOf(
-    "Iron", "Shadow", "Golden", "Crimson", "Silver", "Obsidian", "Azure", "Jade",
-    "Ashen", "Radiant", "Hollow", "Dread", "Frost", "Storm", "Blood", "Moonlit",
-    "Scarlet", "Ivory", "Emerald", "Onyx", "Amber", "Cobalt", "Violet", "Bone",
-    "Rust", "Veiled", "Silent", "Burning", "Frozen", "Shattered", "Eternal",
-    "Gilded", "Thorned", "Starless", "Pale", "Verdant", "Sable", "Weeping",
-    "Prismatic", "Arcane", "Hallowed", "Profane", "Twilight", "Spectral",
-    "Molten", "Abyssal"
-)
-private val FACTION_NOUNS = listOf(
-    "Crown", "Fang", "Flame", "Pact", "Hand", "Veil", "Throne", "Circle", "Blade",
-    "Rose", "Serpent", "Shield", "Eye", "Tower", "Chalice", "Oath", "Raven",
-    "Wolf", "Lion", "Dragon", "Talon", "Hammer", "Thorn", "Mask", "Chain",
-    "Scale", "Key", "Gate", "Arrow", "Skull", "Phoenix", "Lotus", "Gryphon",
-    "Hydra", "Sphinx", "Tide", "Root", "Star", "Compass", "Herald", "Whisper",
-    "Eclipse", "Abyss", "Mantis", "Wyvern"
-)
+private val FACTION_TYPES: List<String> get() = ContentRepository.factionTypes
+private val FACTION_ADJS: List<String> get() = ContentRepository.factionAdjectives
+private val FACTION_NOUNS: List<String> get() = ContentRepository.factionNouns
 
-private val NPC_FIRSTS = listOf(
-    "Aldric", "Voss", "Elara", "Mira", "Thorne", "Kaelen", "Seraphina", "Draven",
-    "Isolde", "Fenwick", "Lyra", "Balthazar", "Nyx", "Orin", "Vesper", "Corvus",
-    "Morgana", "Silas", "Freya", "Zephyr", "Brynn", "Lucian", "Asha", "Grimjaw",
-    "Celeste", "Tormund", "Yara", "Rook", "Dahlia", "Kael", "Amara", "Ragnar",
-    "Seren", "Mordecai", "Lirien", "Hakan", "Zara", "Cassius", "Ione", "Gideon",
-    "Petra", "Hadrian", "Nyssa", "Theron", "Morrigan", "Iskander", "Calista",
-    "Wulfric", "Selene", "Bjorn", "Xylia", "Caspian", "Rhea", "Dorian", "Tamsin",
-    "Ash", "Soraya", "Fenris", "Ophelia", "Magnus", "Kira", "Alaric", "Enya",
-    "Lazarus", "Sable", "Zarek", "Imogen", "Caius", "Niamh", "Darius", "Esme",
-    "Viktor", "Talia", "Orion", "Meliora", "Gareth", "Ailis", "Nero", "Wren",
-    "Soren", "Livia", "Edric", "Faye", "Ronan", "Zinnia", "Kellan", "Thessa",
-    "Oberon", "Nephele", "Axel", "Maren", "Xander", "Sage", "Cedric", "Astrid",
-    "Eamon", "Lorelei", "Dante", "Verity", "Knox", "Juniper", "Cormac", "Iris",
-    // East Asian inspired
-    "Takeshi", "Mei-Ling", "Jiro", "Yuki", "Hana", "Kenji", "Sakura", "Ryu",
-    "Kaito", "Mizuki", "Taro", "Himari", "Ren", "Akemi", "Hiroshi", "Yumi",
-    // African inspired
-    "Kwame", "Zuri", "Kofi", "Nia", "Tendai", "Akua", "Jabari", "Adaeze",
-    "Chidi", "Zola", "Emeka", "Afia", "Seun", "Makena", "Dayo", "Imani",
-    // Middle Eastern inspired
-    "Farid", "Zahra", "Hassan", "Layla", "Rashid", "Noor", "Khalil", "Samira",
-    "Tariq", "Yasmin", "Karim", "Leila", "Basim", "Soraya", "Faris", "Rania",
-    // South Asian inspired
-    "Priya", "Arjun", "Kavi", "Indira", "Rohan", "Meera", "Vikram", "Leela",
-    "Rajan", "Ananya", "Devraj", "Kavita", "Suresh", "Nalini", "Dhruv", "Padma",
-    // Latin inspired
-    "Lucia", "Rafael", "Esperanza", "Mateo", "Valentina", "Diego", "Camila", "Emilio",
-    "Sofía", "Alejandro", "Catalina", "Rodrigo", "Isadora", "Benicio", "Llorena", "Cruz",
-    // Slavic inspired
-    "Katya", "Dmitri", "Anya", "Vladislav", "Mila", "Borislav", "Nadya", "Taras",
-    "Zoya", "Stanimir", "Oksana", "Radovan", "Svetla", "Mirko", "Daria", "Bogdan",
-    // Norse/Germanic inspired
-    "Ingrid", "Sigurd", "Freyja", "Gunnar", "Helga", "Leif", "Brunhilde", "Einar",
-    "Ragnhild", "Halvard", "Solveig", "Torsten", "Brynja", "Ulfr", "Astrid", "Hrolf",
-    // Additional fantasy names
-    "Eirik", "Branwen", "Theron", "Lysara", "Cael", "Rowena", "Aeric", "Tamara",
-    "Kiran", "Odessa", "Marcellus", "Isolde", "Daxton", "Calliope", "Leander", "Sylvaine",
-    "Corwin", "Nerissa", "Tyrell", "Ondine", "Baelor", "Fiora", "Cassian", "Ellara",
-    "Galen", "Maelis", "Ryker", "Thessaly", "Warrick", "Vivienne", "Bastian", "Ondina",
-    "Cato", "Elspeth", "Fenn", "Grielle", "Idris", "Jessamine", "Kael", "Luthien",
-    "Maddox", "Nerys", "Osric", "Phaedra", "Quinn", "Rosmund", "Stavros", "Tanith",
-    "Ulric", "Vaela", "Wolfram", "Xiomara", "Yorick", "Zenith", "Ambrose", "Briar",
-    "Cosimo", "Delphine", "Emeric", "Finola", "Garrick", "Hypatia", "Ivar", "Junia",
-    "Kestrel", "Liora", "Mercer", "Niobe", "Osgood", "Perdita", "Quillon", "Rhiannon",
-    "Severin", "Theodosia", "Umber", "Veridian", "Wynn", "Xanthia", "Yael", "Zosia",
-    "Adrius", "Belphoebe", "Cyrene", "Dagny", "Erasmus", "Fenella", "Godric", "Hesper",
-    "Ignatius", "Jovana", "Kellan", "Lorcan", "Morrigan", "Numa", "Oleander", "Prosper",
-    "Qadira", "Remiel", "Saoirse", "Tiberius", "Ursina", "Vesper", "Wilfreda", "Xena",
-    "Ysolde", "Zarael", "Anatole", "Bronwyn", "Crispin", "Desdemona", "Evander", "Flavia",
-    "Grantham", "Helewise", "Illyria", "Jareth", "Katriel", "Lysander"
-)
-private val NPC_TITLES = listOf(
-    "the Wise", "the Cruel", "Ironhand", "Shadowbane", "the Lost", "Dawnbringer",
-    "Blackheart", "the Undying", "the Wanderer", "Stormcaller", "the Exile",
-    "Bloodfist", "the Silent", "Nightwhisper", "the Brave", "Ashwalker",
-    "the Cunning", "Doomhammer", "the Merciful", "Spellweaver", "Halfmoon",
-    "the Blighted", "Stoneheart", "the Hollow", "Wyrmtongue", "Three-Fingers",
-    "the Unkind", "Duskborne", "the Branded", "Grimshaw", "the Sleepless",
-    "Redmantle", "the Twice-Cursed", "Bonechill", "the Reborn", "Quicksilver",
-    "the Veiled", "Greywatch", "the Unbroken", "Frostblood", "the Mad",
-    "Thornfield", "the Penitent", "Nightfall", "the Last", "Deeproot",
-    "the Forsaken", "Brightmore", "the Scorned", "Ashveil",
-    // Additional dark/creative titles
-    "Oathbreaker", "the Flayed", "Soulrender", "the Famished", "Voidwalker",
-    "the Unmourned", "Gorethane", "the Sewn-Shut", "Marrowdrinker", "the Pale",
-    "Skullwright", "the Dreaming", "Chainborn", "the Unrepentant", "Dreadmere",
-    "the Guttered", "Cinderfall", "the Sightless Oracle", "Rotweave", "the Beloved",
-    "Thornbriar", "the Wretched", "Gallowsmark", "the Unclean",
-    // Additional titles
-    "the Hollow-Eyed", "Ashbinder", "the Twice-Dead", "Crowfeeder", "the Liar King",
-    "Bonewarden", "the Candlelight", "Dustwalker", "the Many-Named", "Fleshwright",
-    "the Quiet Storm", "Goretide", "the Heretic", "Ironmaiden", "the Kingmaker",
-    "Lampblack", "the Nameless", "Nightsoil", "the Old Wolf", "Plaguetongue",
-    "the Red-Handed", "Saltblood", "the Turncoat", "Undermire", "the Vagrant Prince",
-    "Wormwood", "the Yearning", "Blackthorn", "the Deathless", "Ember-Crowned",
-    "the Fevered", "Gravesong", "the Hungering", "Ironside", "the Judged",
-    "Knifesmile", "the Lightless", "Mothkeeper", "the Ninth", "Oathbound"
-)
-private val NPC_ROLES = listOf(
-    "king", "queen", "warlord", "archmage", "high priest", "assassin leader",
-    "merchant prince", "rebel leader", "oracle", "necromancer",
-    "knight commander", "spymaster", "pirate captain", "druid elder",
-    "tavern keeper", "blacksmith", "wandering bard", "bounty hunter",
-    "cursed noble", "dragon slayer", "alchemist", "librarian", "smuggler",
-    "arena champion", "plague doctor", "inquisitor", "ranger captain",
-    "diplomat", "siege engineer", "runesmith", "blood mage", "ferryman",
-    "tax collector", "revolutionary", "cartographer", "herbalist",
-    "monster hunter", "fortune teller", "executioner", "architect",
-    "curator of relics", "war poet", "shadow broker"
-)
+private val NPC_FIRSTS: List<String> get() = ContentRepository.npcFirsts
+private val NPC_TITLES: List<String> get() = ContentRepository.npcTitles
+private val NPC_ROLES: List<String> get() = ContentRepository.npcRoles
 
 private val RACES = listOf("Human", "Elf", "Dwarf", "Halfling", "Half-Elf", "Half-Orc", "Tiefling", "Dragonborn", "Gnome")
 
@@ -140,15 +33,7 @@ private val WORLD_NAME_PATTERNS: List<(Random) -> String> = listOf(
     { r -> "${FACTION_ADJS.random(r)} ${listOf("Empire", "Confederacy", "Wastes", "Shores", "Wilds").random(r)}" }
 )
 
-private val ERA_LABELS = listOf(
-    "Age of Cinders", "Age of Reckoning", "Age of Silence",
-    "Age of Banners", "Age of the Wandering Crown", "Age of Ruin",
-    "Age of the Long Winter", "Age of the Broken Seal",
-    "Age of the Shattered Sun", "Age of Thorns", "Age of the Drowning",
-    "Age of Iron and Bone", "Age of the Hollow Crown", "Age of Ashes",
-    "Age of the Serpent", "Age of the Red Moon", "Age of Chains",
-    "Age of the First Fire", "Age of the Unmaking", "Age of Whispers"
-)
+private val ERA_LABELS: List<String> get() = ContentRepository.eraLabels
 
 // ---- Primordial (6, as before) ----
 private val PRIMORDIAL_EVENTS: List<(String) -> String> = listOf(
@@ -214,115 +99,16 @@ private val RECENT_EVENTS: List<(String, String, String) -> String> = listOf(
     { f, n, loc -> "A child was born at **$loc** bearing the mark of an ancient prophecy. The **$f** and $n both want to control the child's fate." }
 )
 
-private val RUMORS = listOf(
-    "They say the old baron never died — he walks the halls of his keep, looking for his sword.",
-    "A merchant paid in coins that vanished by morning.",
-    "The wolves in the northern woods have started hunting in daylight.",
-    "Someone saw a second moon in the sky last week. Only children admit it.",
-    "The cartographer's guild erased a town from the maps. No one remembers its name.",
-    "A tavern keeper stopped serving ale that turns sour the moment it hits silver.",
-    "The magistrate's wife has been seen at three funerals of men she never met.",
-    "Children near the ruins sing a lullaby that no one taught them.",
-    "A dwarven caravan passed through carrying a coffin they refused to open.",
-    "The bell of the temple rings every night at the same hour — even after the bell was stolen.",
-    "A farmer plows the same field each spring, burying what he finds.",
-    "The bounty board has a poster that rewrites itself when you aren't looking.",
-    "Someone is buying up old war banners. No one knows who.",
-    "The river stopped for a heartbeat yesterday. Then it ran again.",
-    "A shepherd swears a star fell near the crags but no crater was found.",
-    "The old witch-woman is accepting apprentices. Three have already disappeared.",
-    "A blacksmith refuses to work with iron from the southern mine.",
-    "Barrow-mist rolled through the eastern villages last week. Some came back wrong.",
-    "The innkeeper at the crossroads writes down every name. Every one.",
-    "A traveling priest warned of 'the seventh seal' and left in a hurry.",
-    "A dog dug up coins stamped with a language that hasn't been spoken in a thousand years.",
-    "The last person to climb the cliff-temple came back speaking only in rhymes.",
-    "A caravan of foreign silks ran empty — everyone gone, horses still walking.",
-    "A beggar in the market wears a ring worth more than the whole street.",
-    "The old mill's wheel turns even when the river is frozen.",
-    "A woman walks the trade road at midnight, asking each traveler the same question — but no one can remember what it was.",
-    "The garrison captain hasn't slept in three weeks. He says he doesn't need to.",
-    "Someone carved a name into the cornerstone of the new bridge. It hasn't been built yet.",
-    "The fish in the eastern lake have started swimming in circles. All of them. At once.",
-    "A blind potter makes cups that show you things when you drink from them.",
-    "Three roads meet at the crossroads and a fourth appears on foggy nights.",
-    "The undertaker bought a second shovel. He says one isn't going to be enough.",
-    "A crow landed on the throne during the last court session and nobody dared remove it.",
-    "The old tower rings like a bell when the wind blows from the north — but there's no bell inside.",
-    "A mapmaker drew a country that doesn't exist. Caravans have started heading there.",
-    "The baker's bread has been rising on its own, even before she adds the yeast.",
-    "A mercenary company disbanded overnight. Every member claims they can't remember why.",
-    "Someone stole the shadow off the statue in the square. The statue remains.",
-    "The prison is empty. Not because they freed the prisoners — the cells are simply empty.",
-    "A child in the market sells prophecies for a copper each. She's never been wrong.",
-    "The wells in the lower quarter taste of salt. The sea is fifty miles away.",
-    "A knight returned from a quest he was sent on yesterday. He says it took him seven years.",
-    "The flowers in the cemetery bloom in winter and die in spring.",
-    "A traveling merchant offers a box he says must never be opened. He gives it away for free.",
-    "The moon had a crack in it last night. By dawn it was whole again."
-)
-
-private val ECON_STATES = listOf(
-    Triple("Thriving", "Trade booms, coffers overflow, the people eat well", 5),
-    Triple("Prosperous", "Steady growth, a rising merchant class", 4),
-    Triple("Stable", "Neither rich nor poor — the economy holds", 3),
-    Triple("Strained", "Resources stretched thin, taxes rising", 2),
-    Triple("Impoverished", "Famine lurks, beggars line the streets", 1),
-    Triple("Collapsed", "Currency worthless, barter economy, desperation", 0),
-    Triple("Hoarded", "Vast wealth held by the few, mass poverty below", 2),
-    Triple("War Economy", "Everything funneled into the military effort", 2),
-    Triple("Black Market", "Official trade dead, underground networks thrive", 1),
-    Triple("Boom & Bust", "Wild swings between fortune and ruin", 3)
-)
-
-private val EXPORTS = listOf(
-    "grain", "iron ore", "timber", "wool", "salt", "silver", "wine", "copper",
-    "leather", "cut stone", "furs", "fish", "honey", "spices", "silk",
-    "enchanted trinkets", "weapon-steel", "arcane reagents", "mythril", "parchment"
-)
-private val IMPORTS = listOf(
-    "foreign silks", "exotic spices", "ironwood", "southern fruits", "pepper",
-    "dyes", "alchemical reagents", "glass", "ivory", "warhorses", "books",
-    "cotton", "porcelain", "preserved fish", "tea", "cedar planks", "brass"
-)
-private val GOV_FORMS = listOf(
-    "monarchy", "theocracy", "oligarchy", "merchant republic", "tribal council",
-    "inquisition", "magocracy", "dictatorship", "federation", "matriarchy",
-    "patriarchy", "warband", "commune", "dynasty"
-)
-private val SUCCESSIONS = listOf(
-    "primogeniture", "divine election", "trial by combat", "merchant vote",
-    "assassination", "popular acclamation", "ritual selection", "hereditary"
-)
-private val RULER_TRAITS = listOf(
-    "paranoid", "just", "cruel", "scholarly", "warlike", "pious", "cunning",
-    "benevolent", "reclusive", "feasted", "tyrannical", "weak", "charismatic",
-    "tormented", "zealous"
-)
-private val MOODS = listOf(
-    "restless", "content", "fearful", "defiant", "oppressed", "prosperous",
-    "despairing", "fanatical", "apathetic", "hopeful"
-)
-private val GOALS = listOf(
-    "expand territory", "defend the realm", "uncover an ancient truth",
-    "enrich the treasury", "purge heretics", "seize the throne",
-    "restore the old ways", "preserve the peace", "hunt a single enemy",
-    "outlast their rivals",
-    "broker peace between warring neighbors", "recover a stolen relic of immense power",
-    "open trade with a forbidden nation", "build a weapon of mass destruction",
-    "find a cure for a spreading plague", "assassinate a rival faction's leader",
-    "explore uncharted territory", "forge an alliance against a greater threat",
-    "overthrow their own corrupt leadership", "summon or bind a powerful entity"
-)
-private val DISPOSITIONS = listOf(
-    "guarded to strangers", "hospitable to travellers", "openly hostile to outsiders",
-    "suspicious of all magic", "welcoming of kindred souls",
-    "pragmatic and trade-focused", "fiercely independent", "bound by ancient oaths",
-    "fractured by internal politics", "united under a false prophet",
-    "haunted by a past atrocity", "secretly plotting expansion",
-    "zealously isolationist", "ruled by fear of the unknown",
-    "torn between tradition and progress"
-)
+private val RUMORS: List<String> get() = ContentRepository.rumors
+private val ECON_STATES: List<EconState> get() = ContentRepository.economyStates
+private val EXPORTS: List<String> get() = ContentRepository.exports
+private val IMPORTS: List<String> get() = ContentRepository.imports
+private val GOV_FORMS: List<String> get() = ContentRepository.governmentForms
+private val SUCCESSIONS: List<String> get() = ContentRepository.successionTypes
+private val RULER_TRAITS: List<String> get() = ContentRepository.rulerTraits
+private val MOODS: List<String> get() = ContentRepository.moods
+private val GOALS: List<String> get() = ContentRepository.goals
+private val DISPOSITIONS: List<String> get() = ContentRepository.dispositions
 
 object LoreGen {
     // ---- Exposed pools for per-turn DeepSeek name/lore hints ----
@@ -381,12 +167,12 @@ object LoreGen {
                 }
             )
             val economy = EconomyInfo(
-                level = econ.first,
-                wealth = econ.third,
-                description = econ.second,
+                level = econ.level,
+                wealth = econ.wealth,
+                description = econ.description,
                 exports = EXPORTS.shuffled(rand).take(3),
                 imports = IMPORTS.shuffled(rand).take(3),
-                tax = when (econ.first) {
+                tax = when (econ.level) {
                     "Thriving" -> "5% on trade, negligible head-tax"
                     "Prosperous" -> "8% on trade, small head-tax"
                     "Stable" -> "10% on trade, modest head-tax"

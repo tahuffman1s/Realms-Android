@@ -2,14 +2,18 @@ package com.realmsoffate.game.game
 
 import com.realmsoffate.game.data.Abilities
 import com.realmsoffate.game.data.Character
+import com.realmsoffate.game.data.content.TestContentInit
 import com.realmsoffate.game.game.handlers.ProgressionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 class ProgressionOverpreparedTest {
+
+    @Before fun init() = TestContentInit.ensureLoaded()
 
     private fun freshHandler(ch: Character): Triple<ProgressionHandler, MutableStateFlow<GameUiState>, MutableStateFlow<Int?>> {
         val ui = MutableStateFlow(GameUiState(character = ch))
