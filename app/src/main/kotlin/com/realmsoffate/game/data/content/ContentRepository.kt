@@ -1,6 +1,8 @@
 package com.realmsoffate.game.data.content
 
 import android.content.Context
+import com.realmsoffate.game.game.ClassDef
+import com.realmsoffate.game.game.RaceDef
 
 object ContentRepository {
 
@@ -46,4 +48,8 @@ object ContentRepository {
 
     val locationTemplates: List<LocTemplate> get() = bundle.locationTemplates.templates
     val playerNames: List<String> get() = bundle.playerNames.names
+
+    val races: List<RaceDef> get() = bundle.races.list
+    val classes: List<ClassDef> get() = bundle.classes.list
+    val featMetas: List<FeatMeta> get() = bundle.feats.list
 }

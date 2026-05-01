@@ -21,6 +21,9 @@ internal object ContentLoader {
         val backstory: BackstoryDto,
         val locationTemplates: LocationTemplatesDto,
         val playerNames: PlayerNamesDto,
+        val races: RacesDto,
+        val classes: ClassesDto,
+        val feats: FeatsDto,
     )
 
     fun loadAndValidate(open: (String) -> InputStream): Bundle {
@@ -36,6 +39,9 @@ internal object ContentLoader {
             backstory = parse("content/backstory/fragments.json", open),
             locationTemplates = parse("content/world/location-templates.json", open),
             playerNames = parse("content/names/player.json", open),
+            races = parse("content/characters/races.json", open),
+            classes = parse("content/characters/classes.json", open),
+            feats = parse("content/characters/feats.json", open),
         )
     }
 

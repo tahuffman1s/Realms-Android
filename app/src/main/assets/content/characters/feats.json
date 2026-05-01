@@ -1,0 +1,16 @@
+{
+  "list": [
+    { "name": "Lucky", "description": "3x per long rest, reroll a d20. +1 to all saves.", "icon": "🎲" },
+    { "name": "Tough", "description": "+2 HP per level (retroactive). You're harder to kill.", "icon": "💪" },
+    { "name": "Sharpshooter", "description": "Ranged attacks ignore cover. +2 DEX.", "icon": "🏹" },
+    { "name": "War Caster", "description": "Advantage on concentration saves. +2 to spellcasting ability.", "icon": "🔮" },
+    { "name": "Great Weapon Master", "description": "Heavy weapon crits deal +10 damage. +2 STR.", "icon": "⚔️" },
+    { "name": "Sentinel", "description": "Enemies you hit can't disengage. +1 AC.", "icon": "🛡️" },
+    { "name": "Alert", "description": "Can't be surprised. +5 to initiative. +2 DEX.", "icon": "👁️" },
+    { "name": "Resilient", "description": "+2 CON, proficiency in CON saves.", "icon": "❤️" },
+    { "name": "Observant", "description": "+5 passive Perception. +2 WIS.", "icon": "🔍" },
+    { "name": "Actor", "description": "Advantage on Deception. +2 CHA.", "icon": "🎭" },
+    { "name": "Tavern Brawler", "description": "Improvised weapons deal 1d4+STR. +2 STR.", "icon": "🍺" },
+    { "name": "Magic Initiate", "description": "Learn 2 cantrips and 1 spell from any class. +2 INT.", "icon": "✨" }
+  ]
+}

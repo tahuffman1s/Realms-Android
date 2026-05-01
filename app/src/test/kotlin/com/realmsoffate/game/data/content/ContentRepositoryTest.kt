@@ -47,6 +47,9 @@ class ContentRepositoryTest {
         assertTrue(ContentRepository.backstoryProphecies.isNotEmpty())
         assertTrue(ContentRepository.locationTemplates.isNotEmpty())
         assertTrue(ContentRepository.playerNames.isNotEmpty())
+        assertTrue(ContentRepository.races.isNotEmpty())
+        assertTrue(ContentRepository.classes.isNotEmpty())
+        assertTrue(ContentRepository.featMetas.isNotEmpty())
     }
 
     @Test

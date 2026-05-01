@@ -30,7 +30,7 @@ class RandomCharacterTest {
     fun `generate uses class recommended preset for stats`() {
         val r = RandomCharacter.generate(Random(3))
         val def = Classes.find(r.cls)!!
-        assertTrue(r.baseStats.contentEquals(def.recommended))
+        assertTrue(r.baseStats.toList() == def.recommended)
     }
 
     @Test

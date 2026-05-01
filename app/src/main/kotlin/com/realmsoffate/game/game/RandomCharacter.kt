@@ -81,7 +81,7 @@ internal object RandomCharacter {
             build = BUILDS.random(rng),
             race = race.name,
             cls = cls.name,
-            baseStats = cls.recommended.copyOf(),
+            baseStats = cls.recommended.toIntArray(),
             primaryBonus = primary,
             secondaryBonus = safeSecondary
         )

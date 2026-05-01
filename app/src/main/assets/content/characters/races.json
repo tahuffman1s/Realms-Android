@@ -1,0 +1,82 @@
+{
+  "list": [
+    {
+      "name": "Human",
+      "strBonus": 1, "dexBonus": 1, "conBonus": 1,
+      "intBonus": 1, "wisBonus": 1, "chaBonus": 1,
+      "traits": ["Versatile", "Extra language"],
+      "heightRange": "5'0\" – 6'4\"",
+      "physiqueTemplate": "Human build, average height. NPCs treat you as ordinary — you blend in easily."
+    },
+    {
+      "name": "Elf",
+      "dexBonus": 2, "intBonus": 1,
+      "traits": ["Darkvision", "Keen senses", "Fey ancestry"],
+      "heightRange": "5'4\" – 6'2\"",
+      "physiqueTemplate": "Tall and slender, pointed ears, almond eyes. Your voice is melodic. NPCs sense ancient patience."
+    },
+    {
+      "name": "Dwarf",
+      "strBonus": 1, "conBonus": 2,
+      "traits": ["Darkvision", "Poison resistance", "Stonecunning"],
+      "heightRange": "4'0\" – 5'0\"",
+      "physiqueTemplate": "Stocky, broad-shouldered, ~4 feet. You look UP at most NPCs. Your voice is a low rumble. Braided beard (if male)."
+    },
+    {
+      "name": "Halfling",
+      "dexBonus": 2, "chaBonus": 1,
+      "traits": ["Lucky", "Brave", "Halfling nimbleness"],
+      "heightRange": "3'0\" – 3'6\"",
+      "physiqueTemplate": "Small, ~3 feet. You must reach UP for tavern tables. NPCs lean down to hear you. Curly hair, bare feet."
+    },
+    {
+      "name": "Gnome",
+      "dexBonus": 1, "intBonus": 2,
+      "traits": ["Darkvision", "Gnome cunning", "Small"],
+      "heightRange": "3'0\" – 3'6\"",
+      "physiqueTemplate": "Small, ~3 feet. Wild hair, bright eyes. NPCs often underestimate you. Your voice is quick and sharp."
+    },
+    {
+      "name": "Half-Elf",
+      "dexBonus": 1, "intBonus": 1, "chaBonus": 2,
+      "traits": ["Darkvision", "Fey ancestry", "Two skills"],
+      "heightRange": "5'0\" – 6'0\"",
+      "physiqueTemplate": "Tall, graceful, subtly pointed ears. Neither elves nor humans fully accept you."
+    },
+    {
+      "name": "Half-Orc",
+      "strBonus": 2, "conBonus": 1,
+      "traits": ["Darkvision", "Relentless endurance", "Savage attacks"],
+      "heightRange": "6'0\" – 7'0\"",
+      "physiqueTemplate": "Towering 6'6\"+, tusks, scarred. NPCs step back. You duck doorways. Your voice is guttural."
+    },
+    {
+      "name": "Tiefling",
+      "intBonus": 1, "chaBonus": 2,
+      "traits": ["Darkvision", "Infernal resistance", "Thaumaturgy"],
+      "heightRange": "5'0\" – 6'4\"",
+      "physiqueTemplate": "Horns, tail, unusual skin. NPCs recoil or make signs. Merchants refuse service. Your voice carries a subtle echo."
+    },
+    {
+      "name": "Dragonborn",
+      "strBonus": 2, "chaBonus": 1,
+      "traits": ["Breath weapon", "Draconic resistance"],
+      "heightRange": "6'0\" – 7'0\"",
+      "physiqueTemplate": "Scaled, tall, draconic. NPCs are wary. Your voice rumbles like distant thunder."
+    },
+    {
+      "name": "Drow",
+      "dexBonus": 2, "intBonus": 1, "chaBonus": 1,
+      "traits": ["Superior darkvision", "Sunlight sensitivity", "Drow magic"],
+      "heightRange": "5'0\" – 5'10\"",
+      "physiqueTemplate": "Ebony skin, white hair. Surface-dwellers distrust you openly. You squint in sunlight."
+    },
+    {
+      "name": "Githyanki",
+      "strBonus": 2, "intBonus": 1,
+      "traits": ["Astral knowledge", "Psionic blade", "Misty Step (1/long rest)"],
+      "heightRange": "5'10\" – 6'8\"",
+      "physiqueTemplate": "Tall, gaunt, yellow-green skin, sharp eyes the colour of old bronze. NPCs sense an alien stillness — the kind that carries silver swords and flies on red dragons in dreams."
+    }
+  ]
+}
