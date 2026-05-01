@@ -53,6 +53,12 @@ class ContentRepositoryTest {
         assertTrue(ContentRepository.spells.isNotEmpty())
         assertTrue(ContentRepository.mutations.isNotEmpty())
         assertTrue(ContentRepository.scenarioMetas.isNotEmpty())
+        assertTrue(ContentRepository.worldEventTemplates.isNotEmpty())
+        assertTrue(ContentRepository.historicalEvents.primordial.isNotEmpty())
+        assertTrue(ContentRepository.historicalEvents.ancient.isNotEmpty())
+        assertTrue(ContentRepository.historicalEvents.medieval.isNotEmpty())
+        assertTrue(ContentRepository.historicalEvents.darkAge.isNotEmpty())
+        assertTrue(ContentRepository.historicalEvents.recent.isNotEmpty())
     }
 
     @Test
