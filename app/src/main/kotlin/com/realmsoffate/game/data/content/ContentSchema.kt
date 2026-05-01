@@ -1,11 +1,12 @@
 package com.realmsoffate.game.data.content
 
 import com.realmsoffate.game.game.ClassDef
+import com.realmsoffate.game.game.Mutation
 import com.realmsoffate.game.game.RaceDef
 import com.realmsoffate.game.game.Spell
 import kotlinx.serialization.Serializable
 
-internal const val CONTENT_SCHEMA_VERSION = 3
+internal const val CONTENT_SCHEMA_VERSION = 4
 
 @Serializable
 internal data class SchemaVersionDto(val version: Int)
@@ -90,3 +91,18 @@ internal data class FeatsDto(val list: List<FeatMeta>)
 
 @Serializable
 internal data class SpellsDto(val list: List<Spell>)
+
+@Serializable
+internal data class MutationsDto(val list: List<Mutation>)
+
+@Serializable
+data class ScenarioMeta(
+    val id: String,
+    val name: String,
+    val sceneHint: String,
+    val promptTemplate: String,
+    val hasModifier: Boolean = false,
+)
+
+@Serializable
+internal data class ScenariosDto(val list: List<ScenarioMeta>)

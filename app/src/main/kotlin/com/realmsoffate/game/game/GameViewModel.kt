@@ -717,7 +717,7 @@ class GameViewModel(
             // Seed opening narration with the scenario prompt template.
             val nearby = WorldGen.connected(wm, wm.startId).joinToString(", ") { (d, dist) -> "${d.icon} ${d.name} (${dist}lg)" }
             val loreBlurb = lore.factions.firstOrNull()?.let { "Local faction: ${it.name} (${it.type})." } ?: ""
-            val seedPrompt = scenario.promptTemplate(char, startLoc, nearby, loreBlurb)
+            val seedPrompt = scenario.renderPrompt(char, startLoc, nearby, loreBlurb)
             submitAction(seedPrompt, seed = true)
         }
     }
