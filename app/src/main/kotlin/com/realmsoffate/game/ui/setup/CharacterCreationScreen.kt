@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.realmsoffate.game.data.Abilities
 import com.realmsoffate.game.data.Character
 import com.realmsoffate.game.data.CharacterAppearance
+import com.realmsoffate.game.data.content.ContentRepository
 import com.realmsoffate.game.game.Classes
 import com.realmsoffate.game.game.GameViewModel
 import com.realmsoffate.game.game.Races
@@ -60,7 +61,7 @@ fun CharacterCreationScreen(vm: GameViewModel) {
     var hairColor by rememberSaveable { mutableStateOf(HAIR_COLORS.first()) }
     var hairStyle by rememberSaveable { mutableStateOf(HAIR_STYLES.first()) }
     var build by rememberSaveable { mutableStateOf("Average") }
-    var race by rememberSaveable { mutableStateOf(Races.list.first().name) }
+    var race by rememberSaveable { mutableStateOf(ContentRepository.races.first().name) }
     // Default the +2 / +1 picks from the selected race's canonical bonuses.
     // Player can still override on the Stats step.
     // TODO(#17): Human gets +1 to all six stats — a two-slot selector cannot represent
@@ -71,7 +72,7 @@ fun CharacterCreationScreen(vm: GameViewModel) {
     }
     var primaryBonus by rememberSaveable(race) { mutableIntStateOf(initialBonuses.first) } // index 0..5
     var secondaryBonus by rememberSaveable(race) { mutableIntStateOf(initialBonuses.second) }
-    var cls by rememberSaveable { mutableStateOf(Classes.list.first().name) }
+    var cls by rememberSaveable { mutableStateOf(ContentRepository.classes.first().name) }
     val baseStats = rememberSaveable { mutableStateOf(intArrayOf(8, 8, 8, 8, 8, 8)) }
 
     val pointsRemaining by remember(baseStats.value) {
@@ -351,7 +352,7 @@ private fun AppearanceStep(
 private fun RaceStep(race: String, onRace: (String) -> Unit) {
     SectionHeader("\u2694\uFE0F  RACE")
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Races.list.chunked(3).forEach { row ->
+        ContentRepository.races.chunked(3).forEach { row ->
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -396,7 +397,7 @@ private fun RaceStep(race: String, onRace: (String) -> Unit) {
 private fun ClassStep(cls: String, onCls: (String) -> Unit) {
     SectionHeader("\uD83D\uDCAB  CLASS")
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Classes.list.chunked(3).forEach { row ->
+        ContentRepository.classes.chunked(3).forEach { row ->
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)

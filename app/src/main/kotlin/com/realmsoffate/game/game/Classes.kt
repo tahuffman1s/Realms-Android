@@ -29,9 +29,7 @@ data class ClassDef(
 fun ClassDef.recommendedArray(): IntArray = recommended.toIntArray()
 
 object Classes {
-    val list: List<ClassDef> get() = ContentRepository.classes
-
-    fun find(name: String) = list.firstOrNull { it.name.equals(name, true) }
+    fun find(name: String) = ContentRepository.classes.firstOrNull { it.name.equals(name, true) }
 
     fun rollHp(clsName: String, con: Int): Int {
         val cls = find(clsName) ?: return 10

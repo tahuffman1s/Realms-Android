@@ -25,15 +25,14 @@ data class Spell(
 )
 
 object Spells {
-    val list: List<Spell> get() = ContentRepository.spells
-
-    fun find(name: String): Spell? = list.firstOrNull { it.name.equals(name, true) }
+    fun find(name: String): Spell? =
+        ContentRepository.spells.firstOrNull { it.name.equals(name, true) }
 
     fun knownFor(cls: String, level: Int): List<Spell> =
-        list.filter { cls in it.classes && it.unlockLevel <= level }
+        ContentRepository.spells.filter { cls in it.classes && it.unlockLevel <= level }
 
     fun grantStartingSpells(ch: Character, cls: ClassDef) {
-        val eligible = list.filter { cls.name in it.classes && it.unlockLevel <= ch.level }
+        val eligible = ContentRepository.spells.filter { cls.name in it.classes && it.unlockLevel <= ch.level }
         val cantrips = eligible.filter { it.level == 0 }.take(3).map { it.name }
         val l1 = eligible.filter { it.level == 1 }.take(2).map { it.name }
         ch.knownSpells.clear()

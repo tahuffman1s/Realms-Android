@@ -641,22 +641,23 @@ fun buildSessionSystem(
 
     // 6. WORLD PALETTE section — FULL unshuffled pools (deterministic, no shuffled().take())
     // Including every entry here pays a one-time token cost that is then cached for free.
+    val cr = com.realmsoffate.game.data.content.ContentRepository
     val palette = buildString {
         appendLine("WORLD PALETTE (use ONLY these when inventing new content — do NOT make up generic names):")
-        appendLine("NPC first names: ${com.realmsoffate.game.game.LoreGen.npcFirstNames().joinToString(", ")}")
-        appendLine("NPC titles: ${com.realmsoffate.game.game.LoreGen.npcTitles().joinToString(", ")}")
-        appendLine("NPC roles: ${com.realmsoffate.game.game.LoreGen.npcRoles().joinToString(", ")}")
-        appendLine("Faction words: ${com.realmsoffate.game.game.LoreGen.factionAdjs().joinToString(", ")} + ${com.realmsoffate.game.game.LoreGen.factionNouns().joinToString(", ")}")
-        appendLine("Faction types: ${com.realmsoffate.game.game.LoreGen.factionTypes().joinToString(", ")}")
-        appendLine("Ruler traits: ${com.realmsoffate.game.game.LoreGen.rulerTraits().joinToString(", ")}")
-        appendLine("Population moods: ${com.realmsoffate.game.game.LoreGen.moods().joinToString(", ")}")
-        appendLine("Government forms: ${com.realmsoffate.game.game.LoreGen.govForms().joinToString(", ")}")
-        appendLine("Succession methods: ${com.realmsoffate.game.game.LoreGen.successions().joinToString(", ")}")
-        appendLine("Trade goods (exports): ${com.realmsoffate.game.game.LoreGen.exports().joinToString(", ")}")
-        appendLine("Trade goods (imports): ${com.realmsoffate.game.game.LoreGen.imports().joinToString(", ")}")
-        appendLine("Faction goals: ${com.realmsoffate.game.game.LoreGen.goals().joinToString(", ")}")
-        appendLine("Faction dispositions: ${com.realmsoffate.game.game.LoreGen.dispositions().joinToString(", ")}")
-        append("Rumors to weave in: ${com.realmsoffate.game.game.LoreGen.rumors().joinToString(" | ")}")
+        appendLine("NPC first names: ${cr.npcFirsts.joinToString(", ")}")
+        appendLine("NPC titles: ${cr.npcTitles.joinToString(", ")}")
+        appendLine("NPC roles: ${cr.npcRoles.joinToString(", ")}")
+        appendLine("Faction words: ${cr.factionAdjectives.joinToString(", ")} + ${cr.factionNouns.joinToString(", ")}")
+        appendLine("Faction types: ${cr.factionTypes.joinToString(", ")}")
+        appendLine("Ruler traits: ${cr.rulerTraits.joinToString(", ")}")
+        appendLine("Population moods: ${cr.moods.joinToString(", ")}")
+        appendLine("Government forms: ${cr.governmentForms.joinToString(", ")}")
+        appendLine("Succession methods: ${cr.successionTypes.joinToString(", ")}")
+        appendLine("Trade goods (exports): ${cr.exports.joinToString(", ")}")
+        appendLine("Trade goods (imports): ${cr.imports.joinToString(", ")}")
+        appendLine("Faction goals: ${cr.goals.joinToString(", ")}")
+        appendLine("Faction dispositions: ${cr.dispositions.joinToString(", ")}")
+        append("Rumors to weave in: ${cr.rumors.joinToString(" | ")}")
     }
     sections += palette
 

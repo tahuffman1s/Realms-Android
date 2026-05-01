@@ -19,10 +19,8 @@ data class Mutation(
 )
 
 object Mutations {
-    val list: List<Mutation> get() = ContentRepository.mutations
-
-    fun find(id: String): Mutation? = list.firstOrNull { it.id == id }
+    fun find(id: String): Mutation? = ContentRepository.mutations.firstOrNull { it.id == id }
 
     fun pickForWorld(rng: Random = Random.Default, count: Int = 2 + rng.nextInt(2)): List<Mutation> =
-        list.shuffled(rng).take(count)
+        ContentRepository.mutations.shuffled(rng).take(count)
 }

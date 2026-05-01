@@ -5,7 +5,8 @@ Kotlin + Jetpack Compose RPG. `com.realmsoffate.game`. Gradle Kotlin DSL.
 ## Layout
 
 `app/src/main/kotlin/com/realmsoffate/game/`  
-`data/` AI, models, prefs, prompts, parsing · `game/` VM, classes, races, scenarios, events, lore · `game/reducers/` pure reducers · `game/handlers/` merchant, rest, save, progression · `ui/` shell, overlays, panels, setup · `util/` markdown, helpers  
+`data/` AI, models, prefs, prompts, parsing · `data/content/` JSON-backed authored content (`ContentRepository`) · `game/` VM, classes, races, scenarios, events, lore · `game/reducers/` pure reducers · `game/handlers/` merchant, rest, save, progression · `ui/` shell, overlays, panels, setup · `util/` markdown, helpers  
+`app/src/main/assets/content/` Authored static content as JSON (races, classes, spells, scenarios, mutations, world events, etc.) — read at startup via `ContentRepository`. Add new content fields here, not as inline literals. Debug builds support hot-reload from `<filesDir>/content/` via `POST /content/reload`.  
 `app/src/debug/.../debug/` Debug Bridge (HTTP, macros) · `app/src/test/` JVM/Robolectric
 
 ## Commands

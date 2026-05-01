@@ -20,8 +20,7 @@ data class RaceDef(
 }
 
 object Races {
-    val list: List<RaceDef> get() = ContentRepository.races
-    fun find(name: String) = list.firstOrNull { it.name.equals(name, true) }
+    fun find(name: String) = ContentRepository.races.firstOrNull { it.name.equals(name, true) }
 }
 
 /**
