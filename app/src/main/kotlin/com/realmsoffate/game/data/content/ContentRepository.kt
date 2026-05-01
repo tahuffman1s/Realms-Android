@@ -5,18 +5,67 @@ import com.realmsoffate.game.game.ClassDef
 import com.realmsoffate.game.game.Mutation
 import com.realmsoffate.game.game.RaceDef
 import com.realmsoffate.game.game.Spell
+import java.io.File
+import java.io.InputStream
 
 object ContentRepository {
 
     private lateinit var bundle: ContentLoader.Bundle
 
-    fun initialize(context: Context) {
-        bundle = ContentLoader.loadAndValidate { path -> context.assets.open(path) }
+    /** Filesystem root for hot-reload overrides; null when override is disabled. */
+    private var overrideRoot: File? = null
+
+    /** Per-path provenance from the most recent successful load: "asset" | "override". */
+    private var sourceMap: Map<String, String> = emptyMap()
+
+    /**
+     * Load content into memory.
+     *
+     * When [allowOverride] is true (debug builds), each requested path is checked
+     * against `<filesDir>/content/<path-without-content-prefix>` first; missing
+     * override files fall through to the bundled APK assets. Per-file overlay —
+     * writers can drop a single JSON without supplying the rest.
+     *
+     * Reload is atomic. If the new bundle fails to parse / validate, the prior
+     * bundle is left untouched and the underlying [ContentException] propagates.
+     */
+    fun initialize(context: Context, allowOverride: Boolean = false) {
+        val root = if (allowOverride) File(context.filesDir, "content") else null
+        loadInto(root) { path -> context.assets.open(path) }
     }
 
-    internal fun initializeFrom(open: (String) -> java.io.InputStream) {
-        bundle = ContentLoader.loadAndValidate(open)
+    internal fun initializeFrom(open: (String) -> InputStream) {
+        loadInto(overrideRoot = null, assetOpen = open)
     }
+
+    @Synchronized
+    private fun loadInto(overrideRoot: File?, assetOpen: (String) -> InputStream) {
+        val recordedSources = mutableMapOf<String, String>()
+        val opener: (String) -> InputStream = { path ->
+            val rel = path.removePrefix("content/")
+            val overrideFile = overrideRoot?.let { File(it, rel) }?.takeIf { it.isFile }
+            if (overrideFile != null) {
+                recordedSources[path] = "override"
+                overrideFile.inputStream()
+            } else {
+                recordedSources[path] = "asset"
+                assetOpen(path)
+            }
+        }
+        // Throws ContentException on failure; bundle reference only updates on success.
+        val newBundle = ContentLoader.loadAndValidate(opener)
+        bundle = newBundle
+        this.overrideRoot = overrideRoot
+        this.sourceMap = recordedSources.toMap()
+    }
+
+    /** Snapshot of current load metadata — schema version, override status, per-file source. */
+    fun info(): ContentInfo = ContentInfo(
+        schemaVersion = CONTENT_SCHEMA_VERSION,
+        overrideEnabled = overrideRoot != null,
+        overrideRoot = overrideRoot?.absolutePath,
+        sources = sourceMap,
+    )
 
     val factionTypes: List<String> get() = bundle.factions.types
     val factionAdjectives: List<String> get() = bundle.factions.adjectives
