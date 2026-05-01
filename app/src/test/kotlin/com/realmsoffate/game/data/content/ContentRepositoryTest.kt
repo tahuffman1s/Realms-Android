@@ -50,6 +50,7 @@ class ContentRepositoryTest {
         assertTrue(ContentRepository.races.isNotEmpty())
         assertTrue(ContentRepository.classes.isNotEmpty())
         assertTrue(ContentRepository.featMetas.isNotEmpty())
+        assertTrue(ContentRepository.spells.isNotEmpty())
     }
 
     @Test
