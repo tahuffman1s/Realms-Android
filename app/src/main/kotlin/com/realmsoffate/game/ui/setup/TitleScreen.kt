@@ -169,16 +169,22 @@ fun TitleScreen(vm: GameViewModel) {
                 )
                 SecondaryTile(
                     icon = Icons.Default.Settings,
-                    label = "API Setup",
-                    enabled = true,
-                    onClick = { vm.backToApiSetup() },
-                    modifier = Modifier.weight(1f)
-                )
-                SecondaryTile(
-                    icon = Icons.Default.Settings,
                     label = "Settings",
                     enabled = true,
                     onClick = { vm.openSettings() },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                SecondaryTile(
+                    icon = Icons.Default.Settings,
+                    label = "API Setup",
+                    enabled = true,
+                    onClick = { vm.backToApiSetup() },
                     modifier = Modifier.weight(1f)
                 )
             }
