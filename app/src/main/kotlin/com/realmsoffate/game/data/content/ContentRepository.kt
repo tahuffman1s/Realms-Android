@@ -2,6 +2,7 @@ package com.realmsoffate.game.data.content
 
 import android.content.Context
 import com.realmsoffate.game.game.ClassDef
+import com.realmsoffate.game.game.Mutation
 import com.realmsoffate.game.game.RaceDef
 import com.realmsoffate.game.game.Spell
 
@@ -54,4 +55,6 @@ object ContentRepository {
     val classes: List<ClassDef> get() = bundle.classes.list
     val featMetas: List<FeatMeta> get() = bundle.feats.list
     val spells: List<Spell> get() = bundle.spells.list
+    val mutations: List<Mutation> get() = bundle.mutations.list
+    val scenarioMetas: List<ScenarioMeta> get() = bundle.scenarios.list
 }
