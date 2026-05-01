@@ -55,4 +55,44 @@ class GitHubReleasesClientTest {
         assertEquals("application/vnd.github+json", req.getHeader("Accept"))
         assertTrue(req.path!!.startsWith("/repos/tahuffman1s/Realms-Android/releases"))
     }
+
+    @Test fun `403 with rate-limit-remaining 0 returns RateLimited`() = runTest {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(403)
+                .setHeader("X-RateLimit-Remaining", "0")
+                .setHeader("X-RateLimit-Reset", "1700000000")
+                .setBody("""{"message":"API rate limit exceeded"}""")
+        )
+        val result = client.fetchReleases()
+        assertTrue(result is GitHubReleasesClient.Result.RateLimited)
+        assertEquals(1700000000L, (result as GitHubReleasesClient.Result.RateLimited).resetEpochSec)
+    }
+
+    @Test fun `500 returns HttpError`() = runTest {
+        server.enqueue(MockResponse().setResponseCode(500).setBody("boom"))
+        val result = client.fetchReleases()
+        assertTrue(result is GitHubReleasesClient.Result.HttpError)
+        assertEquals(500, (result as GitHubReleasesClient.Result.HttpError).code)
+    }
+
+    @Test fun `malformed json returns ParseError`() = runTest {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("not-json"))
+        val result = client.fetchReleases()
+        assertTrue(result is GitHubReleasesClient.Result.ParseError)
+    }
+
+    @Test fun `unparseable tag is skipped not fatal`() = runTest {
+        server.enqueue(MockResponse().setResponseCode(200).setBody(
+            """[
+                {"tag_name":"not-a-version","name":"x","prerelease":false,"body":"","assets":[]},
+                {"tag_name":"v1.0.0","name":"y","prerelease":false,"body":"","assets":[]}
+            ]"""
+        ))
+        val result = client.fetchReleases()
+        assertTrue(result is GitHubReleasesClient.Result.Ok)
+        val releases = (result as GitHubReleasesClient.Result.Ok).releases
+        assertEquals(1, releases.size)
+        assertEquals("v1.0.0", releases.first().tag)
+    }
 }
