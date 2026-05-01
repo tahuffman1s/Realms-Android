@@ -156,7 +156,7 @@ class AiRepository(
             }
         }
         val body = buildJsonObject {
-            put("model", "deepseek-chat")
+            put("model", "deepseek-v4-flash")
             put("max_tokens", 1800)
             put("temperature", 1.0)
             put("top_p", 0.95)
@@ -214,7 +214,7 @@ If the action is combat/attacking, respond "Attack". If purely dialogue with no 
                 })
             }
             val body = buildJsonObject {
-                put("model", "deepseek-chat")
+                put("model", "deepseek-v4-flash")
                 put("max_tokens", 10)
                 put("temperature", 0.0)
                 put("messages", messages)
@@ -295,7 +295,7 @@ If the action is combat/attacking, respond "Attack". If purely dialogue with no 
                 })
             }
             val body = buildJsonObject {
-                put("model", "deepseek-chat")
+                put("model", "deepseek-v4-flash")
                 put("max_tokens", 400)
                 put("temperature", 0.2)
                 put("messages", messages)
@@ -347,7 +347,7 @@ If the action is combat/attacking, respond "Attack". If purely dialogue with no 
                 })
             }
             val body = buildJsonObject {
-                put("model", "deepseek-chat")
+                put("model", "deepseek-v4-flash")
                 put("max_tokens", 500)
                 put("temperature", 0.2)
                 put("messages", messages)
