@@ -19,6 +19,7 @@ import com.realmsoffate.game.game.Screen
 import com.realmsoffate.game.ui.game.GameScreen
 import com.realmsoffate.game.ui.setup.ApiSetupScreen
 import com.realmsoffate.game.ui.setup.CharacterCreationScreen
+import com.realmsoffate.game.ui.settings.SettingsScreen
 import com.realmsoffate.game.ui.setup.DeathScreen
 import com.realmsoffate.game.ui.setup.TitleScreen
 import com.realmsoffate.game.ui.theme.RealmsTheme
@@ -54,5 +55,6 @@ fun RealmsRoot(vm: GameViewModel) {
         Screen.CharacterCreation -> CharacterCreationScreen(vm)
         Screen.Game -> GameScreen(vm)
         Screen.Death -> DeathScreen(vm)
+        Screen.Settings -> SettingsScreen(vm)
     }
 }

@@ -62,7 +62,7 @@ import com.realmsoffate.game.game.reducers.SceneBoundaryDetector
 import com.realmsoffate.game.data.db.RealmsDbHolder
 import kotlinx.coroutines.flow.update
 
-enum class Screen { ApiSetup, Title, CharacterCreation, Game, Death }
+enum class Screen { ApiSetup, Title, CharacterCreation, Game, Death, Settings }
 
 data class GameUiState(
     val character: Character? = null,
@@ -667,6 +667,9 @@ class GameViewModel(
     fun backToApiSetup() {
         _screen.value = Screen.ApiSetup
     }
+
+    fun openSettings() { _screen.value = Screen.Settings }
+    fun closeSettings() { _screen.value = Screen.Title }
 
     fun setApiKey(k: String) {
         _apiKey.value = k
