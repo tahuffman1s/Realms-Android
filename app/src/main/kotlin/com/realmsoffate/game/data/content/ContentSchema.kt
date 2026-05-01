@@ -121,6 +121,14 @@ data class WorldEventTemplateDto(
 @Serializable
 internal data class WorldEventsDto(val list: List<WorldEventTemplateDto>)
 
+/** Snapshot of [ContentRepository] load state — used by debug-bridge `/content/info`. */
+data class ContentInfo(
+    val schemaVersion: Int,
+    val overrideEnabled: Boolean,
+    val overrideRoot: String?,
+    val sources: Map<String, String>,
+)
+
 @Serializable
 data class HistoricalEvents(
     val primordial: List<String>,

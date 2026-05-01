@@ -13,7 +13,7 @@ class RealmsApp : Application() {
     override fun onCreate() {
         super.onCreate()
         INSTANCE = this
-        ContentRepository.initialize(this)
+        ContentRepository.initialize(this, allowOverride = BuildConfig.DEBUG)
         EmojiCompat.init(BundledEmojiCompatConfig(this, Executors.newSingleThreadExecutor()))
         SaveStore.init(this)
         RealmsDbHolder.init(this)

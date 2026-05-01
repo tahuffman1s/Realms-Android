@@ -63,6 +63,7 @@ object DebugServer {
         DescribeEndpoints.register()
         RepoEndpoints.register()
         AiDebugEndpoints.register()
+        ContentEndpoints.register()
 
         scope.launch {
             try {
