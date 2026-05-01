@@ -103,7 +103,9 @@ internal fun NarrationBlock(
                     is NarrationSegmentData.PlayerAction -> {
                         PlayerActionLine(text = seg.text)
                     }
-                    is NarrationSegmentData.PlayerDialog -> {}
+                    is NarrationSegmentData.PlayerDialog -> Dim(dimAlpha) {
+                        PlayerBubble(text = seg.text, characterName = characterName)
+                    }
                 }
             }
             // Stat change strip (with optional inline check chip) at the end — dimmed with the turn
@@ -149,7 +151,9 @@ internal fun NarrationBlock(
                             )
                         }
                     }
-                    is NarrationSegment.PlayerDialogue -> {}
+                    is NarrationSegment.PlayerDialogue -> Dim(dimAlpha) {
+                        PlayerBubble(text = seg.quote, characterName = characterName)
+                    }
                     is NarrationSegment.Action -> Dim(dimAlpha) {
                         NarratorAsideLine(text = seg.text)
                     }
